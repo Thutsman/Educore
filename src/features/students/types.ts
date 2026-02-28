@@ -1,0 +1,51 @@
+export interface Student {
+  id: string
+  admission_no: string
+  full_name: string
+  date_of_birth: string | null
+  gender: 'male' | 'female' | 'other' | null
+  address: string | null
+  phone: string | null
+  email: string | null
+  status: 'active' | 'inactive' | 'graduated' | 'expelled' | 'transferred'
+  admission_date: string | null
+  class_id: string | null
+  class_name: string | null
+}
+
+export interface Guardian {
+  id: string
+  student_id: string
+  full_name: string
+  relationship: string
+  phone: string | null
+  email: string | null
+  address: string | null
+  is_primary: boolean
+}
+
+export interface StudentFeeSummary {
+  totalInvoiced: number
+  totalPaid: number
+  balance: number
+  invoiceCount: number
+}
+
+export interface StudentFilters {
+  search: string
+  classId: string
+  status: string
+}
+
+export interface StudentFormData {
+  admission_no: string
+  full_name: string
+  date_of_birth?: string
+  gender?: 'male' | 'female' | 'other'
+  address?: string
+  phone?: string
+  email?: string
+  status: 'active' | 'inactive' | 'graduated' | 'expelled' | 'transferred'
+  admission_date?: string
+  class_id?: string
+}

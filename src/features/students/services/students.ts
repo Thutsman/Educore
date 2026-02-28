@@ -1,0 +1,205 @@
+import { supabase } from '@/lib/supabase'
+import type { Student, Guardian, StudentFeeSummary, StudentFilters, StudentFormData } from '../types'
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const db = supabase as any
+
+const n = (v: unknown): number => Number(v) || 0
+
+// ─── Students ────────────────────────────────────────────────────────────────
+
+export async function getStudents(filters?: Partial<StudentFilters>): Promise<Student[]> {
+  let query = supabase
+    .from('students')
+    .select('id, admission_no, full_name, date_of_birth, gender, status, admission_date, class_id, class:classes(name)')
+    .is('deleted_at', null)
+    .order('full_name')
+
+  if (filters?.search) {
+    query = query.or(`full_name.ilike.%${filters.search}%,admission_no.ilike.%${filters.search}%`)
+  }
+  if (filters?.classId && filters.classId !== 'all') {
+    query = query.eq('class_id', filters.classId)
+  }
+  if (filters?.status && filters.status !== 'all') {
+    query = query.eq('status', filters.status)
+  }
+
+  const { data, error } = await query
+  if (error || !data) return []
+
+  type RawStudent = {
+    id: string; admission_no: string; full_name: string
+    date_of_birth: string | null; gender: string | null; status: string
+    admission_date: string | null; class_id: string | null
+    class: { name: string } | null
+  }
+  return (data as unknown as RawStudent[]).map(r => ({
+    id:             r.id,
+    admission_no:   r.admission_no,
+    full_name:      r.full_name,
+    date_of_birth:  r.date_of_birth,
+    gender:         r.gender as Student['gender'],
+    address:        null,
+    phone:          null,
+    email:          null,
+    status:         r.status as Student['status'],
+    admission_date: r.admission_date,
+    class_id:       r.class_id,
+    class_name:     r.class?.name ?? null,
+  }))
+}
+
+export async function getStudentById(id: string): Promise<Student | null> {
+  const { data, error } = await supabase
+    .from('students')
+    .select('id, admission_no, full_name, date_of_birth, gender, address, status, admission_date, class_id, class:classes(name)')
+    .eq('id', id)
+    .is('deleted_at', null)
+    .single()
+
+  if (error || !data) return null
+  type RawStudent = {
+    id: string; admission_no: string; full_name: string
+    date_of_birth: string | null; gender: string | null; address: string | null; status: string
+    admission_date: string | null; class_id: string | null
+    class: { name: string } | null
+  }
+  const r = data as unknown as RawStudent
+  return {
+    id:             r.id,
+    admission_no:   r.admission_no,
+    full_name:      r.full_name,
+    date_of_birth:  r.date_of_birth,
+    gender:         r.gender as Student['gender'],
+    address:        r.address,
+    phone:          null,
+    email:          null,
+    status:         r.status as Student['status'],
+    admission_date: r.admission_date,
+    class_id:       r.class_id,
+    class_name:     (r.class as { name: string } | null)?.name ?? null,
+  }
+}
+
+export async function getStudentGuardians(studentId: string): Promise<Guardian[]> {
+  const { data: studentData, error: studentError } = await supabase
+    .from('students')
+    .select('guardian_id, guardian2_id')
+    .eq('id', studentId)
+    .maybeSingle()
+
+  if (studentError || !studentData) return []
+
+  const primaryId   = (studentData as { guardian_id: string | null }).guardian_id
+  const secondaryId = (studentData as { guardian2_id: string | null }).guardian2_id
+  const guardianIds = [primaryId, secondaryId].filter((id): id is string => !!id)
+
+  if (guardianIds.length === 0) return []
+
+  const { data, error } = await supabase
+    .from('guardians')
+    .select('id, full_name, relationship, phone, email, address')
+    .in('id', guardianIds)
+    .is('deleted_at', null)
+
+  if (error || !data) return []
+
+  type RawGuardian = {
+    id: string; full_name: string; relationship: string
+    phone: string | null; email: string | null; address: string | null
+  }
+
+  const guardians = (data as unknown as RawGuardian[]).map(r => ({
+    id:           r.id,
+    student_id:   studentId,
+    full_name:    r.full_name,
+    relationship: r.relationship,
+    phone:        r.phone,
+    email:        r.email,
+    address:      r.address,
+    is_primary:   r.id === primaryId,
+  }))
+
+  guardians.sort((a, b) => Number(b.is_primary) - Number(a.is_primary))
+  return guardians
+}
+
+export async function getStudentFeeSummary(studentId: string): Promise<StudentFeeSummary> {
+  const { data, error } = await supabase
+    .from('invoices')
+    .select('amount, amount_paid, balance, status')
+    .eq('student_id', studentId)
+    .neq('status', 'void')
+
+  if (error || !data) return { totalInvoiced: 0, totalPaid: 0, balance: 0, invoiceCount: 0 }
+  type RawInvoice = { amount: unknown; amount_paid: unknown; balance: unknown }
+  const rows = data as unknown as RawInvoice[]
+  return {
+    totalInvoiced: rows.reduce((s, r) => s + n(r.amount), 0),
+    totalPaid:     rows.reduce((s, r) => s + n(r.amount_paid), 0),
+    balance:       rows.reduce((s, r) => s + n(r.balance), 0),
+    invoiceCount:  rows.length,
+  }
+}
+
+// ─── Classes (dropdown data) ─────────────────────────────────────────────────
+
+export async function getClassesForSelect(): Promise<{ id: string; name: string }[]> {
+  const { data, error } = await supabase
+    .from('classes')
+    .select('id, name')
+    .is('deleted_at', null)
+    .order('name')
+
+  if (error || !data) return []
+  type RawClass = { id: string; name: string }
+  return (data as unknown as RawClass[]).map(r => ({ id: r.id, name: r.name }))
+}
+
+// ─── CRUD ────────────────────────────────────────────────────────────────────
+
+export async function createStudent(data: StudentFormData): Promise<{ id: string } | null> {
+  const { data: result, error } = await db
+    .from('students')
+    .insert({
+      admission_no:   data.admission_no,
+      full_name:      data.full_name,
+      date_of_birth:  data.date_of_birth  || null,
+      gender:         data.gender         || null,
+      address:        data.address        || null,
+      status:         data.status,
+      admission_date: data.admission_date || null,
+      class_id:       data.class_id       || null,
+    })
+    .select('id')
+    .single()
+
+  if (error || !result) return null
+  return { id: (result as unknown as { id: string }).id }
+}
+
+export async function updateStudent(id: string, data: Partial<StudentFormData>): Promise<boolean> {
+  const { error } = await db
+    .from('students')
+    .update({
+      ...(data.admission_no   !== undefined && { admission_no:   data.admission_no }),
+      ...(data.full_name      !== undefined && { full_name:      data.full_name }),
+      ...(data.date_of_birth  !== undefined && { date_of_birth:  data.date_of_birth  || null }),
+      ...(data.gender         !== undefined && { gender:         data.gender         || null }),
+      ...(data.address        !== undefined && { address:        data.address        || null }),
+      ...(data.status         !== undefined && { status:         data.status }),
+      ...(data.admission_date !== undefined && { admission_date: data.admission_date || null }),
+      ...(data.class_id       !== undefined && { class_id:       data.class_id       || null }),
+    })
+    .eq('id', id)
+
+  return !error
+}
+
+export async function deleteStudent(id: string): Promise<boolean> {
+  const { error } = await db
+    .from('students')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('id', id)
+  return !error
+}
