@@ -4,7 +4,6 @@ import {
   Bell,
   Moon,
   Sun,
-  Monitor,
   Menu,
   Settings,
   LogOut,
@@ -35,24 +34,16 @@ const MOCK_NOTIFICATIONS = [
   { id: '3', type: 'attendance', title: 'Attendance alert',    message: '3 students absent in Form 4B today.', created_at: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(), is_read: true },
 ]
 
-type ThemeMode = 'light' | 'dark' | 'system'
+type ThemeMode = 'light' | 'dark'
 
 const THEME_ICONS: Record<ThemeMode, React.ElementType> = {
   light: Sun,
   dark: Moon,
-  system: Monitor,
-}
-
-const THEME_NEXT: Record<ThemeMode, ThemeMode> = {
-  light: 'dark',
-  dark: 'system',
-  system: 'light',
 }
 
 const THEME_LABEL: Record<ThemeMode, string> = {
-  light: 'Light mode',
-  dark: 'Dark mode',
-  system: 'System theme',
+  light: 'Switch to dark mode',
+  dark: 'Switch to light mode',
 }
 
 const NOTIF_TYPE_COLOR: Record<string, string> = {
@@ -73,8 +64,8 @@ export function Topbar() {
 
   const unreadCount = notifications.filter(n => !n.is_read).length
 
-  const ThemeIcon = THEME_ICONS[theme as ThemeMode] ?? Monitor
-  const nextTheme = THEME_NEXT[theme as ThemeMode] ?? 'light'
+  const ThemeIcon = THEME_ICONS[theme as ThemeMode] ?? Sun
+  const nextTheme: ThemeMode = theme === 'dark' ? 'light' : 'dark'
 
   const handleSignOut = async () => {
     await signOut()
