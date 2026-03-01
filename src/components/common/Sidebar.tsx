@@ -106,13 +106,13 @@ const NAV_GROUPS: NavGroup[] = [
         label: 'Staff',
         icon: UserCog,
         href: '/staff',
-        allowedRoles: ['headmaster','deputy_headmaster','bursar'],
+        allowedRoles: ['headmaster','deputy_headmaster'],
       },
       {
         label: 'Assets',
         icon: Package,
         href: '/assets',
-        allowedRoles: ['headmaster','deputy_headmaster','bursar'],
+        allowedRoles: ['headmaster','deputy_headmaster','non_teaching_staff'],
       },
       {
         label: 'Analytics',

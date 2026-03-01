@@ -57,8 +57,12 @@ export async function getInvoiceById(id: string): Promise<Invoice | null> {
 
 export async function createInvoice(d: InvoiceFormData): Promise<boolean> {
   const { error } = await db.from('invoices').insert({
-    student_id: d.student_id, amount: d.amount,
-    due_date: d.due_date || null, description: d.description || null,
+    student_id: d.student_id,
+    amount: d.amount,
+    academic_year_id: d.academic_year_id,
+    term_id: d.term_id || null,
+    due_date: d.due_date || null,
+    description: d.description || null,
   })
   return !error
 }
@@ -87,10 +91,17 @@ export async function getPaymentsForInvoice(invoiceId: string): Promise<Payment[
 }
 
 export async function recordPayment(d: PaymentFormData): Promise<boolean> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return false
   const { error } = await db.from('payments').insert({
-    invoice_id: d.invoice_id, amount: d.amount,
-    payment_date: d.payment_date, payment_method: d.payment_method,
-    reference_no: d.reference_number || null, notes: d.notes || null,
+    invoice_id: d.invoice_id,
+    student_id: d.student_id,
+    amount: d.amount,
+    payment_date: d.payment_date,
+    payment_method: d.payment_method,
+    reference_no: d.reference_number || null,
+    notes: d.notes || null,
+    received_by: user.id,
   })
   return !error
 }

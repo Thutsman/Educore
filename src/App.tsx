@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
+import { Toaster } from 'sonner'
 import { queryClient } from '@/lib/query-client'
 import { AuthProvider } from '@/context/AuthContext'
 import { useAuth } from '@/hooks/useAuth'
@@ -222,6 +223,7 @@ export default function App() {
       </AuthProvider>
 
       {import.meta.env.DEV && <ReactQueryDevtools initialIsOpen={false} />}
+      <Toaster position="top-right" richColors />
     </QueryClientProvider>
   )
 }

@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Plus, Search, CreditCard, XCircle } from 'lucide-react'
+import { Plus, Search, CreditCard, XCircle, AlertCircle } from 'lucide-react'
 import { DataTable, type Column } from '@/components/common/DataTable'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -24,6 +24,8 @@ import {
   useCreateInvoice, useVoidInvoice, useRecordPayment,
   useStudentsForInvoice,
 } from '../hooks/useFinance'
+import { toast } from 'sonner'
+import { useAcademicYears, useTerms } from '@/features/academics/hooks/useAcademics'
 import type { Invoice } from '../types'
 
 const STATUS_STYLES: Record<string, string> = {
@@ -36,20 +38,61 @@ const STATUS_STYLES: Record<string, string> = {
 
 // ─── Create Invoice Modal ─────────────────────────────────────────────────────
 const invoiceSchema = z.object({
-  student_id:  z.string().min(1, 'Required'),
-  amount:      z.coerce.number().min(0.01, 'Must be > 0'),
-  due_date:    z.string().optional(),
-  description: z.string().optional(),
+  student_id:       z.string().min(1, 'Required'),
+  academic_year_id: z.string().min(1, 'Academic year required'),
+  term_id:          z.string().optional(),
+  amount:           z.coerce.number().min(0.01, 'Must be > 0'),
+  due_date:         z.string().optional(),
+  description:      z.string().optional(),
 })
 type InvoiceForm = z.infer<typeof invoiceSchema>
 
 function CreateInvoiceModal({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const { data: students = [] } = useStudentsForInvoice()
+  const { data: years = [] } = useAcademicYears()
+  const currentYear = years.find(y => y.is_current) ?? years[0]
   const create = useCreateInvoice()
-  const form = useForm<InvoiceForm>({ resolver: zodResolver(invoiceSchema) as Resolver<InvoiceForm>, defaultValues: { student_id: '', amount: 0 } })
+  const [serverError, setServerError] = useState<string | null>(null)
+  const form = useForm<InvoiceForm>({
+    resolver: zodResolver(invoiceSchema) as Resolver<InvoiceForm>,
+    defaultValues: {
+      student_id: '',
+      academic_year_id: '',
+      term_id: '',
+      amount: 0,
+    },
+  })
+  const selectedYearId = form.watch('academic_year_id') || currentYear?.id
+  const { data: terms = [] } = useTerms(selectedYearId)
+  const currentTerm = terms.find(t => t.is_current) ?? terms[0]
+  useEffect(() => {
+    if (open && currentYear) {
+      setServerError(null)
+      form.setValue('academic_year_id', currentYear.id)
+      form.setValue('term_id', currentTerm?.id ?? '')
+    }
+  }, [open, currentYear?.id, currentTerm?.id, form])
   const onSubmit = async (v: InvoiceForm) => {
-    const ok = await create.mutateAsync({ ...v, amount: v.amount, description: v.description || undefined, due_date: v.due_date || undefined })
-    if (ok) { form.reset(); onOpenChange(false) }
+    setServerError(null)
+    try {
+      const ok = await create.mutateAsync({
+        student_id: v.student_id,
+        amount: v.amount,
+        academic_year_id: v.academic_year_id,
+        term_id: v.term_id || undefined,
+        description: v.description || undefined,
+        due_date: v.due_date || undefined,
+      })
+      if (ok) {
+        toast.success('Invoice successfully created')
+        form.reset()
+        onOpenChange(false)
+      } else {
+        setServerError('Failed to create invoice. Please try again.')
+      }
+    } catch (err) {
+      setServerError(err instanceof Error ? err.message : 'Failed to create invoice. Please try again.')
+    }
   }
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -57,6 +100,12 @@ function CreateInvoiceModal({ open, onOpenChange }: { open: boolean; onOpenChang
         <DialogHeader><DialogTitle>Create Invoice</DialogTitle></DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            {serverError && (
+              <div className="flex items-center gap-2 rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                {serverError}
+              </div>
+            )}
             <FormField control={form.control} name="student_id" render={({ field }) => (
               <FormItem>
                 <FormLabel>Student *</FormLabel>
@@ -67,6 +116,34 @@ function CreateInvoiceModal({ open, onOpenChange }: { open: boolean; onOpenChang
                 <FormMessage />
               </FormItem>
             )} />
+            <div className="grid grid-cols-2 gap-4">
+              <FormField control={form.control} name="academic_year_id" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Academic Year *</FormLabel>
+                  <Select onValueChange={(v) => { field.onChange(v); form.setValue('term_id', '') }} value={field.value}>
+                    <FormControl><SelectTrigger><SelectValue placeholder="Select year" /></SelectTrigger></FormControl>
+                    <SelectContent>{years.map(y => <SelectItem key={y.id} value={y.id}>{y.name || y.id}</SelectItem>)}</SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="term_id" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Term</FormLabel>
+                  <Select
+                    onValueChange={(v) => field.onChange(v === '__none__' ? '' : v)}
+                    value={field.value || '__none__'}
+                  >
+                    <FormControl><SelectTrigger><SelectValue placeholder="Optional" /></SelectTrigger></FormControl>
+                    <SelectContent>
+                      <SelectItem value="__none__">None</SelectItem>
+                      {terms.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )} />
+            </div>
             <FormField control={form.control} name="amount" render={({ field }) => (
               <FormItem>
                 <FormLabel>Amount (USD) *</FormLabel>
@@ -101,15 +178,27 @@ const paymentSchema = z.object({
 })
 type PaymentForm = z.infer<typeof paymentSchema>
 
-function RecordPaymentModal({ invoiceId, maxAmount, open, onOpenChange }: { invoiceId: string; maxAmount: number; open: boolean; onOpenChange: (v: boolean) => void }) {
+function RecordPaymentModal({ invoiceId, studentId, maxAmount, open, onOpenChange }: { invoiceId: string; studentId: string; maxAmount: number; open: boolean; onOpenChange: (v: boolean) => void }) {
   const record = useRecordPayment()
+  const [serverError, setServerError] = useState<string | null>(null)
   const form = useForm<PaymentForm>({
     resolver: zodResolver(paymentSchema) as Resolver<PaymentForm>,
     defaultValues: { amount: maxAmount, payment_date: new Date().toISOString().slice(0, 10), payment_method: 'cash' },
   })
+  useEffect(() => { if (open) setServerError(null) }, [open])
   const onSubmit = async (v: PaymentForm) => {
-    const ok = await record.mutateAsync({ invoice_id: invoiceId, ...v })
-    if (ok) { form.reset(); onOpenChange(false) }
+    setServerError(null)
+    try {
+      const ok = await record.mutateAsync({ invoice_id: invoiceId, student_id: studentId, ...v })
+      if (ok) {
+        form.reset()
+        onOpenChange(false)
+      } else {
+        setServerError('Failed to record payment. Please try again.')
+      }
+    } catch (err) {
+      setServerError(err instanceof Error ? err.message : 'Failed to record payment. Please try again.')
+    }
   }
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -117,6 +206,12 @@ function RecordPaymentModal({ invoiceId, maxAmount, open, onOpenChange }: { invo
         <DialogHeader><DialogTitle>Record Payment</DialogTitle></DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            {serverError && (
+              <div className="flex items-center gap-2 rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                {serverError}
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-4">
               <FormField control={form.control} name="amount" render={({ field }) => (
                 <FormItem><FormLabel>Amount *</FormLabel><FormControl><Input type="number" step="0.01" {...field} /></FormControl><FormMessage /></FormItem>
@@ -235,6 +330,7 @@ function InvoiceDetailModal({ invoiceId, open, onOpenChange }: { invoiceId: stri
       {showPayment && invoice.balance > 0 && (
         <RecordPaymentModal
           invoiceId={invoice.id}
+          studentId={invoice.student_id}
           maxAmount={invoice.balance}
           open={showPayment}
           onOpenChange={setShowPayment}

@@ -18,15 +18,15 @@ function getLetterGrade(pct: number): string {
 export async function getClasses(): Promise<AcademicClass[]> {
   const { data, error } = await supabase
     .from('classes')
-    .select('id, name, level, stream, academic_year_id, academic_year:academic_years(name)')
+    .select('id, name, level, stream, academic_year_id, academic_year:academic_years(label)')
     .is('deleted_at', null)
     .order('name')
   if (error || !data) return []
-  type Raw = { id: string; name: string; level: number | null; stream: string | null; academic_year_id: string | null; academic_year: { name: string } | null }
+  type Raw = { id: string; name: string; level: number | null; stream: string | null; academic_year_id: string | null; academic_year: { label: string } | null }
   return (data as unknown as Raw[]).map(r => ({
     id: r.id, name: r.name, level: r.level, stream: r.stream,
     academic_year_id: r.academic_year_id,
-    academic_year_name: r.academic_year?.name ?? null,
+    academic_year_name: r.academic_year?.label ?? null,
   }))
 }
 
@@ -76,10 +76,10 @@ export async function deleteSubject(id: string): Promise<boolean> {
 // ─── Academic Years & Terms ───────────────────────────────────────────────────
 
 export async function getAcademicYears(): Promise<AcademicYear[]> {
-  const { data, error } = await supabase.from('academic_years').select('id, name, start_date, end_date, is_current').order('start_date', { ascending: false })
+  const { data, error } = await supabase.from('academic_years').select('id, label, start_date, end_date, is_current').order('start_date', { ascending: false })
   if (error || !data) return []
-  type Raw = { id: string; name: string; start_date: string; end_date: string; is_current: boolean }
-  return (data as unknown as Raw[]).map(r => ({ ...r }))
+  type Raw = { id: string; label: string; start_date: string; end_date: string; is_current: boolean }
+  return (data as unknown as Raw[]).map(r => ({ id: r.id, name: r.label, start_date: r.start_date, end_date: r.end_date, is_current: r.is_current }))
 }
 
 export async function getTerms(academicYearId?: string): Promise<Term[]> {

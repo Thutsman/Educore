@@ -43,12 +43,15 @@ export interface Expense {
 export interface InvoiceFormData {
   student_id: string
   amount: number
+  academic_year_id: string
+  term_id?: string
   due_date?: string
   description?: string
 }
 
 export interface PaymentFormData {
   invoice_id: string
+  student_id: string
   amount: number
   payment_date: string
   payment_method: PaymentMethod
