@@ -5,6 +5,8 @@ export interface AcademicClass {
   stream: string | null
   academic_year_id: string | null
   academic_year_name: string | null
+  class_teacher_id: string | null
+  class_teacher_name: string | null
 }
 
 export interface Subject {

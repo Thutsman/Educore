@@ -7,9 +7,10 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { getInitials } from '@/utils/format'
 import { cn } from '@/utils/cn'
-import { useTeachers, useStaffMembers } from '../hooks/useStaff'
+import { useTeachers, useStaffMembers, useProfilesForTeacher } from '../hooks/useStaff'
 import { TeacherFormModal } from './TeacherFormModal'
-import type { Teacher, StaffMember } from '../types'
+import { CreateUserAccountModal } from './CreateUserAccountModal'
+import type { Teacher, StaffMember, ProfileOption } from '../types'
 
 const STATUS_STYLES: Record<string, string> = {
   active:   'bg-emerald-500/10 text-emerald-700 border-emerald-500/20',
@@ -19,11 +20,22 @@ const STATUS_STYLES: Record<string, string> = {
 
 function TeachersTab() {
   const { data: teachers = [], isLoading } = useTeachers()
-  const [showForm, setShowForm]       = useState(false)
-  const [selected, setSelected]       = useState<Teacher | null>(null)
+  const { data: unlinkedAccounts = [], isLoading: accountsLoading } = useProfilesForTeacher()
+  const [showForm, setShowForm] = useState(false)
+  const [showAccountForm, setShowAccountForm] = useState(false)
+  const [selected, setSelected] = useState<Teacher | null>(null)
+  const [initialProfileId, setInitialProfileId] = useState<string | null>(null)
 
-  const openCreate = () => { setSelected(null); setShowForm(true) }
-  const openEdit   = (t: Teacher) => { setSelected(t); setShowForm(true) }
+  const openCreate = (profileId?: string) => {
+    setSelected(null)
+    setInitialProfileId(profileId ?? null)
+    setShowForm(true)
+  }
+  const openEdit = (t: Teacher) => {
+    setSelected(t)
+    setInitialProfileId(null)
+    setShowForm(true)
+  }
 
   const columns: Column<Teacher>[] = [
     {
@@ -60,11 +72,29 @@ function TeachersTab() {
       ),
     },
   ]
+  const unlinkedColumns: Column<ProfileOption>[] = [
+    { key: 'full_name', header: 'Name', sortable: true, cell: r => <span className="font-medium">{r.full_name}</span> },
+    { key: 'email', header: 'Email', cell: r => r.email ?? '—' },
+    {
+      key: 'actions' as keyof ProfileOption,
+      header: '',
+      className: 'text-right',
+      cell: r => (
+        <Button variant="outline" size="sm" onClick={e => { e.stopPropagation(); openCreate(r.id) }}>
+          Link as Teacher
+        </Button>
+      ),
+    },
+  ]
 
   return (
     <>
       <div className="mb-4 flex justify-end">
-        <Button onClick={openCreate}>
+        <Button variant="outline" className="mr-2" onClick={() => setShowAccountForm(true)}>
+          <UserPlus className="mr-2 h-4 w-4" />
+          Create User Account
+        </Button>
+        <Button onClick={() => openCreate()}>
           <UserPlus className="mr-2 h-4 w-4" />
           Add Teacher
         </Button>
@@ -78,10 +108,28 @@ function TeachersTab() {
         onRowClick={openEdit}
       />
 
+      <div className="mt-6">
+        <h3 className="mb-2 text-sm font-semibold">Unlinked User Accounts</h3>
+        <p className="mb-3 text-xs text-muted-foreground">
+          Newly created accounts appear here until they are linked to a teacher record.
+        </p>
+        <DataTable<ProfileOption>
+          columns={unlinkedColumns}
+          data={unlinkedAccounts}
+          keyExtractor={r => r.id}
+          loading={accountsLoading}
+        />
+      </div>
+
       <TeacherFormModal
         open={showForm}
         onOpenChange={setShowForm}
         teacher={selected}
+        initialProfileId={initialProfileId}
+      />
+      <CreateUserAccountModal
+        open={showAccountForm}
+        onOpenChange={setShowAccountForm}
       />
     </>
   )

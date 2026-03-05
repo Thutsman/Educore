@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Plus, Pencil, Trash2, School } from 'lucide-react'
 import { DataTable, type Column } from '@/components/common/DataTable'
 import { Button } from '@/components/ui/button'
@@ -9,17 +9,23 @@ import {
 import {
   Form, FormField, FormItem, FormLabel, FormControl, FormMessage,
 } from '@/components/ui/form'
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select'
 import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useAuth } from '@/hooks/useAuth'
-import { useClasses, useCreateClass, useUpdateClass, useDeleteClass } from '../hooks/useAcademics'
+import { useAcademicYears, useClasses, useCreateClass, useUpdateClass, useDeleteClass } from '../hooks/useAcademics'
+import { useTeachersForSelect } from '@/features/staff/hooks/useStaff'
 import type { AcademicClass } from '../types'
 
 const schema = z.object({
-  name:   z.string().min(1, 'Required'),
-  level:  z.coerce.number().optional(),
+  name:             z.string().min(1, 'Required'),
+  academic_year_id: z.string().min(1, 'Academic year is required'),
+  level:            z.coerce.number().min(1, 'Level is required'),
   stream: z.string().optional(),
+  class_teacher_id: z.string().optional(),
 })
 type FormValues = z.infer<typeof schema>
 
@@ -27,15 +33,42 @@ function ClassFormModal({ open, onOpenChange, cls }: { open: boolean; onOpenChan
   const isEdit = !!cls
   const create = useCreateClass()
   const update = useUpdateClass()
+  const { data: years = [] } = useAcademicYears()
+  const currentYear = years.find(y => y.is_current) ?? years[0]
+  const { data: teachers = [] } = useTeachersForSelect(open)
   const form = useForm<FormValues>({
     resolver: zodResolver(schema) as Resolver<FormValues>,
-    defaultValues: { name: cls?.name ?? '', level: cls?.level ?? undefined, stream: cls?.stream ?? '' },
+    defaultValues: {
+      name: '',
+      academic_year_id: '',
+      level: 1,
+      stream: '',
+      class_teacher_id: '__none__',
+    },
   })
 
+  useEffect(() => {
+    if (!open) return
+    form.reset({
+      name: cls?.name ?? '',
+      academic_year_id: cls?.academic_year_id ?? currentYear?.id ?? '',
+      level: cls?.level ?? 1,
+      stream: cls?.stream ?? '',
+      class_teacher_id: cls?.class_teacher_id ?? '__none__',
+    })
+  }, [open, cls, currentYear?.id, form])
+
   const onSubmit = async (v: FormValues) => {
+    const payload = {
+      name: v.name,
+      academic_year_id: v.academic_year_id,
+      level: v.level,
+      stream: v.stream || undefined,
+      class_teacher_id: v.class_teacher_id === '__none__' ? undefined : (v.class_teacher_id || undefined),
+    }
     const ok = isEdit && cls
-      ? await update.mutateAsync({ id: cls.id, data: { name: v.name, level: v.level, stream: v.stream || undefined } })
-      : await create.mutateAsync({ name: v.name, level: v.level, stream: v.stream })
+      ? await update.mutateAsync({ id: cls.id, data: payload })
+      : await create.mutateAsync(payload)
     if (ok) { form.reset(); onOpenChange(false) }
   }
 
@@ -52,11 +85,27 @@ function ClassFormModal({ open, onOpenChange, cls }: { open: boolean; onOpenChan
                 <FormMessage />
               </FormItem>
             )} />
+            <FormField control={form.control} name="academic_year_id" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Academic Year *</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value}>
+                  <FormControl>
+                    <SelectTrigger><SelectValue placeholder="Select academic year" /></SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {years.map(y => (
+                      <SelectItem key={y.id} value={y.id}>{y.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )} />
             <div className="grid grid-cols-2 gap-4">
               <FormField control={form.control} name="level" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Level (Form)</FormLabel>
-                  <FormControl><Input type="number" placeholder="1" {...field} /></FormControl>
+                  <FormLabel>Level (Form) *</FormLabel>
+                  <FormControl><Input type="number" min="1" placeholder="1" {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
@@ -68,6 +117,23 @@ function ClassFormModal({ open, onOpenChange, cls }: { open: boolean; onOpenChan
                 </FormItem>
               )} />
             </div>
+            <FormField control={form.control} name="class_teacher_id" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Class Teacher (Homeroom)</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value ?? '__none__'}>
+                  <FormControl>
+                    <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="__none__">None</SelectItem>
+                    {teachers.map(t => (
+                      <SelectItem key={t.id} value={t.id}>{t.full_name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )} />
             <DialogFooter>
               <Button variant="outline" type="button" onClick={() => onOpenChange(false)}>Cancel</Button>
               <Button type="submit" disabled={create.isPending || update.isPending}>
@@ -95,6 +161,7 @@ export function ClassesTab() {
     { key: 'level', header: 'Level', cell: r => r.level ? `Form ${r.level}` : '—' },
     { key: 'stream', header: 'Stream', cell: r => r.stream || '—' },
     { key: 'academic_year_name', header: 'Academic Year', cell: r => r.academic_year_name || '—' },
+    { key: 'class_teacher_name', header: 'Class Teacher', cell: r => r.class_teacher_name || '—' },
     ...(canEdit ? [{
       key: 'actions' as keyof AcademicClass,
       header: '',

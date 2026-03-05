@@ -1,8 +1,20 @@
+import { createClient } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
-import type { Teacher, StaffMember, TeacherFormData, ProfileOption, DepartmentOption } from '../types'
+import type { Teacher, StaffMember, TeacherFormData, ProfileOption, DepartmentOption, CreateUserAccountData } from '../types'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = supabase as any
+
+function createOnboardingClient() {
+  return createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_ANON_KEY, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+      storageKey: 'educore-onboarding-auth',
+    },
+  })
+}
 
 export async function getTeachers(): Promise<Teacher[]> {
   const { data, error } = await supabase
@@ -10,7 +22,7 @@ export async function getTeachers(): Promise<Teacher[]> {
     .select(`
       id, profile_id, employee_no, status, qualification, specialization,
       employment_type, join_date, department_id,
-      profile:profiles(full_name, email, phone),
+      profile:profiles(full_name, phone),
       department:departments(name)
     `)
     .is('deleted_at', null)
@@ -21,14 +33,14 @@ export async function getTeachers(): Promise<Teacher[]> {
     id: string; profile_id: string; employee_no: string; status: string
     qualification: string | null; specialization: string | null
     employment_type: string; join_date: string | null; department_id: string | null
-    profile: { full_name: string; email: string | null; phone: string | null } | null
+    profile: { full_name: string; phone: string | null } | null
     department: { name: string } | null
   }
   return (data as unknown as Raw[]).map(r => ({
     id: r.id,
     profile_id: r.profile_id,
     full_name: r.profile?.full_name ?? '—',
-    email: r.profile?.email ?? null,
+    email: null,
     phone: r.profile?.phone ?? null,
     employee_no: r.employee_no,
     status: r.status as Teacher['status'],
@@ -45,7 +57,7 @@ export async function getTeachers(): Promise<Teacher[]> {
 /** Profiles not yet linked to any active teacher record — for the Add Teacher dropdown. */
 export async function getProfilesForTeacher(): Promise<ProfileOption[]> {
   const [profilesRes, linkedRes] = await Promise.all([
-    supabase.from('profiles').select('id, full_name, email').order('full_name'),
+    supabase.from('profiles').select('id, full_name').order('full_name'),
     supabase.from('teachers').select('profile_id').is('deleted_at', null),
   ])
 
@@ -55,10 +67,10 @@ export async function getProfilesForTeacher(): Promise<ProfileOption[]> {
     ((linkedRes.data ?? []) as { profile_id: string }[]).map(r => r.profile_id)
   )
 
-  type RawProfile = { id: string; full_name: string; email: string | null }
+  type RawProfile = { id: string; full_name: string }
   return (profilesRes.data as unknown as RawProfile[])
     .filter(p => !linked.has(p.id))
-    .map(p => ({ id: p.id, full_name: p.full_name, email: p.email }))
+    .map(p => ({ id: p.id, full_name: p.full_name, email: null }))
 }
 
 /** All departments for the department dropdown. */
@@ -70,6 +82,54 @@ export async function getDepartmentsForSelect(): Promise<DepartmentOption[]> {
     .order('name')
   if (error || !data) return []
   return (data as unknown as DepartmentOption[])
+}
+
+export async function getTeachersForSelect(): Promise<Array<{ id: string; full_name: string }>> {
+  const { data, error } = await supabase
+    .from('teachers')
+    .select('id, profile:profiles(full_name)')
+    .is('deleted_at', null)
+    .order('employee_no')
+
+  if (error || !data) return []
+
+  type Raw = { id: string; profile: { full_name: string } | null }
+  return (data as unknown as Raw[])
+    .map(r => ({ id: r.id, full_name: r.profile?.full_name ?? '—' }))
+    .filter(r => r.full_name !== '—')
+}
+
+export async function createUserAccount(data: CreateUserAccountData): Promise<{ id: string } | null> {
+  const onboardingClient = createOnboardingClient()
+  const { data: signUpData, error: signUpError } = await onboardingClient.auth.signUp({
+    email: data.email,
+    password: data.password,
+    options: {
+      data: { full_name: data.full_name },
+    },
+  })
+  if (signUpError || !signUpData.user) return null
+
+  const userId = signUpData.user.id
+
+  const { data: roleData } = await supabase
+    .from('roles')
+    .select('id')
+    .eq('name', data.role)
+    .maybeSingle()
+  const roleId = (roleData as { id: string } | null)?.id
+  if (!roleId) return null
+
+  const { error: roleError } = await db
+    .from('user_roles')
+    .insert({ user_id: userId, role_id: roleId })
+  if (roleError) return null
+
+  if (data.phone) {
+    await db.from('profiles').update({ phone: data.phone, full_name: data.full_name }).eq('id', userId)
+  }
+
+  return { id: userId }
 }
 
 export async function createTeacher(data: TeacherFormData): Promise<{ id: string } | null> {
@@ -112,16 +172,16 @@ export async function updateTeacher(id: string, data: Partial<TeacherFormData>):
 export async function getStaffMembers(): Promise<StaffMember[]> {
   const { data, error } = await supabase
     .from('staff')
-    .select('id, profile_id, employee_no, status, profile:profiles(full_name, email, phone), role:roles(name)')
+    .select('id, profile_id, employee_no, status, profile:profiles(full_name, phone), role:roles(name)')
     .order('employee_no')
   if (error || !data) return []
 
-  type Raw = { id: string; profile_id: string; employee_no: string; status: string; profile: { full_name: string; email: string | null; phone: string | null } | null; role: { name: string } | null }
+  type Raw = { id: string; profile_id: string; employee_no: string; status: string; profile: { full_name: string; phone: string | null } | null; role: { name: string } | null }
   return (data as unknown as Raw[]).map(r => ({
     id: r.id,
     profile_id: r.profile_id,
     full_name: r.profile?.full_name ?? '—',
-    email: r.profile?.email ?? null,
+    email: null,
     phone: r.profile?.phone ?? null,
     employee_no: r.employee_no,
     role_name: r.role?.name ?? '—',

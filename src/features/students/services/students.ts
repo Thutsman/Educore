@@ -159,6 +159,26 @@ export async function getClassesForSelect(): Promise<{ id: string; name: string 
 // ─── CRUD ────────────────────────────────────────────────────────────────────
 
 export async function createStudent(data: StudentFormData): Promise<{ id: string } | null> {
+  let guardianId: string | null = null
+
+  if (data.guardian_full_name && data.guardian_relationship) {
+    const { data: guardianResult, error: guardianError } = await db
+      .from('guardians')
+      .insert({
+        full_name:    data.guardian_full_name,
+        relationship: data.guardian_relationship,
+        phone:        data.guardian_phone || null,
+        email:        data.guardian_email || null,
+        address:      data.guardian_address || null,
+      })
+      .select('id')
+      .single()
+
+    if (!guardianError && guardianResult) {
+      guardianId = (guardianResult as unknown as { id: string }).id
+    }
+  }
+
   const { data: result, error } = await db
     .from('students')
     .insert({
@@ -170,6 +190,7 @@ export async function createStudent(data: StudentFormData): Promise<{ id: string
       status:         data.status,
       admission_date: data.admission_date || null,
       class_id:       data.class_id       || null,
+      guardian_id:    guardianId,
     })
     .select('id')
     .single()

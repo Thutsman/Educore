@@ -40,11 +40,12 @@ interface Props {
   open: boolean
   onOpenChange: (open: boolean) => void
   teacher?: Teacher | null
+  initialProfileId?: string | null
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function TeacherFormModal({ open, onOpenChange, teacher }: Props) {
+export function TeacherFormModal({ open, onOpenChange, teacher, initialProfileId }: Props) {
   const isEdit = !!teacher
 
   const create = useCreateTeacher()
@@ -80,7 +81,7 @@ export function TeacherFormModal({ open, onOpenChange, teacher }: Props) {
       })
     } else if (open && !teacher) {
       form.reset({
-        profile_id:      '',
+        profile_id:      initialProfileId ?? '',
         employee_no:     '',
         department_id:   '__none__',
         employment_type: 'permanent',
@@ -90,7 +91,7 @@ export function TeacherFormModal({ open, onOpenChange, teacher }: Props) {
         status:          'active',
       })
     }
-  }, [open, teacher, form])
+  }, [open, teacher, initialProfileId, form])
 
   const onSubmit = async (values: FormValues) => {
     const payload = {

@@ -122,6 +122,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else if (event === 'TOKEN_REFRESHED' && session?.user) {
           // Silently update the session reference without resetting loading
           setState(prev => ({ ...prev, user: session.user, session }))
+        } else if ((event as string) === 'TOKEN_REFRESH_FAILED') {
+          // Session is no longer valid (e.g. missing/invalid refresh token).
+          // Clear auth state so ProtectedRoute redirects back to /login.
+          setState({
+            user: null,
+            profile: null,
+            session: null,
+            role: null,
+            isLoading: false,
+            isAuthenticated: false,
+          })
         } else if (event === 'SIGNED_OUT') {
           setState({
             user: null,

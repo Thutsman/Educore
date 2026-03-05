@@ -25,9 +25,13 @@ const schema = z.object({
   class_id:       z.string().optional(),
   status:         z.enum(['active', 'inactive', 'graduated', 'expelled', 'transferred']),
   admission_date: z.string().optional(),
-  phone:          z.string().optional(),
-  email:          z.string().email('Invalid email').optional().or(z.literal('')),
   address:        z.string().optional(),
+  // Guardian (primary) – optional but recommended
+  guardian_full_name: z.string().optional(),
+  guardian_relationship: z.enum(['father', 'mother', 'guardian', 'other']).optional(),
+  guardian_phone: z.string().optional(),
+  guardian_email: z.string().email('Invalid email').optional().or(z.literal('')),
+  guardian_address: z.string().optional(),
 })
 
 type FormValues = z.infer<typeof schema>
@@ -49,7 +53,8 @@ export function StudentFormModal({ open, onOpenChange, student }: Props) {
     defaultValues: {
       full_name: '', admission_no: '',
       status: 'active', gender: undefined, date_of_birth: '',
-      class_id: '', admission_date: '', phone: '', email: '', address: '',
+      class_id: '', admission_date: '', address: '',
+      guardian_full_name: '', guardian_relationship: undefined, guardian_phone: '', guardian_email: '', guardian_address: '',
     },
   })
 
@@ -63,21 +68,39 @@ export function StudentFormModal({ open, onOpenChange, student }: Props) {
         class_id:       student.class_id ?? '',
         status:         student.status,
         admission_date: student.admission_date ?? '',
-        phone:          student.phone ?? '',
-        email:          student.email ?? '',
         address:        student.address ?? '',
+        guardian_full_name: '',
+        guardian_relationship: undefined,
+        guardian_phone: '',
+        guardian_email: '',
+        guardian_address: '',
       })
     } else if (open && !student) {
       form.reset({
         full_name: '', admission_no: '',
         status: 'active', gender: undefined, date_of_birth: '',
-        class_id: '', admission_date: '', phone: '', email: '', address: '',
+        class_id: '', admission_date: '', address: '',
+        guardian_full_name: '', guardian_relationship: undefined, guardian_phone: '', guardian_email: '', guardian_address: '',
       })
     }
   }, [open, student, form])
 
   const onSubmit = async (values: FormValues) => {
-    const payload = { ...values, class_id: values.class_id || undefined }
+    const payload = {
+      admission_no: values.admission_no,
+      full_name: values.full_name,
+      date_of_birth: values.date_of_birth || undefined,
+      gender: values.gender || undefined,
+      address: values.address || undefined,
+      status: values.status,
+      admission_date: values.admission_date || undefined,
+      class_id: values.class_id || undefined,
+      guardian_full_name: values.guardian_full_name || undefined,
+      guardian_relationship: values.guardian_relationship || undefined,
+      guardian_phone: values.guardian_phone || undefined,
+      guardian_email: values.guardian_email || undefined,
+      guardian_address: values.guardian_address || undefined,
+    }
     if (isEdit && student) {
       const ok = await update.mutateAsync({ id: student.id, data: payload })
       if (ok) onOpenChange(false)
@@ -189,23 +212,6 @@ export function StudentFormModal({ open, onOpenChange, student }: Props) {
               )} />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <FormField control={form.control} name="phone" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Phone</FormLabel>
-                  <FormControl><Input placeholder="+263 77 123 4567" {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <FormField control={form.control} name="email" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email</FormLabel>
-                  <FormControl><Input type="email" placeholder="student@example.com" {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-            </div>
-
             <FormField control={form.control} name="address" render={({ field }) => (
               <FormItem>
                 <FormLabel>Address</FormLabel>
@@ -213,6 +219,61 @@ export function StudentFormModal({ open, onOpenChange, student }: Props) {
                 <FormMessage />
               </FormItem>
             )} />
+
+            {!isEdit && (
+              <div className="space-y-3 rounded-lg border border-dashed border-border bg-muted/30 p-4">
+                <p className="text-sm font-semibold">Primary Guardian (optional but recommended)</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField control={form.control} name="guardian_full_name" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Guardian Name</FormLabel>
+                      <FormControl><Input placeholder="e.g. Michael Ndlovu" {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="guardian_relationship" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Relationship</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value ?? ''}>
+                        <FormControl>
+                          <SelectTrigger><SelectValue placeholder="Select relationship" /></SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="father">Father</SelectItem>
+                          <SelectItem value="mother">Mother</SelectItem>
+                          <SelectItem value="guardian">Guardian</SelectItem>
+                          <SelectItem value="other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <FormField control={form.control} name="guardian_phone" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Guardian Phone</FormLabel>
+                      <FormControl><Input placeholder="+263 77 123 4567" {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                  <FormField control={form.control} name="guardian_email" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Guardian Email</FormLabel>
+                      <FormControl><Input type="email" placeholder="guardian@example.com" {...field} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                </div>
+                <FormField control={form.control} name="guardian_address" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Guardian Address</FormLabel>
+                    <FormControl><Textarea placeholder="Guardian address..." rows={2} {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              </div>
+            )}
 
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>

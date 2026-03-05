@@ -47,3 +47,11 @@ export interface StaffMember {
   role_name: string
   status: 'active' | 'inactive' | 'on_leave'
 }
+
+export interface CreateUserAccountData {
+  full_name: string
+  email: string
+  password: string
+  phone?: string
+  role: 'teacher' | 'class_teacher'
+}

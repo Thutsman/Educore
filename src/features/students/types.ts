@@ -43,9 +43,13 @@ export interface StudentFormData {
   date_of_birth?: string
   gender?: 'male' | 'female' | 'other'
   address?: string
-  phone?: string
-  email?: string
   status: 'active' | 'inactive' | 'graduated' | 'expelled' | 'transferred'
   admission_date?: string
   class_id?: string
+  // Optional guardian details captured at creation time
+  guardian_full_name?: string
+  guardian_relationship?: 'father' | 'mother' | 'guardian' | 'other'
+  guardian_phone?: string
+  guardian_email?: string
+  guardian_address?: string
 }
