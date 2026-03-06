@@ -17,7 +17,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useAuth } from '@/hooks/useAuth'
 import { useAcademicYears, useClasses, useCreateClass, useUpdateClass, useDeleteClass } from '../hooks/useAcademics'
-import { useTeachersForSelect } from '@/features/staff/hooks/useStaff'
+import { useTeachersForSelect, type TeacherSelectOption } from '@/features/staff/hooks/useStaff'
 import type { AcademicClass } from '../types'
 
 const schema = z.object({
@@ -36,6 +36,13 @@ function ClassFormModal({ open, onOpenChange, cls }: { open: boolean; onOpenChan
   const { data: years = [] } = useAcademicYears()
   const currentYear = years.find(y => y.is_current) ?? years[0]
   const { data: teachers = [] } = useTeachersForSelect(open)
+
+  // Teacher already has a different homeroom class assigned
+  function getTeacherWarning(t: TeacherSelectOption): string | null {
+    if (!t.homeroom_class_name) return null
+    if (cls && t.homeroom_class_name === cls.name) return null // editing same class
+    return `Already homeroom for ${t.homeroom_class_name}`
+  }
   const form = useForm<FormValues>({
     resolver: zodResolver(schema) as Resolver<FormValues>,
     defaultValues: {
@@ -126,9 +133,19 @@ function ClassFormModal({ open, onOpenChange, cls }: { open: boolean; onOpenChan
                   </FormControl>
                   <SelectContent>
                     <SelectItem value="__none__">None</SelectItem>
-                    {teachers.map(t => (
-                      <SelectItem key={t.id} value={t.id}>{t.full_name}</SelectItem>
-                    ))}
+                    {teachers.map(t => {
+                      const warning = getTeacherWarning(t)
+                      return (
+                        <SelectItem key={t.id} value={t.id}>
+                          <span className="flex items-center justify-between gap-3 w-full">
+                            <span>{t.full_name}</span>
+                            {warning && (
+                              <span className="text-xs text-amber-600 font-normal">{warning}</span>
+                            )}
+                          </span>
+                        </SelectItem>
+                      )
+                    })}
                   </SelectContent>
                 </Select>
                 <FormMessage />

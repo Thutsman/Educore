@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { toast } from 'sonner'
 import {
   useCreateTeacher, useUpdateTeacher,
   useProfilesForTeacher, useDepartmentsForSelect,
@@ -24,7 +25,7 @@ import type { Teacher } from '../types'
 const schema = z.object({
   profile_id:      z.string().min(1, 'Select a user profile'),
   employee_no:     z.string().min(1, 'Employee number is required'),
-  department_id:   z.string().optional(),
+  department_id:   z.string().min(1, 'Department is required'),
   employment_type: z.enum(['permanent', 'contract', 'part_time']),
   join_date:       z.string().optional(),
   qualification:   z.string().optional(),
@@ -58,7 +59,7 @@ export function TeacherFormModal({ open, onOpenChange, teacher, initialProfileId
     defaultValues: {
       profile_id:      '',
       employee_no:     '',
-      department_id:   '__none__',
+      department_id:   '',
       employment_type: 'permanent',
       join_date:       '',
       qualification:   '',
@@ -72,7 +73,7 @@ export function TeacherFormModal({ open, onOpenChange, teacher, initialProfileId
       form.reset({
         profile_id:      teacher.profile_id,
         employee_no:     teacher.employee_no,
-        department_id:   teacher.department_id ?? '__none__',
+        department_id:   teacher.department_id ?? '',
         employment_type: teacher.employment_type,
         join_date:       teacher.join_date ?? '',
         qualification:   teacher.qualification ?? '',
@@ -83,7 +84,7 @@ export function TeacherFormModal({ open, onOpenChange, teacher, initialProfileId
       form.reset({
         profile_id:      initialProfileId ?? '',
         employee_no:     '',
-        department_id:   '__none__',
+        department_id:   '',
         employment_type: 'permanent',
         join_date:       '',
         qualification:   '',
@@ -96,7 +97,7 @@ export function TeacherFormModal({ open, onOpenChange, teacher, initialProfileId
   const onSubmit = async (values: FormValues) => {
     const payload = {
       ...values,
-      department_id:  values.department_id === '__none__' ? undefined : values.department_id || undefined,
+      department_id:  values.department_id || undefined,
       join_date:      values.join_date      || undefined,
       qualification:  values.qualification  || undefined,
       specialization: values.specialization || undefined,
@@ -104,10 +105,20 @@ export function TeacherFormModal({ open, onOpenChange, teacher, initialProfileId
 
     if (isEdit && teacher) {
       const ok = await update.mutateAsync({ id: teacher.id, data: payload })
-      if (ok) onOpenChange(false)
+      if (ok) {
+        toast.success('Teacher profile updated.')
+        onOpenChange(false)
+      } else {
+        toast.error('Failed to update teacher. Check the browser console for details.')
+      }
     } else {
       const result = await create.mutateAsync(payload)
-      if (result) onOpenChange(false)
+      if (result) {
+        toast.success('Teacher added successfully.')
+        onOpenChange(false)
+      } else {
+        toast.error('Failed to add teacher. The employee number may already be in use, or check the browser console.')
+      }
     }
   }
 
@@ -207,13 +218,14 @@ export function TeacherFormModal({ open, onOpenChange, teacher, initialProfileId
             <div className="grid grid-cols-2 gap-4">
               <FormField control={form.control} name="department_id" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Department</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value ?? '__none__'}>
+                  <FormLabel>Department *</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
-                      <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select Department" />
+                      </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="__none__">None</SelectItem>
                       {departments.map(d => (
                         <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
                       ))}

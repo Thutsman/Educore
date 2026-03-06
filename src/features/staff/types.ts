@@ -13,6 +13,13 @@ export interface Teacher {
   employment_type: 'permanent' | 'contract' | 'part_time'
   join_date: string | null
   subjects_taught: string[]
+  homeroom_class_name: string | null
+}
+
+export interface TeacherSelectOption {
+  id: string
+  full_name: string
+  homeroom_class_name: string | null
 }
 
 export interface TeacherFormData {
@@ -48,10 +55,18 @@ export interface StaffMember {
   status: 'active' | 'inactive' | 'on_leave'
 }
 
+export type StaffRole =
+  | 'teacher'
+  | 'class_teacher'
+  | 'hod'
+  | 'bursar'
+  | 'deputy_headmaster'
+  | 'non_teaching_staff'
+
 export interface CreateUserAccountData {
   full_name: string
   email: string
   password: string
   phone?: string
-  role: 'teacher' | 'class_teacher'
+  role: StaffRole
 }

@@ -1,6 +1,6 @@
 import {
   ClipboardCheck, BookOpen, FileText,
-  CheckCircle2, XCircle, Clock, Home, AlertTriangle,
+  CheckCircle2, XCircle, Clock, Home, AlertTriangle, UserX,
 } from 'lucide-react'
 import { PageHeader } from '@/components/common/PageHeader'
 import { StatCard }   from '@/components/common/StatCard'
@@ -85,6 +85,9 @@ export function TeacherDashboard() {
 
   const isInitialLoading = teacherLoading
 
+  // If loading is done and there's still no teacher record, show a clear setup banner
+  const isNotLinked = !teacherLoading && !teacher
+
   // ── Attendance pie data ────────────────────────────────────────────────────
   const pieDat = todayAtt && todayAtt.total > 0
     ? [
@@ -103,6 +106,21 @@ export function TeacherDashboard() {
         title={`${greeting()}, ${firstName}`}
         subtitle={homeroom ? `Class teacher — ${homeroom.name}` : 'Teacher Portal'}
       />
+
+      {/* ── Not-linked banner ── */}
+      {isNotLinked && (
+        <div className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm">
+          <UserX className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+          <div>
+            <p className="font-semibold text-amber-800 dark:text-amber-400">Teacher profile not linked</p>
+            <p className="mt-1 text-amber-700 dark:text-amber-500">
+              Your user account has not been linked to a teacher record yet. Ask your headmaster to go to{' '}
+              <strong>Staff → Teachers</strong> and click <strong>"Link as Teacher"</strong> next to your name
+              to complete your profile setup.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* ── KPI Cards ── */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

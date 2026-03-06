@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { UserPlus } from 'lucide-react'
+import { toast } from 'sonner'
 import { PageHeader } from '@/components/common/PageHeader'
 import { DataTable, type Column } from '@/components/common/DataTable'
 import { Button } from '@/components/ui/button'
@@ -26,10 +27,13 @@ function TeachersTab() {
   const [selected, setSelected] = useState<Teacher | null>(null)
   const [initialProfileId, setInitialProfileId] = useState<string | null>(null)
 
-  const openCreate = (profileId?: string) => {
+  const openCreate = (profileId?: string, fromAccountCreation?: boolean) => {
     setSelected(null)
     setInitialProfileId(profileId ?? null)
     setShowForm(true)
+    if (fromAccountCreation) {
+      toast.info('Account created. Complete the teacher profile below.', { duration: 4000 })
+    }
   }
   const openEdit = (t: Teacher) => {
     setSelected(t)
@@ -57,6 +61,12 @@ function TeachersTab() {
     { key: 'employee_no', header: 'Employee No.', className: 'font-mono text-xs text-muted-foreground' },
     { key: 'specialization', header: 'Specialization', cell: r => r.specialization || '—' },
     { key: 'department_name', header: 'Department', cell: r => r.department_name || '—' },
+    {
+      key: 'homeroom_class_name', header: 'Homeroom Class',
+      cell: r => r.homeroom_class_name
+        ? <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">{r.homeroom_class_name}</span>
+        : <span className="text-xs text-muted-foreground">—</span>,
+    },
     {
       key: 'employment_type', header: 'Type',
       cell: r => (
@@ -130,6 +140,10 @@ function TeachersTab() {
       <CreateUserAccountModal
         open={showAccountForm}
         onOpenChange={setShowAccountForm}
+        onTeacherCreated={profileId => {
+          setShowAccountForm(false)
+          openCreate(profileId, true)
+        }}
       />
     </>
   )

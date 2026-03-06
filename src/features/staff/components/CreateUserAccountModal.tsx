@@ -14,13 +14,23 @@ import {
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { useCreateUserAccount } from '../hooks/useStaff'
+import type { StaffRole } from '../types'
+
+const ROLE_OPTIONS: { value: StaffRole; label: string }[] = [
+  { value: 'teacher',           label: 'Teacher' },
+  { value: 'class_teacher',     label: 'Class Teacher' },
+  { value: 'hod',               label: 'Head of Department (HOD)' },
+  { value: 'bursar',            label: 'Bursar' },
+  { value: 'deputy_headmaster', label: 'Deputy Headmaster' },
+  { value: 'non_teaching_staff', label: 'Non-Teaching Staff' },
+]
 
 const schema = z.object({
   full_name: z.string().min(2, 'Full name is required'),
   email: z.string().email('Valid email is required'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   phone: z.string().optional(),
-  role: z.enum(['teacher', 'class_teacher']),
+  role: z.enum(['teacher', 'class_teacher', 'hod', 'bursar', 'deputy_headmaster', 'non_teaching_staff']),
 })
 
 type FormValues = z.infer<typeof schema>
@@ -28,9 +38,11 @@ type FormValues = z.infer<typeof schema>
 interface Props {
   open: boolean
   onOpenChange: (open: boolean) => void
+  /** Called after a teacher/class_teacher account is created so the parent can open the teacher form. */
+  onTeacherCreated?: (profileId: string) => void
 }
 
-export function CreateUserAccountModal({ open, onOpenChange }: Props) {
+export function CreateUserAccountModal({ open, onOpenChange, onTeacherCreated }: Props) {
   const create = useCreateUserAccount()
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -43,18 +55,25 @@ export function CreateUserAccountModal({ open, onOpenChange }: Props) {
     },
   })
 
+  const selectedRole = form.watch('role')
+  const isTeacherRole = selectedRole === 'teacher' || selectedRole === 'class_teacher'
+
   const onSubmit = async (values: FormValues) => {
-    const ok = await create.mutateAsync({
+    const result = await create.mutateAsync({
       ...values,
       phone: values.phone || undefined,
     })
-    if (!ok) {
-      toast.error('Failed to create user account. Check email uniqueness and auth settings.')
+    if (!result) {
+      toast.error('Failed to create user account. Check that the email is not already in use.')
       return
     }
-    toast.success('User account created. You can now link it in Add Teacher.')
     form.reset()
     onOpenChange(false)
+    if (isTeacherRole && onTeacherCreated) {
+      onTeacherCreated(result.id)
+    } else {
+      toast.success('User account created successfully.')
+    }
   }
 
   return (
@@ -104,8 +123,9 @@ export function CreateUserAccountModal({ open, onOpenChange }: Props) {
                       <SelectTrigger><SelectValue /></SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="teacher">Teacher</SelectItem>
-                      <SelectItem value="class_teacher">Class Teacher</SelectItem>
+                      {ROLE_OPTIONS.map(r => (
+                        <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -113,7 +133,9 @@ export function CreateUserAccountModal({ open, onOpenChange }: Props) {
               )} />
             </div>
             <p className="text-xs text-muted-foreground">
-              After this step, use <span className="font-medium">Add Teacher</span> to link employment details.
+              {isTeacherRole
+                ? 'After creating the account, you\'ll be taken directly to fill in employment details.'
+                : 'The account will be ready to use immediately after creation.'}
             </p>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={create.isPending}>

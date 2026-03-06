@@ -6,7 +6,9 @@ import {
   createUserAccount,
   createTeacher, updateTeacher,
 } from '../services/staff'
-import type { CreateUserAccountData, TeacherFormData } from '../types'
+import type { CreateUserAccountData, TeacherFormData, TeacherSelectOption } from '../types'
+
+export type { TeacherSelectOption }
 
 export function useTeachers() {
   return useQuery({ queryKey: ['staff', 'teachers'], queryFn: getTeachers })

@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
-import type { Teacher, StaffMember, TeacherFormData, ProfileOption, DepartmentOption, CreateUserAccountData } from '../types'
+import type { Teacher, StaffMember, TeacherFormData, ProfileOption, DepartmentOption, CreateUserAccountData, TeacherSelectOption } from '../types'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = supabase as any
@@ -17,17 +17,28 @@ function createOnboardingClient() {
 }
 
 export async function getTeachers(): Promise<Teacher[]> {
-  const { data, error } = await supabase
-    .from('teachers')
-    .select(`
-      id, profile_id, employee_no, status, qualification, specialization,
-      employment_type, join_date, department_id,
-      profile:profiles(full_name, phone),
-      department:departments(name)
-    `)
-    .is('deleted_at', null)
-    .order('employee_no')
-  if (error || !data) return []
+  const [teachersRes, classesRes] = await Promise.all([
+    supabase
+      .from('teachers')
+      .select(`
+        id, profile_id, employee_no, status, qualification, specialization,
+        employment_type, join_date, department_id,
+        profile:profiles(full_name, phone),
+        department:departments!teachers_department_id_fkey(name)
+      `)
+      .is('deleted_at', null)
+      .order('employee_no'),
+    supabase
+      .from('classes')
+      .select('class_teacher_id, name')
+      .not('class_teacher_id', 'is', null)
+      .is('deleted_at', null),
+  ])
+
+  if (teachersRes.error || !teachersRes.data) {
+    console.error('[getTeachers] query error:', teachersRes.error)
+    return []
+  }
 
   type Raw = {
     id: string; profile_id: string; employee_no: string; status: string
@@ -36,7 +47,14 @@ export async function getTeachers(): Promise<Teacher[]> {
     profile: { full_name: string; phone: string | null } | null
     department: { name: string } | null
   }
-  return (data as unknown as Raw[]).map(r => ({
+  type RawClass = { class_teacher_id: string; name: string }
+
+  const homeroomMap = new Map<string, string>()
+  ;((classesRes.data ?? []) as unknown as RawClass[]).forEach(c => {
+    if (c.class_teacher_id) homeroomMap.set(c.class_teacher_id, c.name)
+  })
+
+  return (teachersRes.data as unknown as Raw[]).map(r => ({
     id: r.id,
     profile_id: r.profile_id,
     full_name: r.profile?.full_name ?? '—',
@@ -51,6 +69,7 @@ export async function getTeachers(): Promise<Teacher[]> {
     employment_type: r.employment_type as Teacher['employment_type'],
     join_date: r.join_date,
     subjects_taught: [],
+    homeroom_class_name: homeroomMap.get(r.id) ?? null,
   }))
 }
 
@@ -84,18 +103,36 @@ export async function getDepartmentsForSelect(): Promise<DepartmentOption[]> {
   return (data as unknown as DepartmentOption[])
 }
 
-export async function getTeachersForSelect(): Promise<Array<{ id: string; full_name: string }>> {
-  const { data, error } = await supabase
-    .from('teachers')
-    .select('id, profile:profiles(full_name)')
-    .is('deleted_at', null)
-    .order('employee_no')
+export async function getTeachersForSelect(): Promise<TeacherSelectOption[]> {
+  const [teachersRes, classesRes] = await Promise.all([
+    supabase
+      .from('teachers')
+      .select('id, profile:profiles(full_name)')
+      .is('deleted_at', null)
+      .order('employee_no'),
+    supabase
+      .from('classes')
+      .select('class_teacher_id, name')
+      .not('class_teacher_id', 'is', null)
+      .is('deleted_at', null),
+  ])
 
-  if (error || !data) return []
+  if (teachersRes.error || !teachersRes.data) return []
 
   type Raw = { id: string; profile: { full_name: string } | null }
-  return (data as unknown as Raw[])
-    .map(r => ({ id: r.id, full_name: r.profile?.full_name ?? '—' }))
+  type RawClass = { class_teacher_id: string; name: string }
+
+  const homeroomMap = new Map<string, string>()
+  ;((classesRes.data ?? []) as unknown as RawClass[]).forEach(c => {
+    if (c.class_teacher_id) homeroomMap.set(c.class_teacher_id, c.name)
+  })
+
+  return (teachersRes.data as unknown as Raw[])
+    .map(r => ({
+      id: r.id,
+      full_name: r.profile?.full_name ?? '—',
+      homeroom_class_name: homeroomMap.get(r.id) ?? null,
+    }))
     .filter(r => r.full_name !== '—')
 }
 
