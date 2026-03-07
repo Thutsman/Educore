@@ -7,13 +7,13 @@ const db = supabase as any
 export async function getAttendanceForDate(classId: string, date: string): Promise<AttendanceRecord[]> {
   const { data, error } = await supabase
     .from('attendance_records')
-    .select('id, student_id, class_id, date, status, remarks, student:students(full_name, admission_no)')
+    .select('id, student_id, class_id, date, status, reason, student:students(full_name, admission_no)')
     .eq('class_id', classId)
     .eq('date', date)
 
   if (error || !data) return []
 
-  type Raw = { id: string; student_id: string; class_id: string; date: string; status: string; remarks: string | null; student: { full_name: string; admission_no: string } | null }
+  type Raw = { id: string; student_id: string; class_id: string; date: string; status: string; reason: string | null; student: { full_name: string; admission_no: string } | null }
   return (data as unknown as Raw[]).map(r => ({
     id: r.id,
     student_id: r.student_id,
@@ -22,7 +22,7 @@ export async function getAttendanceForDate(classId: string, date: string): Promi
     class_id: r.class_id,
     date: r.date,
     status: r.status as AttendanceStatus,
-    remarks: r.remarks,
+    remarks: r.reason,
   }))
 }
 
@@ -30,9 +30,11 @@ export async function getAttendanceForDate(classId: string, date: string): Promi
 export async function upsertAttendance(
   studentId: string, classId: string, date: string, status: AttendanceStatus, remarks?: string
 ): Promise<boolean> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return false
   const { error } = await db.from('attendance_records').upsert(
-    { student_id: studentId, class_id: classId, date, status, remarks: remarks || null },
-    { onConflict: 'student_id,date' }
+    { student_id: studentId, class_id: classId, date, period: 'full_day', status, reason: remarks || null, marked_by: user.id },
+    { onConflict: 'student_id,date,period' }
   )
   return !error
 }
@@ -41,9 +43,11 @@ export async function upsertAttendance(
 export async function batchUpsertAttendance(
   records: Array<{ studentId: string; classId: string; date: string; status: AttendanceStatus; remarks?: string }>
 ): Promise<boolean> {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return false
   const { error } = await db.from('attendance_records').upsert(
-    records.map(r => ({ student_id: r.studentId, class_id: r.classId, date: r.date, status: r.status, remarks: r.remarks || null })),
-    { onConflict: 'student_id,date' }
+    records.map(r => ({ student_id: r.studentId, class_id: r.classId, date: r.date, period: 'full_day', status: r.status, reason: r.remarks || null, marked_by: user.id })),
+    { onConflict: 'student_id,date,period' }
   )
   return !error
 }

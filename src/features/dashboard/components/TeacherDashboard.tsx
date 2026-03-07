@@ -1,6 +1,9 @@
+import { Link } from 'react-router-dom'
 import {
   ClipboardCheck, BookOpen, FileText,
   CheckCircle2, XCircle, Clock, Home, AlertTriangle, UserX,
+  MessageCircle, FileText as FileTextIcon, LineChart,
+  BookMarked, CalendarDays, FileQuestion, ClipboardList, FolderOpen,
 } from 'lucide-react'
 import { PageHeader } from '@/components/common/PageHeader'
 import { StatCard }   from '@/components/common/StatCard'
@@ -51,8 +54,22 @@ const EXAM_TYPE_STYLES: Record<string, string> = {
 
 // ── Component ────────────────────────────────────────────────────────────────
 
+const CLASS_TEACHER_LINKS = [
+  { to: '/parent-messages', label: 'Parent Messages', icon: MessageCircle },
+  { to: '/attendance', label: 'Attendance', icon: ClipboardCheck },
+  { to: '/reports', label: 'Term Reports', icon: FileTextIcon },
+  { to: '/class-analytics', label: 'Class Analytics', icon: LineChart },
+]
+const SUBJECT_TEACHER_LINKS = [
+  { to: '/scheme-book', label: 'Scheme Book', icon: BookMarked },
+  { to: '/lesson-plans', label: 'Lesson Plans', icon: CalendarDays },
+  { to: '/assignments', label: 'Assignments', icon: FileQuestion },
+  { to: '/assessments', label: 'Assessments', icon: ClipboardList },
+  { to: '/resources', label: 'Resources', icon: FolderOpen },
+]
+
 export function TeacherDashboard() {
-  const { profile, user } = useAuth()
+  const { profile, user, role } = useAuth()
 
   const profileId = user?.id
 
@@ -67,9 +84,14 @@ export function TeacherDashboard() {
   const { data: todayAtt, isLoading: attLoading } = useTodayAttendance(homeroom?.id)
   const { data: attTrend = [], isLoading: trendLoading } = useClassAttendanceTrend(homeroom?.id)
 
-  // Recent exams across all classes this teacher teaches
-  const allClassIds = [...new Set(subjects.map(s => s.class_id))]
-  const { data: recentExams = [], isLoading: examsLoading } = useTeacherRecentExams(allClassIds)
+  // Recent exams: classes this teacher teaches, or homeroom class for class teachers with no subject assignments
+  const taughtClassIds = [...new Set(subjects.map(s => s.class_id))]
+  const examClassIds = taughtClassIds.length > 0
+    ? taughtClassIds
+    : homeroom?.id
+      ? [homeroom.id]
+      : []
+  const { data: recentExams = [], isLoading: examsLoading } = useTeacherRecentExams(examClassIds)
 
   // Unique subjects count (de-duped by subject_id)
   const uniqueSubjects = new Set(subjects.map(s => s.subject_id)).size
@@ -172,7 +194,7 @@ export function TeacherDashboard() {
             <StatCard
               title="Subjects Taught"
               value={subjectsLoading ? '…' : uniqueSubjects}
-              subtitle={subjectsLoading ? undefined : `across ${allClassIds.length} class${allClassIds.length !== 1 ? 'es' : ''}`}
+              subtitle={subjectsLoading ? undefined : `across ${taughtClassIds.length} class${taughtClassIds.length !== 1 ? 'es' : ''}`}
               icon={BookOpen}
               iconClassName="bg-violet-500/10 text-violet-500"
             />
@@ -346,7 +368,11 @@ export function TeacherDashboard() {
         <div className="rounded-xl border border-border bg-card shadow-sm">
           <div className="border-b border-border px-6 py-4">
             <h3 className="text-sm font-semibold">Recent Exams</h3>
-            <p className="text-xs text-muted-foreground">For all your assigned classes</p>
+            <p className="text-xs text-muted-foreground">
+              {examClassIds.length === 1 && homeroom && taughtClassIds.length === 0
+                ? 'For your class'
+                : 'For all your assigned classes'}
+            </p>
           </div>
 
           {examsLoading ? (
@@ -394,6 +420,39 @@ export function TeacherDashboard() {
           )}
         </div>
       </div>
+
+      {/* ── Role-based quick links ── */}
+      {(role === 'class_teacher' || role === 'teacher' || role === 'headmaster' || role === 'deputy_headmaster' || role === 'hod') && (
+        <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+          <h3 className="mb-4 text-sm font-semibold">Quick links</h3>
+          <div className="flex flex-wrap gap-3">
+            {(role === 'class_teacher' || role === 'headmaster' || role === 'deputy_headmaster' || role === 'hod') && (
+              CLASS_TEACHER_LINKS.map(({ to, label, icon: Icon }) => (
+                <Link
+                  key={to}
+                  to={to}
+                  className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-4 py-2.5 text-sm font-medium transition-colors hover:bg-muted/60"
+                >
+                  <Icon className="h-4 w-4 text-muted-foreground" />
+                  {label}
+                </Link>
+              ))
+            )}
+            {(role === 'teacher' || role === 'headmaster' || role === 'deputy_headmaster' || role === 'hod') && (
+              SUBJECT_TEACHER_LINKS.map(({ to, label, icon: Icon }) => (
+                <Link
+                  key={to}
+                  to={to}
+                  className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-4 py-2.5 text-sm font-medium transition-colors hover:bg-muted/60"
+                >
+                  <Icon className="h-4 w-4 text-muted-foreground" />
+                  {label}
+                </Link>
+              ))
+            )}
+          </div>
+        </div>
+      )}
 
       {/* ── Quick Tips (shown when no data yet) ── */}
       {!teacher && !teacherLoading && (

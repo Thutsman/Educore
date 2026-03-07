@@ -73,6 +73,32 @@ const AnalyticsPage = lazy(() =>
   import('@/features/analytics').then(m => ({ default: m.AnalyticsPage }))
 )
 
+// Academic modules (role-specific)
+const SchemeBookPage = lazy(() =>
+  import('@/features/scheme-book').then(m => ({ default: m.SchemeBookPage }))
+)
+const LessonPlansPage = lazy(() =>
+  import('@/features/lesson-plans').then(m => ({ default: m.LessonPlansPage }))
+)
+const AssignmentsPage = lazy(() =>
+  import('@/features/assignments').then(m => ({ default: m.AssignmentsPage }))
+)
+const ResourcesPage = lazy(() =>
+  import('@/features/resources').then(m => ({ default: m.ResourcesPage }))
+)
+const AssessmentsPage = lazy(() =>
+  import('@/features/assessments').then(m => ({ default: m.AssessmentsPage }))
+)
+const ParentMessagesPage = lazy(() =>
+  import('@/features/parent-messages').then(m => ({ default: m.ParentMessagesPage }))
+)
+const TermReportsPage = lazy(() =>
+  import('@/features/reports').then(m => ({ default: m.TermReportsPage }))
+)
+const ClassAnalyticsPage = lazy(() =>
+  import('@/features/class-analytics').then(m => ({ default: m.ClassAnalyticsPage }))
+)
+
 // ── Role → dashboard path mapping ────────────────────────────────────────────
 const ROLE_DASHBOARD: Record<AppRole, string> = {
   headmaster:         '/dashboard/headmaster',
@@ -169,6 +195,26 @@ export default function App() {
                   element={<ProtectedRoute allowedRoles={['headmaster','deputy_headmaster','hod','class_teacher','teacher']} />}
                 >
                   <Route path="/attendance/*" element={<AttendancePage />} />
+                </Route>
+
+                {/* ── Subject Teacher modules ── */}
+                <Route
+                  element={<ProtectedRoute allowedRoles={['headmaster','deputy_headmaster','hod','teacher']} />}
+                >
+                  <Route path="/scheme-book" element={<SchemeBookPage />} />
+                  <Route path="/lesson-plans" element={<LessonPlansPage />} />
+                  <Route path="/assignments" element={<AssignmentsPage />} />
+                  <Route path="/assessments" element={<AssessmentsPage />} />
+                  <Route path="/resources" element={<ResourcesPage />} />
+                </Route>
+
+                {/* ── Class Teacher modules ── */}
+                <Route
+                  element={<ProtectedRoute allowedRoles={['headmaster','deputy_headmaster','hod','class_teacher']} />}
+                >
+                  <Route path="/parent-messages" element={<ParentMessagesPage />} />
+                  <Route path="/reports" element={<TermReportsPage />} />
+                  <Route path="/class-analytics" element={<ClassAnalyticsPage />} />
                 </Route>
 
                 {/* ── Finance ── */}

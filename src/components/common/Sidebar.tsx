@@ -15,6 +15,14 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
+  BookMarked,
+  CalendarDays,
+  FileQuestion,
+  ClipboardList,
+  FolderOpen,
+  MessageCircle,
+  FileText,
+  LineChart,
 } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -70,6 +78,36 @@ const NAV_GROUPS: NavGroup[] = [
         allowedRoles: ['headmaster','deputy_headmaster','hod','class_teacher','teacher'],
       },
       {
+        label: 'Scheme Book',
+        icon: BookMarked,
+        href: '/scheme-book',
+        allowedRoles: ['headmaster','deputy_headmaster','hod','teacher'],
+      },
+      {
+        label: 'Lesson Plans',
+        icon: CalendarDays,
+        href: '/lesson-plans',
+        allowedRoles: ['headmaster','deputy_headmaster','hod','teacher'],
+      },
+      {
+        label: 'Assignments',
+        icon: FileQuestion,
+        href: '/assignments',
+        allowedRoles: ['headmaster','deputy_headmaster','hod','teacher'],
+      },
+      {
+        label: 'Assessments',
+        icon: ClipboardList,
+        href: '/assessments',
+        allowedRoles: ['headmaster','deputy_headmaster','hod','teacher'],
+      },
+      {
+        label: 'Resources',
+        icon: FolderOpen,
+        href: '/resources',
+        allowedRoles: ['headmaster','deputy_headmaster','hod','teacher'],
+      },
+      {
         label: 'Attendance',
         icon: ClipboardCheck,
         href: '/attendance',
@@ -96,6 +134,29 @@ const NAV_GROUPS: NavGroup[] = [
         icon: MessageSquare,
         href: '/communication',
         allowedRoles: ['headmaster','deputy_headmaster','bursar','hod','class_teacher','teacher','non_teaching_staff','parent','student'],
+      },
+      {
+        label: 'Parent Messages',
+        icon: MessageCircle,
+        href: '/parent-messages',
+        allowedRoles: ['headmaster','deputy_headmaster','hod','class_teacher'],
+      },
+    ],
+  },
+  {
+    label: 'Reports',
+    items: [
+      {
+        label: 'Term Reports',
+        icon: FileText,
+        href: '/reports',
+        allowedRoles: ['headmaster','deputy_headmaster','hod','class_teacher'],
+      },
+      {
+        label: 'Class Analytics',
+        icon: LineChart,
+        href: '/class-analytics',
+        allowedRoles: ['headmaster','deputy_headmaster','hod','class_teacher'],
       },
     ],
   },

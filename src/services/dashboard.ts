@@ -98,7 +98,7 @@ export async function getSchoolStats(): Promise<SchoolStats> {
 
     supabase
       .from('attendance_records')
-      .select('status')
+      .select('status, date')
       .gte('date', weekStart)
       .lte('date', weekEnd),
 
@@ -117,7 +117,7 @@ export async function getSchoolStats(): Promise<SchoolStats> {
 
   type RawStudent    = { status: string }
   type RawInvoice    = { amount: unknown; amount_paid: unknown; balance: unknown; status: string }
-  type RawAttendance = { status: string }
+  type RawAttendance = { status: string; date: string }
 
   const students   = (studentsRes.status   === 'fulfilled' ? (studentsRes.value.data   ?? []) : []) as RawStudent[]
   const invoices   = (invoicesRes.status   === 'fulfilled' ? (invoicesRes.value.data   ?? []) : []) as RawInvoice[]
@@ -133,8 +133,10 @@ export async function getSchoolStats(): Promise<SchoolStats> {
   const totalOutstanding = invoices.reduce((s, i) => s + n(i.balance), 0)
   const feeCollectionRate = totalInvoiced > 0 ? (totalPaid / totalInvoiced) * 100 : 0
 
-  const presentCount  = attendance.filter(a => a.status === 'present').length
-  const attendanceRate = attendance.length > 0 ? (presentCount / attendance.length) * 100 : 0
+  const presentCount   = attendance.filter(a => a.status === 'present' || a.status === 'late').length
+  const uniqueDays     = new Set(attendance.map(a => a.date)).size
+  const expectedTotal  = activeStudents * uniqueDays
+  const attendanceRate = expectedTotal > 0 ? (presentCount / expectedTotal) * 100 : 0
 
   return {
     totalStudents,

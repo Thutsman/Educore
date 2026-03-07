@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { format } from 'date-fns'
-import { CheckCircle2, Save } from 'lucide-react'
+import { CalendarCheck, CheckCircle2, Save } from 'lucide-react'
+import { toast } from 'sonner'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
@@ -70,11 +71,18 @@ export function MarkAttendanceTab() {
 
   const handleSave = async () => {
     if (!classId || !date) return
-    await saveAll.mutateAsync(rows.map(r => ({
+    const ok = await saveAll.mutateAsync(rows.map(r => ({
       studentId: r.studentId, classId, date, status: r.status, remarks: r.remarks,
     })))
-    setSaved(true)
+    if (ok) {
+      setSaved(true)
+      toast.success('Attendance saved successfully')
+    } else {
+      toast.error('Failed to save attendance. Please try again.')
+    }
   }
+
+  const alreadyRecorded = classId && existing.length > 0 && !saved
 
   const presentCount = rows.filter(r => r.status === 'present').length
   const absentCount  = rows.filter(r => r.status === 'absent').length
@@ -96,6 +104,13 @@ export function MarkAttendanceTab() {
           <Input type="date" value={date} onChange={e => { setDate(e.target.value); setSaved(false) }} className="w-44" />
         </div>
       </div>
+
+      {alreadyRecorded && (
+        <div className="flex items-center gap-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/8 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-400">
+          <CalendarCheck className="h-4 w-4 shrink-0" />
+          <span>Attendance has already been recorded for this class on this date. You can update individual records below.</span>
+        </div>
+      )}
 
       {!isClassesLoading && classes.length === 0 && (
         <div className="flex items-center justify-center rounded-xl border border-dashed border-amber-500/30 bg-amber-500/5 py-6">
