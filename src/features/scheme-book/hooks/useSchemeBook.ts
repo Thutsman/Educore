@@ -3,6 +3,7 @@ import {
   getSchemeBooks,
   createSchemeBook,
   updateSchemeBook,
+  hodApproveSchemeBook,
   approveSchemeBook,
   getSchemeBookProgressByTerm,
   type SchemeBookFilters,
@@ -43,6 +44,15 @@ export function useUpdateSchemeBook() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<CreateSchemeBookInput> }) =>
       updateSchemeBook(id, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['scheme-book'] }),
+  })
+}
+
+export function useHodApproveSchemeBook() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, profileId }: { id: string; profileId: string }) =>
+      hodApproveSchemeBook(id, profileId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['scheme-book'] }),
   })
 }

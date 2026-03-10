@@ -8,6 +8,7 @@ export interface SchemeBookFilters {
   classId?: string
   subjectId?: string
   termId?: string
+  teacherId?: string
 }
 
 export async function getSchemeBooks(filters?: SchemeBookFilters): Promise<SchemeBook[]> {
@@ -16,10 +17,12 @@ export async function getSchemeBooks(filters?: SchemeBookFilters): Promise<Schem
     .select(`
       id, teacher_id, class_id, subject_id, term_id, week, topic,
       objectives, teaching_methods, teaching_aids, references, evaluation,
-      status, approved_by, approved_at, created_at, updated_at,
+      status, hod_approved_by, hod_approved_at, approved_by, approved_at,
+      created_at, updated_at,
       class:classes(name),
       subject:subjects(name),
-      term:terms(name)
+      term:terms(name),
+      teacher:teachers(profile:profiles(full_name))
     `)
     .order('term_id')
     .order('week')
@@ -27,22 +30,25 @@ export async function getSchemeBooks(filters?: SchemeBookFilters): Promise<Schem
   if (filters?.classId) q = q.eq('class_id', filters.classId)
   if (filters?.subjectId) q = q.eq('subject_id', filters.subjectId)
   if (filters?.termId) q = q.eq('term_id', filters.termId)
+  if (filters?.teacherId) q = q.eq('teacher_id', filters.teacherId)
 
   const { data, error } = await q
   if (error || !data) return []
 
-  type Row = Omit<SchemeBook, 'class_name' | 'subject_name' | 'term_name'> & {
+  type Row = Omit<SchemeBook, 'class_name' | 'subject_name' | 'term_name' | 'teacher_name'> & {
     class: { name: string } | null
     subject: { name: string } | null
     term: { name: string } | null
+    teacher: { profile: { full_name: string } | null } | null
   }
   return (data as unknown as Row[]).map((r) => {
-    const { class: c, subject: s, term: t, ...rest } = r
+    const { class: c, subject: s, term: t, teacher: th, ...rest } = r
     return {
       ...rest,
       class_name: c?.name ?? '—',
       subject_name: s?.name ?? '—',
       term_name: t?.name ?? '—',
+      teacher_name: th?.profile?.full_name ?? '—',
     }
   })
 }
@@ -90,6 +96,16 @@ export async function updateSchemeBook(
   return !error
 }
 
+/** HOD first-stage approval. */
+export async function hodApproveSchemeBook(id: string, profileId: string): Promise<boolean> {
+  const { error } = await db
+    .from('scheme_books')
+    .update({ hod_approved_by: profileId, hod_approved_at: new Date().toISOString() })
+    .eq('id', id)
+  return !error
+}
+
+/** Final approval by headmaster or deputy headmaster (requires HOD approval first). */
 export async function approveSchemeBook(id: string, profileId: string): Promise<boolean> {
   const { error } = await db
     .from('scheme_books')

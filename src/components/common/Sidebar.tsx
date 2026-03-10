@@ -257,13 +257,13 @@ function SidebarContent({
   collapsed: boolean
   onNavClick?: () => void
 }) {
-  const { role, profile, signOut } = useAuth()
+  const { role, roles, profile, signOut } = useAuth()
   const navigate = useNavigate()
   const { toggleCollapsed } = useSidebar()
 
   const visibleGroups = NAV_GROUPS.map(group => ({
     ...group,
-    items: group.items.filter(item => role && item.allowedRoles.includes(role)),
+    items: group.items.filter(item => roles.length > 0 && item.allowedRoles.some(r => roles.includes(r))),
   })).filter(group => group.items.length > 0)
 
   const handleSignOut = async () => {

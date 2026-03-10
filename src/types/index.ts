@@ -8,6 +8,8 @@ export interface UserProfile {
   phone: string | null
   status: 'active' | 'inactive' | 'suspended'
   role: AppRole
+  /** All roles assigned to this user (enables class_teacher + teacher to see both module sets). */
+  roles: AppRole[]
 }
 
 export interface ApiError {

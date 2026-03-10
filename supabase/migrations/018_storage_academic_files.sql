@@ -9,7 +9,7 @@ VALUES (
   'academic-files',
   true,
   52428800,  -- 50MB
-  '["application/pdf","video/*","application/vnd.ms-powerpoint","application/vnd.openxmlformats-officedocument.presentationml.presentation","application/msword","application/vnd.openxmlformats-officedocument.wordprocessingml.document","image/*"]'::jsonb
+  ARRAY['application/pdf','video/*','application/vnd.ms-powerpoint','application/vnd.openxmlformats-officedocument.presentationml.presentation','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document','image/*']::text[]
 )
 ON CONFLICT (id) DO NOTHING;
 

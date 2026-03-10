@@ -24,9 +24,11 @@ import {
   useSchemeBooks,
   useCreateSchemeBook,
   useUpdateSchemeBook,
+  useHodApproveSchemeBook,
   useApproveSchemeBook,
   useSchemeBookProgress,
 } from '../hooks/useSchemeBook'
+import { useTeachers } from '@/features/staff/hooks/useStaff'
 import type { SchemeBook } from '../types'
 import type { CreateSchemeBookInput } from '../services/schemeBook'
 
@@ -243,28 +245,36 @@ function SchemeFormModal({
 }
 
 export function SchemeBookPage() {
-  const { user } = useAuth()
+  const { user, hasRole } = useAuth()
   const { data: teacher } = useTeacherRecord(user?.id)
   const [classFilter, setClassFilter] = useState<string>('all')
   const [subjectFilter, setSubjectFilter] = useState<string>('all')
   const [termFilter, setTermFilter] = useState<string>('all')
+  const [teacherFilter, setTeacherFilter] = useState<string>('all')
   const [showForm, setShowForm] = useState(false)
   const [editScheme, setEditScheme] = useState<SchemeBook | null>(null)
+
+  const isAdmin = hasRole('headmaster', 'deputy_headmaster')
+  const isHod = hasRole('hod')
 
   const filters = {
     classId: classFilter !== 'all' ? classFilter : undefined,
     subjectId: subjectFilter !== 'all' ? subjectFilter : undefined,
     termId: termFilter !== 'all' ? termFilter : undefined,
+    teacherId: isAdmin && teacherFilter !== 'all' ? teacherFilter : undefined,
   }
   const { data: schemes = [], isLoading } = useSchemeBooks(filters)
   const { data: progress } = useSchemeBookProgress(filters.termId ?? null)
-  const approve = useApproveSchemeBook()
+  const hodApprove = useHodApproveSchemeBook()
+  const finalApprove = useApproveSchemeBook()
 
   const { data: classes = [] } = useClasses()
   const { data: subjects = [] } = useSubjects()
   const { data: terms = [] } = useTerms()
+  const { data: teachers = [] } = useTeachers()
 
   const columns: Column<SchemeBook>[] = [
+    ...(isAdmin ? [{ key: 'teacher_name' as keyof SchemeBook, header: 'Teacher', cell: (r: SchemeBook) => r.teacher_name }] : []),
     { key: 'week', header: 'Week', sortable: true, className: 'w-16' },
     { key: 'topic', header: 'Topic', sortable: true, cell: (r) => <span className="font-medium">{r.topic}</span> },
     { key: 'class_name', header: 'Class' },
@@ -280,8 +290,13 @@ export function SchemeBookPage() {
       ),
     },
     {
+      key: 'hod_approved_at',
+      header: 'HOD approved',
+      cell: (r) => (r.hod_approved_at ? <span className="text-muted-foreground text-xs">Yes</span> : '—'),
+    },
+    {
       key: 'approved_at',
-      header: 'Approved',
+      header: 'Final approved',
       cell: (r) => (r.approved_at ? <span className="text-muted-foreground text-xs">Yes</span> : '—'),
     },
     {
@@ -293,8 +308,13 @@ export function SchemeBookPage() {
           <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { setEditScheme(r); setShowForm(true) }}>
             <Pencil className="h-3.5 w-3.5" />
           </Button>
-          {!r.approved_at && (
-            <Button size="icon" variant="ghost" className="h-7 w-7 text-emerald-600" onClick={() => approve.mutate({ id: r.id, profileId: user?.id ?? '' })} title="Approve">
+          {isHod && !r.hod_approved_at && (
+            <Button size="icon" variant="ghost" className="h-7 w-7 text-blue-600" onClick={() => hodApprove.mutate({ id: r.id, profileId: user?.id ?? '' })} title="Approve (HOD)">
+              <CheckCircle className="h-3.5 w-3.5" />
+            </Button>
+          )}
+          {isAdmin && r.hod_approved_at && !r.approved_at && (
+            <Button size="icon" variant="ghost" className="h-7 w-7 text-emerald-600" onClick={() => finalApprove.mutate({ id: r.id, profileId: user?.id ?? '' })} title="Final approve (Headmaster/Deputy)">
               <CheckCircle className="h-3.5 w-3.5" />
             </Button>
           )}
@@ -309,9 +329,11 @@ export function SchemeBookPage() {
         title="Scheme Book"
         subtitle="Weekly teaching schemes by class and subject"
         actions={
-          <Button onClick={() => { setEditScheme(null); setShowForm(true) }}>
-            <Plus className="mr-2 h-4 w-4" /> Add scheme
-          </Button>
+          teacher ? (
+            <Button onClick={() => { setEditScheme(null); setShowForm(true) }}>
+              <Plus className="mr-2 h-4 w-4" /> Add scheme
+            </Button>
+          ) : null
         }
       />
 
@@ -331,6 +353,17 @@ export function SchemeBookPage() {
       )}
 
       <div className="flex flex-wrap gap-3">
+        {isAdmin && (
+          <Select value={teacherFilter} onValueChange={setTeacherFilter}>
+            <SelectTrigger className="w-44"><SelectValue placeholder="All teachers" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All teachers</SelectItem>
+              {teachers.map((t) => (
+                <SelectItem key={t.id} value={t.profile_id}>{t.full_name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         <Select value={classFilter} onValueChange={setClassFilter}>
           <SelectTrigger className="w-40"><SelectValue placeholder="All classes" /></SelectTrigger>
           <SelectContent>

@@ -15,8 +15,11 @@ export interface SchemeBook {
   references: string | null
   evaluation: string | null
   status: 'planned' | 'completed'
+  hod_approved_by: string | null
+  hod_approved_at: string | null
   approved_by: string | null
   approved_at: string | null
+  teacher_name: string
   created_at: string
   updated_at: string
 }

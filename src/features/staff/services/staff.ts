@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
-import type { Teacher, StaffMember, TeacherFormData, ProfileOption, DepartmentOption, CreateUserAccountData, TeacherSelectOption } from '../types'
+import type { Teacher, StaffMember, TeacherFormData, ProfileOption, DepartmentOption, CreateUserAccountData, TeacherSelectOption, TeacherAllocation, SubjectOption, ClassOption } from '../types'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = supabase as any
@@ -92,6 +92,29 @@ export async function getProfilesForTeacher(): Promise<ProfileOption[]> {
     .map(p => ({ id: p.id, full_name: p.full_name, email: null }))
 }
 
+/** Returns the next available TCH-NNN employee number based on all existing records. */
+export async function getNextTeacherEmployeeNo(): Promise<string> {
+  const { data } = await supabase.from('teachers').select('employee_no')
+  const nums = ((data ?? []) as { employee_no: string }[])
+    .map(r => /^TCH-(\d+)$/i.exec(r.employee_no)?.[1])
+    .filter((n): n is string => !!n)
+    .map(n => parseInt(n, 10))
+  const next = nums.length ? Math.max(...nums) + 1 : 1
+  return `TCH-${String(next).padStart(3, '0')}`
+}
+
+/** Returns true if the given employee number is already used by another active teacher. */
+export async function isEmployeeNoTaken(employeeNo: string, excludeId?: string): Promise<boolean> {
+  const { data } = await supabase
+    .from('teachers')
+    .select('id')
+    .eq('employee_no', employeeNo)
+    .is('deleted_at', null)
+  if (!data || data.length === 0) return false
+  if (excludeId) return (data as { id: string }[]).some(r => r.id !== excludeId)
+  return true
+}
+
 /** All departments for the department dropdown. */
 export async function getDepartmentsForSelect(): Promise<DepartmentOption[]> {
   const { data, error } = await supabase
@@ -136,6 +159,41 @@ export async function getTeachersForSelect(): Promise<TeacherSelectOption[]> {
     .filter(r => r.full_name !== '—')
 }
 
+/** Fetch role names assigned to a user (from user_roles + roles). */
+export async function getRolesForUser(userId: string): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('user_roles')
+    .select('roles(name)')
+    .eq('user_id', userId)
+  if (error || !data) return []
+  return (data as unknown as { roles: { name: string } | null }[])
+    .map(r => r.roles?.name)
+    .filter((name): name is string => !!name)
+}
+
+/** Replace all roles for a user with the given role names. */
+export async function setUserRoles(userId: string, roleNames: string[]): Promise<boolean> {
+  const { data: roleRows } = await supabase
+    .from('roles')
+    .select('id, name')
+    .in('name', roleNames.length ? roleNames : [])
+  const roleIds = (roleRows as { id: string; name: string }[] | null) ?? []
+  const roleIdByName = new Map(roleIds.map(r => [r.name, r.id]))
+
+  const { error: delError } = await db.from('user_roles').delete().eq('user_id', userId)
+  if (delError) return false
+
+  if (roleNames.length === 0) return true
+  const toInsert = roleNames
+    .map(name => roleIdByName.get(name))
+    .filter((id): id is string => !!id)
+  if (toInsert.length === 0) return true
+  const { error: insError } = await db
+    .from('user_roles')
+    .insert(toInsert.map(role_id => ({ user_id: userId, role_id })))
+  return !insError
+}
+
 export async function createUserAccount(data: CreateUserAccountData): Promise<{ id: string } | null> {
   const onboardingClient = createOnboardingClient()
   const { data: signUpData, error: signUpError } = await onboardingClient.auth.signUp({
@@ -149,18 +207,21 @@ export async function createUserAccount(data: CreateUserAccountData): Promise<{ 
 
   const userId = signUpData.user.id
 
-  const { data: roleData } = await supabase
+  if (data.roles.length === 0) return null
+  const { data: roleRows } = await supabase
     .from('roles')
-    .select('id')
-    .eq('name', data.role)
-    .maybeSingle()
-  const roleId = (roleData as { id: string } | null)?.id
-  if (!roleId) return null
-
-  const { error: roleError } = await db
-    .from('user_roles')
-    .insert({ user_id: userId, role_id: roleId })
-  if (roleError) return null
+    .select('id, name')
+    .in('name', data.roles)
+  const roleIds = (roleRows as { id: string; name: string }[] | null) ?? []
+  const roleIdByName = new Map(roleIds.map(r => [r.name, r.id]))
+  for (const roleName of data.roles) {
+    const roleId = roleIdByName.get(roleName)
+    if (!roleId) continue
+    const { error: roleError } = await db
+      .from('user_roles')
+      .insert({ user_id: userId, role_id: roleId })
+    if (roleError) return null
+  }
 
   if (data.phone) {
     await db.from('profiles').update({ phone: data.phone, full_name: data.full_name }).eq('id', userId)
@@ -203,6 +264,86 @@ export async function updateTeacher(id: string, data: Partial<TeacherFormData>):
     })
     .eq('id', id)
 
+  return !error
+}
+
+export async function getCurrentAcademicYear(): Promise<{ id: string; label: string } | null> {
+  const { data } = await supabase
+    .from('academic_years')
+    .select('id, label')
+    .eq('is_current', true)
+    .maybeSingle()
+  return (data as { id: string; label: string } | null) ?? null
+}
+
+export async function getSubjectsForSelect(): Promise<SubjectOption[]> {
+  const { data } = await supabase
+    .from('subjects')
+    .select('id, name, code')
+    .is('deleted_at', null)
+    .order('name')
+  if (!data) return []
+  return data as unknown as SubjectOption[]
+}
+
+export async function getClassesForSelect(): Promise<ClassOption[]> {
+  const { data } = await supabase
+    .from('classes')
+    .select('id, name, grade_level')
+    .is('deleted_at', null)
+    .order('name')
+  if (!data) return []
+  return data as unknown as ClassOption[]
+}
+
+export async function getTeacherAllocations(teacherId: string): Promise<TeacherAllocation[]> {
+  const { data, error } = await supabase
+    .from('teacher_subjects')
+    .select(`
+      id, teacher_id, subject_id, class_id, academic_year_id,
+      subject:subjects(name),
+      class:classes(name, grade_level),
+      academic_year:academic_years(label)
+    `)
+    .eq('teacher_id', teacherId)
+    .order('created_at')
+  if (error || !data) return []
+
+  type Raw = {
+    id: string; teacher_id: string; subject_id: string; class_id: string; academic_year_id: string
+    subject: { name: string } | null
+    class: { name: string; grade_level: number } | null
+    academic_year: { label: string } | null
+  }
+  return (data as unknown as Raw[]).map(r => ({
+    id:                   r.id,
+    teacher_id:           r.teacher_id,
+    subject_id:           r.subject_id,
+    subject_name:         r.subject?.name ?? '—',
+    class_id:             r.class_id,
+    class_name:           r.class?.name ?? '—',
+    grade_level:          r.class?.grade_level ?? 0,
+    academic_year_id:     r.academic_year_id,
+    academic_year_label:  r.academic_year?.label ?? '—',
+  }))
+}
+
+export async function addTeacherAllocation(
+  teacherId: string,
+  subjectId: string,
+  classId: string
+): Promise<boolean> {
+  const year = await getCurrentAcademicYear()
+  if (!year) return false
+
+  const { error } = await db
+    .from('teacher_subjects')
+    .insert({ teacher_id: teacherId, subject_id: subjectId, class_id: classId, academic_year_id: year.id })
+  return !error
+}
+
+export async function removeTeacherAllocation(allocationId: string): Promise<boolean> {
+  const { error } = await db.from('teacher_subjects').delete().eq('id', allocationId)
   return !error
 }
 

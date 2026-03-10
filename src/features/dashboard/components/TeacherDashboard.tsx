@@ -68,8 +68,13 @@ const SUBJECT_TEACHER_LINKS = [
   { to: '/resources', label: 'Resources', icon: FolderOpen },
 ]
 
+const CLASS_TEACHER_ROLES = ['headmaster', 'deputy_headmaster', 'hod', 'class_teacher'] as const
+const SUBJECT_TEACHER_ROLES = ['headmaster', 'deputy_headmaster', 'hod', 'teacher'] as const
+
 export function TeacherDashboard() {
-  const { profile, user, role } = useAuth()
+  const { profile, user, hasRole } = useAuth()
+  const showClassTeacherLinks = hasRole(...CLASS_TEACHER_ROLES)
+  const showSubjectTeacherLinks = hasRole(...SUBJECT_TEACHER_ROLES)
 
   const profileId = user?.id
 
@@ -126,7 +131,13 @@ export function TeacherDashboard() {
       {/* ── Header ── */}
       <PageHeader
         title={`${greeting()}, ${firstName}`}
-        subtitle={homeroom ? `Class teacher — ${homeroom.name}` : 'Teacher Portal'}
+        subtitle={
+          homeroom
+            ? `Class teacher — ${homeroom.name}`
+            : subjects.length > 0
+              ? `Subject Teacher · ${uniqueSubjects} subject${uniqueSubjects !== 1 ? 's' : ''} across ${taughtClassIds.length} class${taughtClassIds.length !== 1 ? 'es' : ''}`
+              : 'Teacher Portal'
+        }
       />
 
       {/* ── Not-linked banner ── */}
@@ -422,34 +433,30 @@ export function TeacherDashboard() {
       </div>
 
       {/* ── Role-based quick links ── */}
-      {(role === 'class_teacher' || role === 'teacher' || role === 'headmaster' || role === 'deputy_headmaster' || role === 'hod') && (
+      {(showClassTeacherLinks || showSubjectTeacherLinks) && (
         <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
           <h3 className="mb-4 text-sm font-semibold">Quick links</h3>
           <div className="flex flex-wrap gap-3">
-            {(role === 'class_teacher' || role === 'headmaster' || role === 'deputy_headmaster' || role === 'hod') && (
-              CLASS_TEACHER_LINKS.map(({ to, label, icon: Icon }) => (
-                <Link
-                  key={to}
-                  to={to}
-                  className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-4 py-2.5 text-sm font-medium transition-colors hover:bg-muted/60"
-                >
-                  <Icon className="h-4 w-4 text-muted-foreground" />
-                  {label}
-                </Link>
-              ))
-            )}
-            {(role === 'teacher' || role === 'headmaster' || role === 'deputy_headmaster' || role === 'hod') && (
-              SUBJECT_TEACHER_LINKS.map(({ to, label, icon: Icon }) => (
-                <Link
-                  key={to}
-                  to={to}
-                  className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-4 py-2.5 text-sm font-medium transition-colors hover:bg-muted/60"
-                >
-                  <Icon className="h-4 w-4 text-muted-foreground" />
-                  {label}
-                </Link>
-              ))
-            )}
+            {showClassTeacherLinks && CLASS_TEACHER_LINKS.map(({ to, label, icon: Icon }) => (
+              <Link
+                key={to}
+                to={to}
+                className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-4 py-2.5 text-sm font-medium transition-colors hover:bg-muted/60"
+              >
+                <Icon className="h-4 w-4 text-muted-foreground" />
+                {label}
+              </Link>
+            ))}
+            {showSubjectTeacherLinks && SUBJECT_TEACHER_LINKS.map(({ to, label, icon: Icon }) => (
+              <Link
+                key={to}
+                to={to}
+                className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-4 py-2.5 text-sm font-medium transition-colors hover:bg-muted/60"
+              >
+                <Icon className="h-4 w-4 text-muted-foreground" />
+                {label}
+              </Link>
+            ))}
           </div>
         </div>
       )}

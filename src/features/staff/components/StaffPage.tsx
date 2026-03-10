@@ -11,6 +11,8 @@ import { cn } from '@/utils/cn'
 import { useTeachers, useStaffMembers, useProfilesForTeacher } from '../hooks/useStaff'
 import { TeacherFormModal } from './TeacherFormModal'
 import { CreateUserAccountModal } from './CreateUserAccountModal'
+import { ManageRolesModal } from './ManageRolesModal'
+import { TeacherAllocationsModal } from './TeacherAllocationsModal'
 import type { Teacher, StaffMember, ProfileOption } from '../types'
 
 const STATUS_STYLES: Record<string, string> = {
@@ -26,6 +28,8 @@ function TeachersTab() {
   const [showAccountForm, setShowAccountForm] = useState(false)
   const [selected, setSelected] = useState<Teacher | null>(null)
   const [initialProfileId, setInitialProfileId] = useState<string | null>(null)
+  const [manageRolesUser, setManageRolesUser] = useState<{ id: string; name: string } | null>(null)
+  const [allocationsTeacher, setAllocationsTeacher] = useState<{ id: string; name: string } | null>(null)
 
   const openCreate = (profileId?: string, fromAccountCreation?: boolean) => {
     setSelected(null)
@@ -79,6 +83,29 @@ function TeachersTab() {
         <span className={cn('rounded-full border px-2.5 py-0.5 text-xs font-medium capitalize', STATUS_STYLES[r.status])}>
           {r.status.replace('_', ' ')}
         </span>
+      ),
+    },
+    {
+      key: 'actions' as keyof Teacher,
+      header: '',
+      className: 'text-right',
+      cell: r => (
+        <div className="flex items-center justify-end gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={e => { e.stopPropagation(); setAllocationsTeacher({ id: r.id, name: r.full_name }) }}
+          >
+            Allocations
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={e => { e.stopPropagation(); setManageRolesUser({ id: r.profile_id, name: r.full_name }) }}
+          >
+            Manage roles
+          </Button>
+        </div>
       ),
     },
   ]
@@ -145,12 +172,25 @@ function TeachersTab() {
           openCreate(profileId, true)
         }}
       />
+      <ManageRolesModal
+        open={!!manageRolesUser}
+        onOpenChange={open => !open && setManageRolesUser(null)}
+        userId={manageRolesUser?.id ?? null}
+        userName={manageRolesUser?.name ?? ''}
+      />
+      <TeacherAllocationsModal
+        open={!!allocationsTeacher}
+        onOpenChange={open => !open && setAllocationsTeacher(null)}
+        teacherId={allocationsTeacher?.id ?? null}
+        teacherName={allocationsTeacher?.name ?? ''}
+      />
     </>
   )
 }
 
 function StaffTab() {
   const { data: staff = [], isLoading } = useStaffMembers()
+  const [manageRolesUser, setManageRolesUser] = useState<{ id: string; name: string } | null>(null)
 
   const columns: Column<StaffMember>[] = [
     {
@@ -180,15 +220,37 @@ function StaffTab() {
         </span>
       ),
     },
+    {
+      key: 'actions' as keyof StaffMember,
+      header: '',
+      className: 'text-right',
+      cell: r => (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={e => { e.stopPropagation(); setManageRolesUser({ id: r.profile_id, name: r.full_name }) }}
+        >
+          Manage roles
+        </Button>
+      ),
+    },
   ]
 
   return (
-    <DataTable<StaffMember>
-      columns={columns}
-      data={staff}
-      keyExtractor={r => r.id}
-      loading={isLoading}
-    />
+    <>
+      <DataTable<StaffMember>
+        columns={columns}
+        data={staff}
+        keyExtractor={r => r.id}
+        loading={isLoading}
+      />
+      <ManageRolesModal
+        open={!!manageRolesUser}
+        onOpenChange={open => !open && setManageRolesUser(null)}
+        userId={manageRolesUser?.id ?? null}
+        userName={manageRolesUser?.name ?? ''}
+      />
+    </>
   )
 }
 

@@ -17,8 +17,8 @@ CREATE TABLE scheme_books (
   objectives       TEXT,
   teaching_methods TEXT,
   teaching_aids    TEXT,
-  references       TEXT,
-  evaluation       TEXT,
+  "references"      TEXT,
+  evaluation        TEXT,
   status           TEXT        NOT NULL DEFAULT 'planned'
                  CHECK (status IN ('planned', 'completed')),
   approved_by      UUID        REFERENCES profiles(id) ON DELETE SET NULL,

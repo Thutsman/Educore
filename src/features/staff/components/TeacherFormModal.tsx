@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useCallback } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -17,7 +17,9 @@ import { toast } from 'sonner'
 import {
   useCreateTeacher, useUpdateTeacher,
   useProfilesForTeacher, useDepartmentsForSelect,
+  useNextTeacherEmployeeNo,
 } from '../hooks/useStaff'
+import { isEmployeeNoTaken } from '../services/staff'
 import type { Teacher } from '../types'
 
 // ── Schema ────────────────────────────────────────────────────────────────────
@@ -51,8 +53,9 @@ export function TeacherFormModal({ open, onOpenChange, teacher, initialProfileId
 
   const create = useCreateTeacher()
   const update = useUpdateTeacher()
-  const { data: profiles = [] }    = useProfilesForTeacher()
-  const { data: departments = [] } = useDepartmentsForSelect()
+  const { data: profiles = [] }          = useProfilesForTeacher()
+  const { data: departments = [] }       = useDepartmentsForSelect()
+  const { data: suggestedEmployeeNo }    = useNextTeacherEmployeeNo(!isEdit)
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -83,7 +86,7 @@ export function TeacherFormModal({ open, onOpenChange, teacher, initialProfileId
     } else if (open && !teacher) {
       form.reset({
         profile_id:      initialProfileId ?? '',
-        employee_no:     '',
+        employee_no:     suggestedEmployeeNo ?? '',
         department_id:   '',
         employment_type: 'permanent',
         join_date:       '',
@@ -92,7 +95,24 @@ export function TeacherFormModal({ open, onOpenChange, teacher, initialProfileId
         status:          'active',
       })
     }
-  }, [open, teacher, initialProfileId, form])
+  }, [open, teacher, initialProfileId, suggestedEmployeeNo, form])
+
+  // If the suggestion loads after the modal opens, fill it in (only if field is still empty)
+  useEffect(() => {
+    if (open && !teacher && suggestedEmployeeNo && !form.getValues('employee_no')) {
+      form.setValue('employee_no', suggestedEmployeeNo)
+    }
+  }, [suggestedEmployeeNo, open, teacher, form])
+
+  const validateEmployeeNo = useCallback(async (value: string) => {
+    if (!value) return
+    const taken = await isEmployeeNoTaken(value, teacher?.id)
+    if (taken) {
+      form.setError('employee_no', { message: 'This employee number is already in use' })
+    } else {
+      form.clearErrors('employee_no')
+    }
+  }, [teacher?.id, form])
 
   const onSubmit = async (values: FormValues) => {
     const payload = {
@@ -191,7 +211,11 @@ export function TeacherFormModal({ open, onOpenChange, teacher, initialProfileId
                 <FormItem>
                   <FormLabel>Employee No. *</FormLabel>
                   <FormControl>
-                    <Input placeholder="TCH-001" {...field} />
+                    <Input
+                      placeholder="TCH-001"
+                      {...field}
+                      onBlur={e => { field.onBlur(); validateEmployeeNo(e.target.value) }}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

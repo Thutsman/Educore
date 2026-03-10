@@ -10,6 +10,8 @@ interface AuthState {
   profile: UserProfile | null
   session: Session | null
   role: AppRole | null
+  /** All roles for this user (used for multi-role visibility, e.g. class_teacher + teacher). */
+  roles: AppRole[]
   isLoading: boolean
   isAuthenticated: boolean
 }
@@ -37,12 +39,10 @@ async function fetchProfile(userId: string): Promise<UserProfile | null> {
 
   if (profileError || !profileData) return null
 
-  const { data: roleData } = await supabase
+  const { data: roleRows } = await supabase
     .from('user_roles')
     .select('roles(name)')
     .eq('user_id', userId)
-    .limit(1)
-    .maybeSingle()
 
   const raw = profileData as unknown as {
     id: string
@@ -52,7 +52,11 @@ async function fetchProfile(userId: string): Promise<UserProfile | null> {
     status: UserProfile['status']
   }
 
-  const roleName = (roleData as { roles?: { name?: string } | null } | null)?.roles?.name as AppRole | undefined
+  type RoleRow = { roles?: { name?: string } | null } | null
+  const roles = (roleRows ?? [])
+    .map((r: RoleRow) => r?.roles?.name as AppRole | undefined)
+    .filter((name): name is AppRole => typeof name === 'string')
+  const primaryRole = roles[0] ?? 'student'
 
   return {
     id: raw.id,
@@ -60,7 +64,8 @@ async function fetchProfile(userId: string): Promise<UserProfile | null> {
     avatar_url: raw.avatar_url,
     phone: raw.phone,
     status: raw.status,
-    role: roleName ?? 'student',
+    role: primaryRole,
+    roles: roles.length > 0 ? roles : [primaryRole],
   }
 }
 
@@ -72,6 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     profile: null,
     session: null,
     role: null,
+    roles: [],
     isLoading: true,
     isAuthenticated: false,
   })
@@ -84,6 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         profile,
         session,
         role: profile?.role ?? null,
+        roles: profile?.roles ?? [],
         isLoading: false,
         isAuthenticated: true,
       })
@@ -130,6 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             profile: null,
             session: null,
             role: null,
+            roles: [],
             isLoading: false,
             isAuthenticated: false,
           })
@@ -139,6 +147,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             profile: null,
             session: null,
             role: null,
+            roles: [],
             isLoading: false,
             isAuthenticated: false,
           })
@@ -162,9 +171,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw error
   }, [])
 
-  const hasRole = useCallback((...roles: AppRole[]): boolean => {
-    return state.role !== null && roles.includes(state.role)
-  }, [state.role])
+  const hasRole = useCallback((...allowed: AppRole[]): boolean => {
+    return state.roles.length > 0 && allowed.some((r) => state.roles.includes(r))
+  }, [state.roles])
 
   const isAdmin = useCallback((): boolean => {
     return hasRole('headmaster', 'deputy_headmaster')

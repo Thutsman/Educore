@@ -8,12 +8,10 @@ import {
 import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
 } from '@/components/ui/form'
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { useCreateUserAccount } from '../hooks/useStaff'
+import { cn } from '@/utils/cn'
 import type { StaffRole } from '../types'
 
 const ROLE_OPTIONS: { value: StaffRole; label: string }[] = [
@@ -25,12 +23,13 @@ const ROLE_OPTIONS: { value: StaffRole; label: string }[] = [
   { value: 'non_teaching_staff', label: 'Non-Teaching Staff' },
 ]
 
+const roleEnum = z.enum(['teacher', 'class_teacher', 'hod', 'bursar', 'deputy_headmaster', 'non_teaching_staff'])
 const schema = z.object({
   full_name: z.string().min(2, 'Full name is required'),
   email: z.string().email('Valid email is required'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   phone: z.string().optional(),
-  role: z.enum(['teacher', 'class_teacher', 'hod', 'bursar', 'deputy_headmaster', 'non_teaching_staff']),
+  roles: z.array(roleEnum).min(1, 'Select at least one role'),
 })
 
 type FormValues = z.infer<typeof schema>
@@ -51,17 +50,28 @@ export function CreateUserAccountModal({ open, onOpenChange, onTeacherCreated }:
       email: '',
       password: '',
       phone: '',
-      role: 'teacher',
+      roles: ['teacher'],
     },
   })
 
-  const selectedRole = form.watch('role')
-  const isTeacherRole = selectedRole === 'teacher' || selectedRole === 'class_teacher'
+  const selectedRoles = form.watch('roles')
+  const isTeacherRole = selectedRoles.includes('teacher') || selectedRoles.includes('class_teacher')
+
+  const toggleRole = (role: typeof ROLE_OPTIONS[number]['value']) => {
+    const current = form.getValues('roles')
+    const next = current.includes(role)
+      ? current.filter(r => r !== role)
+      : [...current, role]
+    form.setValue('roles', next)
+  }
 
   const onSubmit = async (values: FormValues) => {
     const result = await create.mutateAsync({
-      ...values,
+      full_name: values.full_name,
+      email: values.email,
+      password: values.password,
       phone: values.phone || undefined,
+      roles: values.roles,
     })
     if (!result) {
       toast.error('Failed to create user account. Check that the email is not already in use.')
@@ -107,31 +117,41 @@ export function CreateUserAccountModal({ open, onOpenChange, onTeacherCreated }:
                 </FormItem>
               )} />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <FormField control={form.control} name="password" render={({ field }) => (
+            <FormField control={form.control} name="password" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Temporary Password *</FormLabel>
+                <FormControl><Input type="password" placeholder="At least 8 characters" {...field} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <FormField
+              control={form.control}
+              name="roles"
+              render={() => (
                 <FormItem>
-                  <FormLabel>Temporary Password *</FormLabel>
-                  <FormControl><Input type="password" placeholder="At least 8 characters" {...field} /></FormControl>
+                  <FormLabel>Roles *</FormLabel>
+                  <p className="text-xs text-muted-foreground mb-2">Select one or more (e.g. Teacher + Class Teacher for both module sets).</p>
+                  <div className="grid grid-cols-2 gap-2 rounded-md border border-border p-3">
+                    {ROLE_OPTIONS.map(r => (
+                      <button
+                        key={r.value}
+                        type="button"
+                        onClick={() => toggleRole(r.value)}
+                        className={cn(
+                          'rounded-md border px-3 py-2 text-left text-sm font-medium transition-colors',
+                          form.watch('roles').includes(r.value)
+                            ? 'border-primary bg-primary/10 text-primary'
+                            : 'border-border bg-muted/30 text-muted-foreground hover:bg-muted/50'
+                        )}
+                      >
+                        {r.label}
+                      </button>
+                    ))}
+                  </div>
                   <FormMessage />
                 </FormItem>
-              )} />
-              <FormField control={form.control} name="role" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Role *</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {ROLE_OPTIONS.map(r => (
-                        <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )} />
-            </div>
+              )}
+            />
             <p className="text-xs text-muted-foreground">
               {isTeacherRole
                 ? 'After creating the account, you\'ll be taken directly to fill in employment details.'

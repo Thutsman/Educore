@@ -63,10 +63,35 @@ export type StaffRole =
   | 'deputy_headmaster'
   | 'non_teaching_staff'
 
+export interface TeacherAllocation {
+  id: string
+  teacher_id: string
+  subject_id: string
+  subject_name: string
+  class_id: string
+  class_name: string
+  grade_level: number
+  academic_year_id: string
+  academic_year_label: string
+}
+
+export interface SubjectOption {
+  id: string
+  name: string
+  code: string
+}
+
+export interface ClassOption {
+  id: string
+  name: string
+  grade_level: number
+}
+
 export interface CreateUserAccountData {
   full_name: string
   email: string
   password: string
   phone?: string
-  role: StaffRole
+  /** One or more roles (e.g. teacher + class_teacher for dual role). */
+  roles: StaffRole[]
 }
