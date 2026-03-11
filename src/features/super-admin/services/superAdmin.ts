@@ -67,7 +67,7 @@ export async function getSchoolAdminsForSchool(schoolId: string): Promise<School
     .from('roles')
     .select('id')
     .eq('name', 'school_admin')
-    .single()
+    .maybeSingle()
   if (!roleRow) return []
   const roleId = (roleRow as unknown as { id: string }).id
 
@@ -155,8 +155,8 @@ export async function bootstrapSchoolAdmin(
   }
 
   // Assign school_admin role scoped to this school
-  const { data: roleRow } = await supabase.from('roles').select('id').eq('name', 'school_admin').single()
-  if (!roleRow) return { success: false, error: 'School Admin role not found' }
+  const { data: roleRow } = await supabase.from('roles').select('id').eq('name', 'school_admin').maybeSingle()
+  if (!roleRow) return { success: false, error: 'Migration 023 not applied yet — run it in your Supabase SQL editor first.' }
   const roleId = (roleRow as unknown as { id: string }).id
 
   const { error: roleError } = await db
