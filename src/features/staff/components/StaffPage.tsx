@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { UserPlus, BookOpen, ShieldCheck } from 'lucide-react'
+import { UserPlus, BookOpen, ShieldCheck, HelpCircle, ChevronDown, ChevronUp } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/common/PageHeader'
 import { DataTable, type Column } from '@/components/common/DataTable'
@@ -258,10 +258,109 @@ function StaffTab() {
   )
 }
 
+function StaffHelpGuide() {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        className="flex w-full items-center justify-between px-5 py-3.5 text-left hover:bg-muted/30 transition-colors"
+      >
+        <div className="flex items-center gap-2.5 text-sm font-medium">
+          <HelpCircle className="h-4 w-4 text-primary shrink-0" />
+          How to add staff — quick guide
+        </div>
+        {open
+          ? <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" />
+          : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />}
+      </button>
+
+      {open && (
+        <div className="border-t border-border px-5 py-4 space-y-5 text-sm">
+
+          {/* Step-by-step */}
+          <div>
+            <p className="font-semibold mb-3">Adding a teacher (2-step process)</p>
+            <ol className="space-y-3">
+              <li className="flex gap-3">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">1</span>
+                <div>
+                  <p className="font-medium">Create a User Account</p>
+                  <p className="text-muted-foreground text-xs mt-0.5">
+                    Click <strong>Create User Account</strong>. Enter name, email, temporary password and select one or more roles (e.g. Teacher, HOD). This creates the login credentials — the staff member can sign in immediately.
+                  </p>
+                </div>
+              </li>
+              <li className="flex gap-3">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">2</span>
+                <div>
+                  <p className="font-medium">Complete the teacher profile</p>
+                  <p className="text-muted-foreground text-xs mt-0.5">
+                    After account creation you are taken directly to the teacher profile form. Fill in employee number, department, employment type and specialization. This links the account to a teacher record.
+                  </p>
+                </div>
+              </li>
+            </ol>
+          </div>
+
+          <div className="h-px bg-border" />
+
+          {/* Unlinked accounts */}
+          <div>
+            <p className="font-semibold mb-1.5">What are Unlinked User Accounts?</p>
+            <p className="text-muted-foreground text-xs leading-relaxed">
+              If an account was created but the teacher profile was never saved, it appears in the <strong>Unlinked User Accounts</strong> table at the bottom. Click <strong>Link as Teacher</strong> next to the name to open the profile form and complete the process.
+            </p>
+          </div>
+
+          <div className="h-px bg-border" />
+
+          {/* Roles */}
+          <div>
+            <p className="font-semibold mb-2">Role reference</p>
+            <div className="grid gap-1.5 sm:grid-cols-2">
+              {[
+                ['Headmaster',          'Full oversight of the school dashboard.'],
+                ['Deputy Headmaster',   'Assists the headmaster; can manage classes and students.'],
+                ['Bursar',              'Manages fees, invoices and financial records.'],
+                ['HOD',                 'Head of a department; manages subjects for their dept.'],
+                ['Teacher',             'Access to classes assigned to them, lesson plans, grades.'],
+                ['Class Teacher',       'Homeroom teacher; additional attendance responsibilities.'],
+                ['Non-Teaching Staff',  'Admin/support staff with limited module access.'],
+              ].map(([role, desc]) => (
+                <div key={role} className="rounded-lg border border-border bg-muted/30 px-3 py-2">
+                  <p className="text-xs font-semibold">{role}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="h-px bg-border" />
+
+          {/* Tips */}
+          <div>
+            <p className="font-semibold mb-1.5">Tips</p>
+            <ul className="space-y-1 text-xs text-muted-foreground list-disc list-inside">
+              <li>A teacher can hold multiple roles — e.g. <strong>Teacher + HOD</strong>.</li>
+              <li>To change a staff member's roles later, click <strong>Manage Roles</strong> on their row.</li>
+              <li>To assign subjects to a teacher, click <strong>Allocations</strong> on their row.</li>
+              <li>Non-teaching staff are managed on the <strong>Non-Teaching Staff</strong> tab.</li>
+            </ul>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function StaffPage() {
   return (
     <div className="space-y-6">
       <PageHeader title="Staff Management" subtitle="Teachers and non-teaching staff" />
+      <StaffHelpGuide />
       <Tabs defaultValue="teachers">
         <TabsList>
           <TabsTrigger value="teachers">Teachers</TabsTrigger>

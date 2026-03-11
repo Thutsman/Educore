@@ -9,11 +9,12 @@ import { cn } from '@/utils/cn'
 import type { StaffRole } from '../types'
 
 const ROLE_OPTIONS: { value: StaffRole; label: string }[] = [
+  { value: 'headmaster',        label: 'Headmaster' },
+  { value: 'deputy_headmaster', label: 'Deputy Headmaster' },
+  { value: 'bursar',            label: 'Bursar' },
+  { value: 'hod',               label: 'Head of Department (HOD)' },
   { value: 'teacher',           label: 'Teacher' },
   { value: 'class_teacher',     label: 'Class Teacher' },
-  { value: 'hod',               label: 'Head of Department (HOD)' },
-  { value: 'bursar',            label: 'Bursar' },
-  { value: 'deputy_headmaster', label: 'Deputy Headmaster' },
   { value: 'non_teaching_staff', label: 'Non-Teaching Staff' },
 ]
 

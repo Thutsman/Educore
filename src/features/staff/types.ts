@@ -56,11 +56,12 @@ export interface StaffMember {
 }
 
 export type StaffRole =
+  | 'headmaster'
+  | 'deputy_headmaster'
+  | 'bursar'
+  | 'hod'
   | 'teacher'
   | 'class_teacher'
-  | 'hod'
-  | 'bursar'
-  | 'deputy_headmaster'
   | 'non_teaching_staff'
 
 export interface TeacherAllocation {
