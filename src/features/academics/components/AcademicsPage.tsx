@@ -1,25 +1,32 @@
+import { useSearchParams } from 'react-router-dom'
 import { PageHeader } from '@/components/common/PageHeader'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { AcademicYearsTab } from './AcademicYearsTab'
 import { ClassesTab } from './ClassesTab'
 import { SubjectsTab } from './SubjectsTab'
 import { ExamsTab } from './ExamsTab'
 import { GradeEntryTab } from './GradeEntryTab'
 
 export function AcademicsPage() {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const tab = searchParams.get('tab') ?? 'classes'
+
   return (
     <div className="space-y-6">
       <PageHeader
         title="Academics"
-        subtitle="Manage classes, subjects, exams and grades"
+        subtitle="Manage academic years, classes, subjects, exams and grades"
       />
-      <Tabs defaultValue="classes">
-        <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-flex">
+      <Tabs value={tab} onValueChange={t => setSearchParams({ tab: t })}>
+        <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:inline-flex">
+          <TabsTrigger value="years">Academic Years</TabsTrigger>
           <TabsTrigger value="classes">Classes</TabsTrigger>
           <TabsTrigger value="subjects">Subjects</TabsTrigger>
           <TabsTrigger value="exams">Exams</TabsTrigger>
           <TabsTrigger value="grades">Grade Entry</TabsTrigger>
         </TabsList>
         <div className="mt-6">
+          <TabsContent value="years"><AcademicYearsTab /></TabsContent>
           <TabsContent value="classes"><ClassesTab /></TabsContent>
           <TabsContent value="subjects"><SubjectsTab /></TabsContent>
           <TabsContent value="exams"><ExamsTab /></TabsContent>

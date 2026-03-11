@@ -29,8 +29,8 @@ export function SchoolAdminDashboard() {
       icon: CalendarDays,
       title: 'Configure Academic Year',
       description: 'Set up the current academic year and terms.',
-      done: false,
-      action: '/academics',
+      done: (stats?.academicYearCount ?? 0) > 0,
+      action: '/academics?tab=years',
     },
     {
       number: 2,
@@ -38,7 +38,7 @@ export function SchoolAdminDashboard() {
       title: 'Create Classes',
       description: 'Add grade levels and class streams.',
       done: (stats?.classCount ?? 0) > 0,
-      action: '/academics',
+      action: '/academics?tab=classes',
     },
     {
       number: 3,

@@ -116,6 +116,37 @@ export async function getAcademicYears(schoolId: string): Promise<AcademicYear[]
   return (data as unknown as Raw[]).map(r => ({ id: r.id, name: r.label, start_date: r.start_date, end_date: r.end_date, is_current: r.is_current }))
 }
 
+export async function createAcademicYear(schoolId: string, d: { label: string; start_date: string; end_date: string; is_current: boolean }): Promise<boolean> {
+  if (d.is_current) {
+    await db.from('academic_years').update({ is_current: false }).eq('school_id', schoolId)
+  }
+  const { error } = await db.from('academic_years').insert({ ...d, school_id: schoolId })
+  return !error
+}
+
+export async function updateAcademicYear(id: string, schoolId: string, d: Partial<{ label: string; start_date: string; end_date: string; is_current: boolean }>): Promise<boolean> {
+  if (d.is_current) {
+    await db.from('academic_years').update({ is_current: false }).eq('school_id', schoolId)
+  }
+  const { error } = await db.from('academic_years').update(d).eq('id', id)
+  return !error
+}
+
+export async function createTerm(d: { name: string; academic_year_id: string; start_date: string; end_date: string; is_current: boolean }): Promise<boolean> {
+  const { error } = await db.from('terms').insert(d)
+  return !error
+}
+
+export async function updateTerm(id: string, d: Partial<{ name: string; start_date: string; end_date: string; is_current: boolean }>): Promise<boolean> {
+  const { error } = await db.from('terms').update(d).eq('id', id)
+  return !error
+}
+
+export async function deleteTerm(id: string): Promise<boolean> {
+  const { error } = await db.from('terms').delete().eq('id', id)
+  return !error
+}
+
 export async function getTerms(academicYearId?: string): Promise<Term[]> {
   let q = supabase.from('terms').select('id, name, academic_year_id, start_date, end_date, is_current').order('start_date')
   if (academicYearId) q = q.eq('academic_year_id', academicYearId)

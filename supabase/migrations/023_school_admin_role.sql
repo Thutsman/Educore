@@ -10,7 +10,8 @@ VALUES ('school_admin', 'School-level administrator. Creates accounts, classes, 
 ON CONFLICT (name) DO NOTHING;
 
 -- 2. departments — school_admin writes, headmaster read-only
-DROP POLICY IF EXISTS "departments_admin_all" ON departments;
+DROP POLICY IF EXISTS "departments_admin_all"   ON departments;
+DROP POLICY IF EXISTS "departments_admin_write" ON departments;
 CREATE POLICY "departments_admin_write" ON departments
   FOR ALL USING (
     has_any_role(ARRAY['school_admin','deputy_headmaster']) AND
@@ -18,7 +19,8 @@ CREATE POLICY "departments_admin_write" ON departments
   );
 
 -- 3. classes — school_admin writes
-DROP POLICY IF EXISTS "classes_admin_all" ON classes;
+DROP POLICY IF EXISTS "classes_admin_all"   ON classes;
+DROP POLICY IF EXISTS "classes_admin_write" ON classes;
 CREATE POLICY "classes_admin_write" ON classes
   FOR ALL USING (
     has_any_role(ARRAY['school_admin','deputy_headmaster']) AND
@@ -26,7 +28,8 @@ CREATE POLICY "classes_admin_write" ON classes
   );
 
 -- 4. subjects — school_admin writes
-DROP POLICY IF EXISTS "subjects_admin_all" ON subjects;
+DROP POLICY IF EXISTS "subjects_admin_all"   ON subjects;
+DROP POLICY IF EXISTS "subjects_admin_write" ON subjects;
 CREATE POLICY "subjects_admin_write" ON subjects
   FOR ALL USING (
     has_any_role(ARRAY['school_admin','deputy_headmaster','hod']) AND
@@ -55,7 +58,8 @@ CREATE POLICY "students_admin_delete" ON students
   );
 
 -- 6. teachers — school_admin writes
-DROP POLICY IF EXISTS "teachers_admin_all" ON teachers;
+DROP POLICY IF EXISTS "teachers_admin_all"   ON teachers;
+DROP POLICY IF EXISTS "teachers_admin_write" ON teachers;
 CREATE POLICY "teachers_admin_write" ON teachers
   FOR ALL USING (
     has_any_role(ARRAY['school_admin','deputy_headmaster']) AND
@@ -63,7 +67,8 @@ CREATE POLICY "teachers_admin_write" ON teachers
   );
 
 -- 7. staff — school_admin writes
-DROP POLICY IF EXISTS "staff_admin_all" ON staff;
+DROP POLICY IF EXISTS "staff_admin_all"   ON staff;
+DROP POLICY IF EXISTS "staff_admin_write" ON staff;
 CREATE POLICY "staff_admin_write" ON staff
   FOR ALL USING (
     has_any_role(ARRAY['school_admin','deputy_headmaster']) AND
@@ -71,7 +76,8 @@ CREATE POLICY "staff_admin_write" ON staff
   );
 
 -- 8. guardians — school_admin writes
-DROP POLICY IF EXISTS "guardians_admin_all" ON guardians;
+DROP POLICY IF EXISTS "guardians_admin_all"   ON guardians;
+DROP POLICY IF EXISTS "guardians_admin_write" ON guardians;
 CREATE POLICY "guardians_admin_write" ON guardians
   FOR ALL USING (
     has_any_role(ARRAY['school_admin','deputy_headmaster']) AND
@@ -79,7 +85,8 @@ CREATE POLICY "guardians_admin_write" ON guardians
   );
 
 -- 9. academic_years — school_admin manages
-DROP POLICY IF EXISTS "academic_years_all" ON academic_years;
+DROP POLICY IF EXISTS "academic_years_all"          ON academic_years;
+DROP POLICY IF EXISTS "academic_years_admin_write"  ON academic_years;
 CREATE POLICY "academic_years_admin_write" ON academic_years
   FOR ALL USING (
     has_any_role(ARRAY['school_admin','deputy_headmaster']) AND
@@ -87,14 +94,18 @@ CREATE POLICY "academic_years_admin_write" ON academic_years
   );
 
 -- 10. terms — school_admin manages
-DROP POLICY IF EXISTS "terms_all" ON terms;
+DROP POLICY IF EXISTS "terms_all"         ON terms;
+DROP POLICY IF EXISTS "terms_admin_write" ON terms;
 CREATE POLICY "terms_admin_write" ON terms
   FOR ALL USING (has_any_role(ARRAY['school_admin','deputy_headmaster']));
 
 -- 11. user_roles — transfer from headmaster to school_admin
-DROP POLICY IF EXISTS "user_roles_headmaster_insert" ON user_roles;
-DROP POLICY IF EXISTS "user_roles_headmaster_delete" ON user_roles;
-DROP POLICY IF EXISTS "user_roles_super_admin_all"   ON user_roles;
+DROP POLICY IF EXISTS "user_roles_headmaster_insert"  ON user_roles;
+DROP POLICY IF EXISTS "user_roles_headmaster_delete"  ON user_roles;
+DROP POLICY IF EXISTS "user_roles_super_admin_all"    ON user_roles;
+DROP POLICY IF EXISTS "user_roles_admin_insert"       ON user_roles;
+DROP POLICY IF EXISTS "user_roles_admin_delete"       ON user_roles;
+DROP POLICY IF EXISTS "user_roles_super_admin_select" ON user_roles;
 
 CREATE POLICY "user_roles_admin_insert" ON user_roles
   FOR INSERT WITH CHECK (
@@ -111,10 +122,10 @@ CREATE POLICY "user_roles_super_admin_select" ON user_roles
   );
 
 -- 12. invoices/payments/expenses/fee_structures — add school_admin
-DROP POLICY IF EXISTS "invoices_admin_all"       ON invoices;
-DROP POLICY IF EXISTS "payments_admin_all"       ON payments;
-DROP POLICY IF EXISTS "expenses_admin_all"       ON expenses;
-DROP POLICY IF EXISTS "fee_structures_all"       ON fee_structures;
+DROP POLICY IF EXISTS "invoices_admin_all"   ON invoices;
+DROP POLICY IF EXISTS "payments_admin_all"   ON payments;
+DROP POLICY IF EXISTS "expenses_admin_all"   ON expenses;
+DROP POLICY IF EXISTS "fee_structures_all"   ON fee_structures;
 
 CREATE POLICY "invoices_admin_all" ON invoices
   FOR ALL USING (

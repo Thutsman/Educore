@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/form'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  SelectGroup, SelectLabel,
 } from '@/components/ui/select'
 import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -20,16 +21,62 @@ import { useAcademicYears, useClasses, useCreateClass, useUpdateClass, useDelete
 import { useTeachersForSelect, type TeacherSelectOption } from '@/features/staff/hooks/useStaff'
 import type { AcademicClass } from '../types'
 
+// ─── Level options ────────────────────────────────────────────────────────────
+
+interface LevelOption {
+  key: string
+  label: string
+  level: number
+}
+
+const PRIMARY_LEVELS: LevelOption[] = [
+  { key: 'ecd-a',   label: 'ECD A',   level: 0 },
+  { key: 'ecd-b',   label: 'ECD B',   level: 0 },
+  { key: 'grade-1', label: 'Grade 1', level: 1 },
+  { key: 'grade-2', label: 'Grade 2', level: 2 },
+  { key: 'grade-3', label: 'Grade 3', level: 3 },
+  { key: 'grade-4', label: 'Grade 4', level: 4 },
+  { key: 'grade-5', label: 'Grade 5', level: 5 },
+  { key: 'grade-6', label: 'Grade 6', level: 6 },
+  { key: 'grade-7', label: 'Grade 7', level: 7 },
+]
+
+const SECONDARY_LEVELS: LevelOption[] = [
+  { key: 'form-1', label: 'Form 1', level: 1 },
+  { key: 'form-2', label: 'Form 2', level: 2 },
+  { key: 'form-3', label: 'Form 3', level: 3 },
+  { key: 'form-4', label: 'Form 4', level: 4 },
+  { key: 'form-5', label: 'Form 5', level: 5 },
+  { key: 'form-6', label: 'Form 6', level: 6 },
+]
+
+const ALL_LEVELS = [...PRIMARY_LEVELS, ...SECONDARY_LEVELS]
+
+function levelKeyFromClass(cls: AcademicClass): string {
+  if (!cls.level && cls.level !== 0) return ''
+  const name = cls.name?.toLowerCase() ?? ''
+  if (name.startsWith('ecd a')) return 'ecd-a'
+  if (name.startsWith('ecd b')) return 'ecd-b'
+  if (name.startsWith('grade')) return `grade-${cls.level}`
+  if (name.startsWith('form'))  return `form-${cls.level}`
+  // fallback: form for secondary-range levels, grade otherwise
+  return cls.level <= 7 ? `grade-${cls.level}` : `form-${cls.level}`
+}
+
+// ─── Form modal ───────────────────────────────────────────────────────────────
+
 const schema = z.object({
-  name:             z.string().min(1, 'Required'),
+  name:             z.string().min(1, 'Class name is required'),
   academic_year_id: z.string().min(1, 'Academic year is required'),
-  level:            z.coerce.number().min(1, 'Level is required'),
-  stream: z.string().optional(),
+  level_key:        z.string().min(1, 'Level is required'),
+  stream:           z.string().optional(),
   class_teacher_id: z.string().optional(),
 })
 type FormValues = z.infer<typeof schema>
 
-function ClassFormModal({ open, onOpenChange, cls }: { open: boolean; onOpenChange: (v: boolean) => void; cls?: AcademicClass | null }) {
+function ClassFormModal({ open, onOpenChange, cls }: {
+  open: boolean; onOpenChange: (v: boolean) => void; cls?: AcademicClass | null
+}) {
   const isEdit = !!cls
   const create = useCreateClass()
   const update = useUpdateClass()
@@ -37,40 +84,51 @@ function ClassFormModal({ open, onOpenChange, cls }: { open: boolean; onOpenChan
   const currentYear = years.find(y => y.is_current) ?? years[0]
   const { data: teachers = [] } = useTeachersForSelect(open)
 
-  // Teacher already has a different homeroom class assigned
   function getTeacherWarning(t: TeacherSelectOption): string | null {
     if (!t.homeroom_class_name) return null
-    if (cls && t.homeroom_class_name === cls.name) return null // editing same class
+    if (cls && t.homeroom_class_name === cls.name) return null
     return `Already homeroom for ${t.homeroom_class_name}`
   }
+
   const form = useForm<FormValues>({
     resolver: zodResolver(schema) as Resolver<FormValues>,
-    defaultValues: {
-      name: '',
-      academic_year_id: '',
-      level: 1,
-      stream: '',
-      class_teacher_id: '__none__',
-    },
+    defaultValues: { name: '', academic_year_id: '', level_key: '', stream: '', class_teacher_id: '__none__' },
   })
 
   useEffect(() => {
     if (!open) return
     form.reset({
-      name: cls?.name ?? '',
+      name:             cls?.name ?? '',
       academic_year_id: cls?.academic_year_id ?? currentYear?.id ?? '',
-      level: cls?.level ?? 1,
-      stream: cls?.stream ?? '',
+      level_key:        cls ? levelKeyFromClass(cls) : '',
+      stream:           cls?.stream ?? '',
       class_teacher_id: cls?.class_teacher_id ?? '__none__',
     })
   }, [open, cls, currentYear?.id, form])
 
+  // Auto-suggest class name when level or stream changes (new class only)
+  const levelKey = form.watch('level_key')
+  const stream   = form.watch('stream')
+  useEffect(() => {
+    if (isEdit) return
+    const opt = ALL_LEVELS.find(o => o.key === levelKey)
+    if (!opt) return
+    const suggested = stream?.trim() ? `${opt.label} ${stream.trim()}` : opt.label
+    const current = form.getValues('name')
+    // Only auto-fill if the name is empty or was a previous auto-suggestion
+    const wasAutoFilled = ALL_LEVELS.some(o => current === o.label || current.startsWith(o.label + ' '))
+    if (!current || wasAutoFilled) {
+      form.setValue('name', suggested, { shouldValidate: false })
+    }
+  }, [levelKey, stream, isEdit, form])
+
   const onSubmit = async (v: FormValues) => {
+    const opt = ALL_LEVELS.find(o => o.key === v.level_key)
     const payload = {
-      name: v.name,
+      name:             v.name,
       academic_year_id: v.academic_year_id,
-      level: v.level,
-      stream: v.stream || undefined,
+      level:            opt?.level ?? 1,
+      stream:           v.stream || undefined,
       class_teacher_id: v.class_teacher_id === '__none__' ? undefined : (v.class_teacher_id || undefined),
     }
     const ok = isEdit && cls
@@ -85,13 +143,56 @@ function ClassFormModal({ open, onOpenChange, cls }: { open: boolean; onOpenChan
         <DialogHeader><DialogTitle>{isEdit ? 'Edit Class' : 'Add Class'}</DialogTitle></DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+
+            {/* Level + Stream side by side */}
+            <div className="grid grid-cols-2 gap-4">
+              <FormField control={form.control} name="level_key" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Level *</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger><SelectValue placeholder="Select level" /></SelectTrigger>
+                    </FormControl>
+                    <SelectContent className="max-h-72 overflow-y-auto">
+                      <SelectGroup>
+                        <SelectLabel className="text-xs font-semibold text-muted-foreground">Primary School</SelectLabel>
+                        {PRIMARY_LEVELS.map(o => (
+                          <SelectItem key={o.key} value={o.key}>{o.label}</SelectItem>
+                        ))}
+                      </SelectGroup>
+                      <SelectGroup>
+                        <SelectLabel className="text-xs font-semibold text-muted-foreground">Secondary School</SelectLabel>
+                        {SECONDARY_LEVELS.map(o => (
+                          <SelectItem key={o.key} value={o.key}>{o.label}</SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )} />
+
+              <FormField control={form.control} name="stream" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Stream / Section</FormLabel>
+                  <FormControl><Input placeholder="A, Blue, Science…" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+            </div>
+
+            {/* Class name (auto-suggested, editable) */}
             <FormField control={form.control} name="name" render={({ field }) => (
               <FormItem>
-                <FormLabel>Class Name *</FormLabel>
+                <FormLabel>
+                  Class Name *
+                  <span className="ml-1.5 text-xs font-normal text-muted-foreground">(auto-filled, editable)</span>
+                </FormLabel>
                 <FormControl><Input placeholder="Form 1A" {...field} /></FormControl>
                 <FormMessage />
               </FormItem>
             )} />
+
             <FormField control={form.control} name="academic_year_id" render={({ field }) => (
               <FormItem>
                 <FormLabel>Academic Year *</FormLabel>
@@ -108,22 +209,7 @@ function ClassFormModal({ open, onOpenChange, cls }: { open: boolean; onOpenChan
                 <FormMessage />
               </FormItem>
             )} />
-            <div className="grid grid-cols-2 gap-4">
-              <FormField control={form.control} name="level" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Level (Form) *</FormLabel>
-                  <FormControl><Input type="number" min="1" placeholder="1" {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <FormField control={form.control} name="stream" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Stream</FormLabel>
-                  <FormControl><Input placeholder="A" {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-            </div>
+
             <FormField control={form.control} name="class_teacher_id" render={({ field }) => (
               <FormItem>
                 <FormLabel>Class Teacher (Homeroom)</FormLabel>
@@ -139,9 +225,7 @@ function ClassFormModal({ open, onOpenChange, cls }: { open: boolean; onOpenChan
                         <SelectItem key={t.id} value={t.id}>
                           <span className="flex items-center justify-between gap-3 w-full">
                             <span>{t.full_name}</span>
-                            {warning && (
-                              <span className="text-xs text-amber-600 font-normal">{warning}</span>
-                            )}
+                            {warning && <span className="text-xs text-amber-600 font-normal">{warning}</span>}
                           </span>
                         </SelectItem>
                       )
@@ -151,6 +235,7 @@ function ClassFormModal({ open, onOpenChange, cls }: { open: boolean; onOpenChan
                 <FormMessage />
               </FormItem>
             )} />
+
             <DialogFooter>
               <Button variant="outline" type="button" onClick={() => onOpenChange(false)}>Cancel</Button>
               <Button type="submit" disabled={create.isPending || update.isPending}>
@@ -164,9 +249,11 @@ function ClassFormModal({ open, onOpenChange, cls }: { open: boolean; onOpenChan
   )
 }
 
+// ─── Tab ──────────────────────────────────────────────────────────────────────
+
 export function ClassesTab() {
   const { role } = useAuth()
-  const canEdit = role === 'headmaster' || role === 'deputy_headmaster'
+  const canEdit = role === 'school_admin' || role === 'headmaster' || role === 'deputy_headmaster'
   const { data: classes = [], isLoading } = useClasses()
   const deleteClass = useDeleteClass()
   const [editTarget, setEditTarget] = useState<AcademicClass | null>(null)
@@ -175,7 +262,7 @@ export function ClassesTab() {
 
   const columns: Column<AcademicClass>[] = [
     { key: 'name', header: 'Class Name', sortable: true, cell: r => <span className="font-medium">{r.name}</span> },
-    { key: 'level', header: 'Level', cell: r => r.level ? `Form ${r.level}` : '—' },
+    { key: 'level', header: 'Level', cell: r => r.level != null ? String(r.level) : '—' },
     { key: 'stream', header: 'Stream', cell: r => r.stream || '—' },
     { key: 'academic_year_name', header: 'Academic Year', cell: r => r.academic_year_name || '—' },
     { key: 'class_teacher_name', header: 'Class Teacher', cell: r => r.class_teacher_name || '—' },
@@ -210,7 +297,12 @@ export function ClassesTab() {
         data={classes}
         keyExtractor={r => r.id}
         loading={isLoading}
-        emptyState={<div className="flex flex-col items-center gap-2 py-16"><School className="h-8 w-8 text-muted-foreground/40" /><p className="text-sm text-muted-foreground">No classes yet</p></div>}
+        emptyState={
+          <div className="flex flex-col items-center gap-2 py-16">
+            <School className="h-8 w-8 text-muted-foreground/40" />
+            <p className="text-sm text-muted-foreground">No classes yet</p>
+          </div>
+        }
       />
       <ClassFormModal open={showForm} onOpenChange={v => { setShowForm(v); if (!v) setEditTarget(null) }} cls={editTarget} />
       <Dialog open={!!deleteId} onOpenChange={v => !v && setDeleteId(null)}>
@@ -219,7 +311,9 @@ export function ClassesTab() {
           <p className="text-sm text-muted-foreground">This will permanently remove the class. Enrolled students will not be deleted.</p>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteId(null)}>Cancel</Button>
-            <Button variant="destructive" disabled={deleteClass.isPending} onClick={async () => { if (deleteId) { await deleteClass.mutateAsync(deleteId); setDeleteId(null) } }}>Delete</Button>
+            <Button variant="destructive" disabled={deleteClass.isPending} onClick={async () => {
+              if (deleteId) { await deleteClass.mutateAsync(deleteId); setDeleteId(null) }
+            }}>Delete</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

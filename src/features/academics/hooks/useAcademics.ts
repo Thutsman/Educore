@@ -2,7 +2,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   getClasses, createClass, updateClass, deleteClass,
   getSubjects, createSubject, updateSubject, deleteSubject,
-  getAcademicYears, getTerms,
+  getAcademicYears, createAcademicYear, updateAcademicYear,
+  getTerms, createTerm, updateTerm, deleteTerm,
   getExams, createExam, updateExam, deleteExam,
   getExamGrades, upsertGrade, getEnrolledStudents,
 } from '../services/academics'
@@ -76,6 +77,52 @@ export function useEnrolledStudents(classId: string | null) {
     queryKey: KEY.enrolled(classId ?? ''),
     queryFn: () => getEnrolledStudents(classId!),
     enabled: !!classId,
+  })
+}
+
+export function useCreateAcademicYear() {
+  const qc = useQueryClient()
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
+  return useMutation({
+    mutationFn: (d: { label: string; start_date: string; end_date: string; is_current: boolean }) =>
+      createAcademicYear(schoolId, d),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['academics', 'years'] }),
+  })
+}
+
+export function useUpdateAcademicYear() {
+  const qc = useQueryClient()
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Parameters<typeof updateAcademicYear>[2] }) =>
+      updateAcademicYear(id, schoolId, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['academics', 'years'] }),
+  })
+}
+
+export function useCreateTerm() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: createTerm,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['academics', 'terms'] }),
+  })
+}
+
+export function useUpdateTerm() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Parameters<typeof updateTerm>[1] }) => updateTerm(id, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['academics', 'terms'] }),
+  })
+}
+
+export function useDeleteTerm() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: deleteTerm,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['academics', 'terms'] }),
   })
 }
 

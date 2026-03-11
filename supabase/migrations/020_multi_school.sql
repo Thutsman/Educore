@@ -110,124 +110,154 @@ END $$;
 
 -- user_roles
 ALTER TABLE user_roles ALTER COLUMN school_id SET NOT NULL;
+ALTER TABLE user_roles DROP CONSTRAINT IF EXISTS user_roles_school_id_fkey;
 ALTER TABLE user_roles ADD CONSTRAINT user_roles_school_id_fkey FOREIGN KEY (school_id) REFERENCES schools(id);
 
 -- academic_years
 ALTER TABLE academic_years ALTER COLUMN school_id SET NOT NULL;
+ALTER TABLE academic_years DROP CONSTRAINT IF EXISTS academic_years_school_id_fkey;
 ALTER TABLE academic_years ADD CONSTRAINT academic_years_school_id_fkey FOREIGN KEY (school_id) REFERENCES schools(id);
 
 -- departments
 ALTER TABLE departments ALTER COLUMN school_id SET NOT NULL;
+ALTER TABLE departments DROP CONSTRAINT IF EXISTS departments_school_id_fkey;
 ALTER TABLE departments ADD CONSTRAINT departments_school_id_fkey FOREIGN KEY (school_id) REFERENCES schools(id);
 
 -- classes
 ALTER TABLE classes ALTER COLUMN school_id SET NOT NULL;
+ALTER TABLE classes DROP CONSTRAINT IF EXISTS classes_school_id_fkey;
 ALTER TABLE classes ADD CONSTRAINT classes_school_id_fkey FOREIGN KEY (school_id) REFERENCES schools(id);
 
 -- subjects
 ALTER TABLE subjects ALTER COLUMN school_id SET NOT NULL;
+ALTER TABLE subjects DROP CONSTRAINT IF EXISTS subjects_school_id_fkey;
 ALTER TABLE subjects ADD CONSTRAINT subjects_school_id_fkey FOREIGN KEY (school_id) REFERENCES schools(id);
 
 -- students
 ALTER TABLE students ALTER COLUMN school_id SET NOT NULL;
+ALTER TABLE students DROP CONSTRAINT IF EXISTS students_school_id_fkey;
 ALTER TABLE students ADD CONSTRAINT students_school_id_fkey FOREIGN KEY (school_id) REFERENCES schools(id);
 
 -- teachers
 ALTER TABLE teachers ALTER COLUMN school_id SET NOT NULL;
+ALTER TABLE teachers DROP CONSTRAINT IF EXISTS teachers_school_id_fkey;
 ALTER TABLE teachers ADD CONSTRAINT teachers_school_id_fkey FOREIGN KEY (school_id) REFERENCES schools(id);
 
 -- staff
 ALTER TABLE staff ALTER COLUMN school_id SET NOT NULL;
+ALTER TABLE staff DROP CONSTRAINT IF EXISTS staff_school_id_fkey;
 ALTER TABLE staff ADD CONSTRAINT staff_school_id_fkey FOREIGN KEY (school_id) REFERENCES schools(id);
 
 -- guardians
 ALTER TABLE guardians ALTER COLUMN school_id SET NOT NULL;
+ALTER TABLE guardians DROP CONSTRAINT IF EXISTS guardians_school_id_fkey;
 ALTER TABLE guardians ADD CONSTRAINT guardians_school_id_fkey FOREIGN KEY (school_id) REFERENCES schools(id);
 
 -- attendance_records
 ALTER TABLE attendance_records ALTER COLUMN school_id SET NOT NULL;
+ALTER TABLE attendance_records DROP CONSTRAINT IF EXISTS attendance_records_school_id_fkey;
 ALTER TABLE attendance_records ADD CONSTRAINT attendance_records_school_id_fkey FOREIGN KEY (school_id) REFERENCES schools(id);
 
 -- invoices
 ALTER TABLE invoices ALTER COLUMN school_id SET NOT NULL;
+ALTER TABLE invoices DROP CONSTRAINT IF EXISTS invoices_school_id_fkey;
 ALTER TABLE invoices ADD CONSTRAINT invoices_school_id_fkey FOREIGN KEY (school_id) REFERENCES schools(id);
 
 -- payments
 ALTER TABLE payments ALTER COLUMN school_id SET NOT NULL;
+ALTER TABLE payments DROP CONSTRAINT IF EXISTS payments_school_id_fkey;
 ALTER TABLE payments ADD CONSTRAINT payments_school_id_fkey FOREIGN KEY (school_id) REFERENCES schools(id);
 
 -- expenses
 ALTER TABLE expenses ALTER COLUMN school_id SET NOT NULL;
+ALTER TABLE expenses DROP CONSTRAINT IF EXISTS expenses_school_id_fkey;
 ALTER TABLE expenses ADD CONSTRAINT expenses_school_id_fkey FOREIGN KEY (school_id) REFERENCES schools(id);
 
 -- fee_structures
 ALTER TABLE fee_structures ALTER COLUMN school_id SET NOT NULL;
+ALTER TABLE fee_structures DROP CONSTRAINT IF EXISTS fee_structures_school_id_fkey;
 ALTER TABLE fee_structures ADD CONSTRAINT fee_structures_school_id_fkey FOREIGN KEY (school_id) REFERENCES schools(id);
 
 -- payroll
 ALTER TABLE payroll ALTER COLUMN school_id SET NOT NULL;
+ALTER TABLE payroll DROP CONSTRAINT IF EXISTS payroll_school_id_fkey;
 ALTER TABLE payroll ADD CONSTRAINT payroll_school_id_fkey FOREIGN KEY (school_id) REFERENCES schools(id);
 
 -- announcements
 ALTER TABLE announcements ALTER COLUMN school_id SET NOT NULL;
+ALTER TABLE announcements DROP CONSTRAINT IF EXISTS announcements_school_id_fkey;
 ALTER TABLE announcements ADD CONSTRAINT announcements_school_id_fkey FOREIGN KEY (school_id) REFERENCES schools(id);
 
 -- messages
 ALTER TABLE messages ALTER COLUMN school_id SET NOT NULL;
+ALTER TABLE messages DROP CONSTRAINT IF EXISTS messages_school_id_fkey;
 ALTER TABLE messages ADD CONSTRAINT messages_school_id_fkey FOREIGN KEY (school_id) REFERENCES schools(id);
 
 -- notifications
 ALTER TABLE notifications ALTER COLUMN school_id SET NOT NULL;
+ALTER TABLE notifications DROP CONSTRAINT IF EXISTS notifications_school_id_fkey;
 ALTER TABLE notifications ADD CONSTRAINT notifications_school_id_fkey FOREIGN KEY (school_id) REFERENCES schools(id);
 
 -- exams
 ALTER TABLE exams ALTER COLUMN school_id SET NOT NULL;
+ALTER TABLE exams DROP CONSTRAINT IF EXISTS exams_school_id_fkey;
 ALTER TABLE exams ADD CONSTRAINT exams_school_id_fkey FOREIGN KEY (school_id) REFERENCES schools(id);
 
 -- grades
 ALTER TABLE grades ALTER COLUMN school_id SET NOT NULL;
+ALTER TABLE grades DROP CONSTRAINT IF EXISTS grades_school_id_fkey;
 ALTER TABLE grades ADD CONSTRAINT grades_school_id_fkey FOREIGN KEY (school_id) REFERENCES schools(id);
 
 -- report_cards
 ALTER TABLE report_cards ALTER COLUMN school_id SET NOT NULL;
+ALTER TABLE report_cards DROP CONSTRAINT IF EXISTS report_cards_school_id_fkey;
 ALTER TABLE report_cards ADD CONSTRAINT report_cards_school_id_fkey FOREIGN KEY (school_id) REFERENCES schools(id);
 
 -- enrollments
 ALTER TABLE enrollments ALTER COLUMN school_id SET NOT NULL;
+ALTER TABLE enrollments DROP CONSTRAINT IF EXISTS enrollments_school_id_fkey;
 ALTER TABLE enrollments ADD CONSTRAINT enrollments_school_id_fkey FOREIGN KEY (school_id) REFERENCES schools(id);
 
 -- assets
 ALTER TABLE assets ALTER COLUMN school_id SET NOT NULL;
+ALTER TABLE assets DROP CONSTRAINT IF EXISTS assets_school_id_fkey;
 ALTER TABLE assets ADD CONSTRAINT assets_school_id_fkey FOREIGN KEY (school_id) REFERENCES schools(id);
 
 -- maintenance_logs
 ALTER TABLE maintenance_logs ALTER COLUMN school_id SET NOT NULL;
+ALTER TABLE maintenance_logs DROP CONSTRAINT IF EXISTS maintenance_logs_school_id_fkey;
 ALTER TABLE maintenance_logs ADD CONSTRAINT maintenance_logs_school_id_fkey FOREIGN KEY (school_id) REFERENCES schools(id);
 
 -- ── 11. Drop old unique constraints and add per-school ones ───────────────────
 
 -- students
 ALTER TABLE students DROP CONSTRAINT IF EXISTS students_admission_no_key;
+ALTER TABLE students DROP CONSTRAINT IF EXISTS students_school_admission_no_key;
 ALTER TABLE students ADD CONSTRAINT students_school_admission_no_key UNIQUE (school_id, admission_no);
 
 -- subjects
 ALTER TABLE subjects DROP CONSTRAINT IF EXISTS subjects_code_key;
+ALTER TABLE subjects DROP CONSTRAINT IF EXISTS subjects_school_code_key;
 ALTER TABLE subjects ADD CONSTRAINT subjects_school_code_key UNIQUE (school_id, code);
 
 -- departments
 ALTER TABLE departments DROP CONSTRAINT IF EXISTS departments_code_key;
+ALTER TABLE departments DROP CONSTRAINT IF EXISTS departments_school_code_key;
 ALTER TABLE departments ADD CONSTRAINT departments_school_code_key UNIQUE (school_id, code);
 
 -- teachers
 ALTER TABLE teachers DROP CONSTRAINT IF EXISTS teachers_employee_no_key;
+ALTER TABLE teachers DROP CONSTRAINT IF EXISTS teachers_school_employee_no_key;
 ALTER TABLE teachers ADD CONSTRAINT teachers_school_employee_no_key UNIQUE (school_id, employee_no);
 
 -- staff
 ALTER TABLE staff DROP CONSTRAINT IF EXISTS staff_employee_no_key;
+ALTER TABLE staff DROP CONSTRAINT IF EXISTS staff_school_employee_no_key;
 ALTER TABLE staff ADD CONSTRAINT staff_school_employee_no_key UNIQUE (school_id, employee_no);
 
 -- user_roles
 ALTER TABLE user_roles DROP CONSTRAINT IF EXISTS user_roles_unique;
+ALTER TABLE user_roles DROP CONSTRAINT IF EXISTS user_roles_school_unique;
 ALTER TABLE user_roles ADD CONSTRAINT user_roles_school_unique UNIQUE (user_id, role_id, school_id);
 
 -- ── 12. Per-school academic_years partial unique index ────────────────────────
@@ -263,6 +293,7 @@ CREATE POLICY "schools_all" ON schools
 DROP POLICY IF EXISTS "departments_admin_all"     ON departments;
 DROP POLICY IF EXISTS "departments_select"        ON departments;
 DROP POLICY IF EXISTS "departments_staff_select"  ON departments;
+DROP POLICY IF EXISTS "departments_school_admin_all" ON departments;
 
 CREATE POLICY "departments_select" ON departments
   FOR SELECT USING (
@@ -279,6 +310,7 @@ CREATE POLICY "departments_admin_all" ON departments
 DROP POLICY IF EXISTS "classes_admin_all"    ON classes;
 DROP POLICY IF EXISTS "classes_select"       ON classes;
 DROP POLICY IF EXISTS "classes_staff_select" ON classes;
+DROP POLICY IF EXISTS "classes_school_admin_all" ON classes;
 
 CREATE POLICY "classes_select" ON classes
   FOR SELECT USING (
@@ -295,6 +327,7 @@ CREATE POLICY "classes_admin_all" ON classes
 DROP POLICY IF EXISTS "subjects_admin_all"    ON subjects;
 DROP POLICY IF EXISTS "subjects_select"       ON subjects;
 DROP POLICY IF EXISTS "subjects_staff_select" ON subjects;
+DROP POLICY IF EXISTS "subjects_school_admin_all" ON subjects;
 
 CREATE POLICY "subjects_select" ON subjects
   FOR SELECT USING (
@@ -402,6 +435,7 @@ DROP POLICY IF EXISTS "attendance_teacher_select" ON attendance_records;
 DROP POLICY IF EXISTS "attendance_teacher_upsert" ON attendance_records;
 DROP POLICY IF EXISTS "attendance_select"         ON attendance_records;
 DROP POLICY IF EXISTS "attendance_upsert"         ON attendance_records;
+DROP POLICY IF EXISTS "attendance_update"         ON attendance_records;
 
 CREATE POLICY "attendance_select" ON attendance_records
   FOR SELECT USING (

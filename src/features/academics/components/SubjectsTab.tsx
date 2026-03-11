@@ -82,7 +82,7 @@ function SubjectFormModal({ open, onOpenChange, subject }: { open: boolean; onOp
 
 export function SubjectsTab() {
   const { role } = useAuth()
-  const canEdit = role === 'headmaster' || role === 'deputy_headmaster' || role === 'hod'
+  const canEdit = role === 'school_admin' || role === 'headmaster' || role === 'deputy_headmaster' || role === 'hod'
   const { data: subjects = [], isLoading } = useSubjects()
   const deleteSubject = useDeleteSubject()
   const [editTarget, setEditTarget] = useState<Subject | null>(null)
