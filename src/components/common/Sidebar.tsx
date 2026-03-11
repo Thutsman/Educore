@@ -23,6 +23,7 @@ import {
   MessageCircle,
   FileText,
   LineChart,
+  ShieldCheck,
 } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -33,6 +34,7 @@ import { cn } from '@/utils/cn'
 import { useAuth } from '@/hooks/useAuth'
 import { useSidebar } from '@/hooks/useSidebar'
 import { getInitials } from '@/utils/format'
+import { SchoolSwitcher } from '@/components/common/SchoolSwitcher'
 import type { AppRole } from '@/types'
 
 // ─── Nav structure ──────────────────────────────────────────────────────────
@@ -51,6 +53,17 @@ interface NavGroup {
 }
 
 const NAV_GROUPS: NavGroup[] = [
+  {
+    label: 'Platform',
+    items: [
+      {
+        label: 'Admin Panel',
+        icon: ShieldCheck,
+        href: '/admin',
+        allowedRoles: ['super_admin'],
+      },
+    ],
+  },
   {
     label: 'Overview',
     items: [
@@ -296,6 +309,12 @@ function SidebarContent({
             </div>
           )}
         </div>
+
+        {/* ── School Switcher ── */}
+        <div className="px-2 py-1">
+          <SchoolSwitcher collapsed={collapsed} />
+        </div>
+        <Separator className="bg-sidebar-border" />
 
         {/* ── Navigation ── */}
         <ScrollArea className="flex-1 py-3">

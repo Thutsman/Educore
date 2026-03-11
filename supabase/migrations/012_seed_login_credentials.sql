@@ -105,13 +105,16 @@ BEGIN
       NOW()
     );
 
-    -- 3. Assign role (profile created by trigger; user_roles needs profile.id = auth user id)
-    INSERT INTO user_roles (user_id, role_id)
-    VALUES (
+    -- 3. Assign role scoped to the default school (school_id is NOT NULL after migration 020)
+    INSERT INTO user_roles (user_id, role_id, school_id)
+    SELECT
       v_user_id,
-      (SELECT id FROM roles WHERE name = v_role_name LIMIT 1)
-    )
-    ON CONFLICT (user_id, role_id) DO NOTHING;
+      r.id,
+      s.id
+    FROM roles r, schools s
+    WHERE r.name = v_role_name
+      AND s.slug  = 'default-school'
+    ON CONFLICT DO NOTHING;
 
     RAISE NOTICE 'Created user: % with role %', v_email, v_role_name;
   END LOOP;

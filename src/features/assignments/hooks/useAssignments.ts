@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useSchool } from '@/context/SchoolContext'
 import {
   getAssignments,
   getAssignmentSubmissions,
@@ -15,15 +16,18 @@ import {
 } from '../services/assignments'
 
 const KEY = {
-  list: (f?: AssignmentFilters) => ['assignments', 'list', f] as const,
+  list: (schoolId: string, f?: AssignmentFilters) => ['assignments', 'list', schoolId, f] as const,
   submissions: (id: string) => ['assignments', 'submissions', id] as const,
-  enrolled: (classId: string) => ['assignments', 'enrolled', classId] as const,
+  enrolled: (schoolId: string, classId: string) => ['assignments', 'enrolled', schoolId, classId] as const,
 }
 
 export function useAssignments(filters?: AssignmentFilters) {
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
   return useQuery({
-    queryKey: KEY.list(filters),
-    queryFn: () => getAssignments(filters),
+    queryKey: KEY.list(schoolId, filters),
+    queryFn: () => getAssignments(schoolId, filters),
+    enabled: !!schoolId,
   })
 }
 
@@ -36,17 +40,21 @@ export function useAssignmentSubmissions(assignmentId: string | null) {
 }
 
 export function useEnrolledStudentsForAssignment(classId: string | null) {
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
   return useQuery({
-    queryKey: KEY.enrolled(classId ?? ''),
-    queryFn: () => getEnrolledStudentsForAssignment(classId!),
-    enabled: !!classId,
+    queryKey: KEY.enrolled(schoolId, classId ?? ''),
+    queryFn: () => getEnrolledStudentsForAssignment(schoolId, classId!),
+    enabled: !!classId && !!schoolId,
   })
 }
 
 export function useCreateAssignment(teacherId: string | undefined) {
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (input: CreateAssignmentInput) => createAssignment(input, teacherId!),
+    mutationFn: (input: CreateAssignmentInput) => createAssignment(input, teacherId!, schoolId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['assignments'] }),
   })
 }

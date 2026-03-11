@@ -3,10 +3,11 @@ import type { Announcement, AnnouncementAudience } from '../types'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = supabase as any
 
-export async function getAnnouncements(): Promise<Announcement[]> {
+export async function getAnnouncements(schoolId: string): Promise<Announcement[]> {
   const { data, error } = await supabase
     .from('announcements')
     .select('id, title, body, audience, author_id, created_at, is_pinned, author:profiles(full_name)')
+    .eq('school_id', schoolId)
     .order('is_pinned', { ascending: false })
     .order('created_at', { ascending: false })
   if (error || !data) return []
@@ -21,10 +22,11 @@ export async function getAnnouncements(): Promise<Announcement[]> {
   }))
 }
 
-export async function createAnnouncement(d: { title: string; body: string; audience: AnnouncementAudience; is_pinned?: boolean }): Promise<boolean> {
+export async function createAnnouncement(schoolId: string, d: { title: string; body: string; audience: AnnouncementAudience; is_pinned?: boolean }): Promise<boolean> {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return false
   const { error } = await db.from('announcements').insert({
+    school_id: schoolId,
     title: d.title, body: d.body, audience: d.audience,
     is_pinned: d.is_pinned ?? false, author_id: user.id,
   })

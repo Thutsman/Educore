@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useSchool } from '@/context/SchoolContext'
 import {
   getAssessments,
   getAssessmentMarks,
@@ -13,16 +14,19 @@ import {
 } from '../services/assessments'
 
 const KEY = {
-  list: (f?: AssessmentFilters) => ['assessments', 'list', f] as const,
+  list: (schoolId: string, f?: AssessmentFilters) => ['assessments', 'list', schoolId, f] as const,
   marks: (id: string) => ['assessments', 'marks', id] as const,
-  enrolled: (classId: string) => ['assessments', 'enrolled', classId] as const,
-  classAverages: (classId: string) => ['assessments', 'averages', classId] as const,
+  enrolled: (schoolId: string, classId: string) => ['assessments', 'enrolled', schoolId, classId] as const,
+  classAverages: (schoolId: string, classId: string) => ['assessments', 'averages', schoolId, classId] as const,
 }
 
 export function useAssessments(filters?: AssessmentFilters) {
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
   return useQuery({
-    queryKey: KEY.list(filters),
-    queryFn: () => getAssessments(filters),
+    queryKey: KEY.list(schoolId, filters),
+    queryFn: () => getAssessments(schoolId, filters),
+    enabled: !!schoolId,
   })
 }
 
@@ -35,25 +39,31 @@ export function useAssessmentMarks(assessmentId: string | null) {
 }
 
 export function useEnrolledStudents(classId: string | null) {
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
   return useQuery({
-    queryKey: KEY.enrolled(classId ?? ''),
-    queryFn: () => getEnrolledStudents(classId!),
-    enabled: !!classId,
+    queryKey: KEY.enrolled(schoolId, classId ?? ''),
+    queryFn: () => getEnrolledStudents(schoolId, classId!),
+    enabled: !!classId && !!schoolId,
   })
 }
 
 export function useClassAssessmentAverages(classId: string | null) {
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
   return useQuery({
-    queryKey: KEY.classAverages(classId ?? ''),
-    queryFn: () => getClassAssessmentAverages(classId!),
-    enabled: !!classId,
+    queryKey: KEY.classAverages(schoolId, classId ?? ''),
+    queryFn: () => getClassAssessmentAverages(schoolId, classId!),
+    enabled: !!classId && !!schoolId,
   })
 }
 
 export function useCreateAssessment(teacherId: string | undefined) {
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (input: CreateAssessmentInput) => createAssessment(input, teacherId!),
+    mutationFn: (input: CreateAssessmentInput) => createAssessment(input, teacherId!, schoolId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['assessments'] }),
   })
 }

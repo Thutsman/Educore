@@ -16,6 +16,7 @@ export type AppRole =
   | 'non_teaching_staff'
   | 'parent'
   | 'student'
+  | 'super_admin'
 
 export type Json =
   | string

@@ -4,7 +4,7 @@ import type { ParentMessage } from '../types'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = supabase as any
 
-export async function getParentMessagesSentByTeacher(): Promise<ParentMessage[]> {
+export async function getParentMessagesSentByTeacher(schoolId: string): Promise<ParentMessage[]> {
   const { data, error } = await supabase
     .from('parent_messages')
     .select(`
@@ -12,6 +12,7 @@ export async function getParentMessagesSentByTeacher(): Promise<ParentMessage[]>
       parent:guardians(full_name),
       student:students(full_name)
     `)
+    .eq('school_id', schoolId)
     .order('created_at', { ascending: false })
 
   if (error || !data) return []
@@ -26,7 +27,7 @@ export async function getParentMessagesSentByTeacher(): Promise<ParentMessage[]>
   })
 }
 
-export async function getMessagesToParent(parentId: string): Promise<ParentMessage[]> {
+export async function getMessagesToParent(schoolId: string, parentId: string): Promise<ParentMessage[]> {
   const { data, error } = await supabase
     .from('parent_messages')
     .select(`
@@ -34,6 +35,7 @@ export async function getMessagesToParent(parentId: string): Promise<ParentMessa
       parent:guardians(full_name),
       student:students(full_name)
     `)
+    .eq('school_id', schoolId)
     .eq('parent_id', parentId)
     .order('created_at', { ascending: false })
   if (error || !data) return []
@@ -53,10 +55,11 @@ export interface GuardianWithStudents {
   students: { id: string; full_name: string }[]
 }
 
-export async function getGuardiansWithStudentsForTeacher(): Promise<GuardianWithStudents[]> {
+export async function getGuardiansWithStudentsForTeacher(schoolId: string): Promise<GuardianWithStudents[]> {
   const { data: students, error: se } = await supabase
     .from('students')
     .select('id, full_name, guardian_id, guardian2_id, class_id')
+    .eq('school_id', schoolId)
     .eq('status', 'active')
     .is('deleted_at', null)
   if (se || !students) return []
@@ -86,6 +89,7 @@ export async function getGuardiansWithStudentsForTeacher(): Promise<GuardianWith
 }
 
 export async function createParentMessage(
+  schoolId: string,
   teacherId: string,
   parentId: string,
   studentId: string,
@@ -93,6 +97,7 @@ export async function createParentMessage(
   message: string
 ): Promise<boolean> {
   const { error } = await db.from('parent_messages').insert({
+    school_id: schoolId,
     teacher_id: teacherId,
     parent_id: parentId,
     student_id: studentId,

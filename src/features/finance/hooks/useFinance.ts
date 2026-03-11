@@ -6,17 +6,24 @@ import {
   getStudentsForInvoice,
 } from '../services/finance'
 import type { PaymentFormData, ExpenseFormData, InvoiceFormData } from '../types'
+import { useSchool } from '@/context/SchoolContext'
 
 const KEY = {
-  invoices: (f?: object) => ['finance', 'invoices', f] as const,
+  invoices: (schoolId: string, f?: object) => ['finance', 'invoices', schoolId, f] as const,
   invoice:  (id: string) => ['finance', 'invoice', id] as const,
   payments: (invoiceId: string) => ['finance', 'payments', invoiceId] as const,
-  expenses: (f?: object) => ['finance', 'expenses', f] as const,
-  students: ['finance', 'students'] as const,
+  expenses: (schoolId: string, f?: object) => ['finance', 'expenses', schoolId, f] as const,
+  students: (schoolId: string) => ['finance', 'students', schoolId] as const,
 }
 
 export function useInvoices(filters?: { status?: string; search?: string }) {
-  return useQuery({ queryKey: KEY.invoices(filters), queryFn: () => getInvoices(filters) })
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
+  return useQuery({
+    queryKey: KEY.invoices(schoolId, filters),
+    queryFn: () => getInvoices(schoolId, filters),
+    enabled: !!schoolId,
+  })
 }
 
 export function useInvoice(id: string | null) {
@@ -36,11 +43,24 @@ export function usePaymentsForInvoice(invoiceId: string | null) {
 }
 
 export function useExpenses(filters?: { category?: string; search?: string }) {
-  return useQuery({ queryKey: KEY.expenses(filters), queryFn: () => getExpenses(filters) })
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
+  return useQuery({
+    queryKey: KEY.expenses(schoolId, filters),
+    queryFn: () => getExpenses(schoolId, filters),
+    enabled: !!schoolId,
+  })
 }
 
 export function useStudentsForInvoice() {
-  return useQuery({ queryKey: KEY.students, queryFn: getStudentsForInvoice, staleTime: 5 * 60 * 1000 })
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
+  return useQuery({
+    queryKey: KEY.students(schoolId),
+    queryFn: () => getStudentsForInvoice(schoolId),
+    enabled: !!schoolId,
+    staleTime: 5 * 60 * 1000,
+  })
 }
 
 export function useCreateInvoice() {
@@ -73,8 +93,10 @@ export function useRecordPayment() {
 
 export function useCreateExpense() {
   const qc = useQueryClient()
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
   return useMutation({
-    mutationFn: (d: ExpenseFormData) => createExpense(d),
+    mutationFn: (d: ExpenseFormData) => createExpense(schoolId, d),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['finance', 'expenses'] }),
   })
 }

@@ -5,12 +5,14 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { Toaster } from 'sonner'
 import { queryClient } from '@/lib/query-client'
 import { AuthProvider } from '@/context/AuthContext'
+import { SchoolProvider } from '@/context/SchoolContext'
 import { useAuth } from '@/hooks/useAuth'
 import { ProtectedRoute } from '@/features/auth/components/ProtectedRoute'
 import { AppLayout } from '@/layouts/AppLayout'
 import { AuthLayout } from '@/layouts/AuthLayout'
 import { LoginPage } from '@/pages/LoginPage'
 import { UnauthorizedPage } from '@/pages/UnauthorizedPage'
+import { SelectSchoolPage } from '@/pages/SelectSchoolPage'
 import type { AppRole } from '@/types'
 
 // ── Lazy-loaded auth / settings pages ────────────────────────────────────────
@@ -98,6 +100,9 @@ const TermReportsPage = lazy(() =>
 const ClassAnalyticsPage = lazy(() =>
   import('@/features/class-analytics').then(m => ({ default: m.ClassAnalyticsPage }))
 )
+const SuperAdminPage = lazy(() =>
+  import('@/features/super-admin').then(m => ({ default: m.SuperAdminPage }))
+)
 
 // ── Role → dashboard path mapping ────────────────────────────────────────────
 const ROLE_DASHBOARD: Record<AppRole, string> = {
@@ -110,6 +115,7 @@ const ROLE_DASHBOARD: Record<AppRole, string> = {
   non_teaching_staff: '/dashboard/staff',
   parent:             '/dashboard/parent',
   student:            '/dashboard/student',
+  super_admin:        '/admin',
 }
 
 function DashboardRedirect() {
@@ -140,6 +146,7 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
       <BrowserRouter>
+        <SchoolProvider>
         <Suspense fallback={<PageLoader />}>
           <Routes>
 
@@ -150,6 +157,13 @@ export default function App() {
               <Route path="/reset-password" element={<ResetPasswordPage />} />
             </Route>
             <Route path="/unauthorized" element={<UnauthorizedPage />} />
+
+            {/* ── Select school ── */}
+            <Route element={<ProtectedRoute />}>
+              <Route element={<AuthLayout />}>
+                <Route path="/select-school" element={<SelectSchoolPage />} />
+              </Route>
+            </Route>
 
             {/* ── Protected: all authenticated roles ── */}
             <Route element={<ProtectedRoute />}>
@@ -248,6 +262,11 @@ export default function App() {
                   <Route path="/analytics/*" element={<AnalyticsPage />} />
                 </Route>
 
+                {/* ── Super Admin ── */}
+                <Route element={<ProtectedRoute allowedRoles={['super_admin']} />}>
+                  <Route path="/admin" element={<SuperAdminPage />} />
+                </Route>
+
                 {/* ── Settings ── */}
                 <Route path="/settings/*" element={<SettingsPage />} />
                 <Route path="/users/*" element={
@@ -265,6 +284,7 @@ export default function App() {
 
           </Routes>
         </Suspense>
+        </SchoolProvider>
       </BrowserRouter>
       </AuthProvider>
 

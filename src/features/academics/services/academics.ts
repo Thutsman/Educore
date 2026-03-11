@@ -15,7 +15,7 @@ function getLetterGrade(pct: number): string {
 
 // ─── Classes ─────────────────────────────────────────────────────────────────
 
-export async function getClasses(): Promise<AcademicClass[]> {
+export async function getClasses(schoolId: string): Promise<AcademicClass[]> {
   const { data, error } = await supabase
     .from('classes')
     .select(`
@@ -23,6 +23,7 @@ export async function getClasses(): Promise<AcademicClass[]> {
       academic_year:academic_years(label),
       class_teacher:teachers(id, profile:profiles(full_name))
     `)
+    .eq('school_id', schoolId)
     .is('deleted_at', null)
     .order('name')
   if (error || !data) return []
@@ -45,13 +46,14 @@ export async function getClasses(): Promise<AcademicClass[]> {
   }))
 }
 
-export async function createClass(d: { name: string; level: number; stream?: string; academic_year_id: string; class_teacher_id?: string }): Promise<boolean> {
+export async function createClass(schoolId: string, d: { name: string; level: number; stream?: string; academic_year_id: string; class_teacher_id?: string }): Promise<boolean> {
   const { error } = await db.from('classes').insert({
     name: d.name,
     grade_level: d.level,
     stream: d.stream || null,
     academic_year_id: d.academic_year_id,
     class_teacher_id: d.class_teacher_id || null,
+    school_id: schoolId,
   })
   return !error
 }
@@ -78,10 +80,11 @@ export async function deleteClass(id: string): Promise<boolean> {
 
 // ─── Subjects ────────────────────────────────────────────────────────────────
 
-export async function getSubjects(): Promise<Subject[]> {
+export async function getSubjects(schoolId: string): Promise<Subject[]> {
   const { data, error } = await supabase
     .from('subjects')
     .select('id, name, code, description, department_id')
+    .eq('school_id', schoolId)
     .is('deleted_at', null)
     .order('name')
   if (error || !data) return []
@@ -89,8 +92,8 @@ export async function getSubjects(): Promise<Subject[]> {
   return (data as unknown as Raw[]).map(r => ({ ...r }))
 }
 
-export async function createSubject(d: { name: string; code: string; description?: string }): Promise<boolean> {
-  const { error } = await db.from('subjects').insert({ name: d.name, code: d.code, description: d.description || null })
+export async function createSubject(schoolId: string, d: { name: string; code: string; description?: string }): Promise<boolean> {
+  const { error } = await db.from('subjects').insert({ name: d.name, code: d.code, description: d.description || null, school_id: schoolId })
   return !error
 }
 
@@ -106,8 +109,8 @@ export async function deleteSubject(id: string): Promise<boolean> {
 
 // ─── Academic Years & Terms ───────────────────────────────────────────────────
 
-export async function getAcademicYears(): Promise<AcademicYear[]> {
-  const { data, error } = await supabase.from('academic_years').select('id, label, start_date, end_date, is_current').order('start_date', { ascending: false })
+export async function getAcademicYears(schoolId: string): Promise<AcademicYear[]> {
+  const { data, error } = await supabase.from('academic_years').select('id, label, start_date, end_date, is_current').eq('school_id', schoolId).order('start_date', { ascending: false })
   if (error || !data) return []
   type Raw = { id: string; label: string; start_date: string; end_date: string; is_current: boolean }
   return (data as unknown as Raw[]).map(r => ({ id: r.id, name: r.label, start_date: r.start_date, end_date: r.end_date, is_current: r.is_current }))
@@ -124,10 +127,11 @@ export async function getTerms(academicYearId?: string): Promise<Term[]> {
 
 // ─── Exams ───────────────────────────────────────────────────────────────────
 
-export async function getExams(filters?: { classId?: string; subjectId?: string; termId?: string }): Promise<Exam[]> {
+export async function getExams(schoolId: string, filters?: { classId?: string; subjectId?: string; termId?: string }): Promise<Exam[]> {
   let q = supabase
     .from('exams')
     .select('id, name, subject_id, class_id, term_id, exam_date, total_marks, description, subject:subjects(name), class:classes(name), term:terms(name)')
+    .eq('school_id', schoolId)
     .order('exam_date', { ascending: false })
 
   if (filters?.classId) q = q.eq('class_id', filters.classId)
@@ -152,11 +156,12 @@ export async function getExams(filters?: { classId?: string; subjectId?: string;
   }))
 }
 
-export async function createExam(d: { name: string; subject_id: string; class_id: string; term_id?: string; exam_date?: string; total_marks: number; description?: string }): Promise<boolean> {
+export async function createExam(schoolId: string, d: { name: string; subject_id: string; class_id: string; term_id?: string; exam_date?: string; total_marks: number; description?: string }): Promise<boolean> {
   const { error } = await db.from('exams').insert({
     name: d.name, subject_id: d.subject_id, class_id: d.class_id,
     term_id: d.term_id || null, exam_date: d.exam_date || null,
     total_marks: d.total_marks, description: d.description || null,
+    school_id: schoolId,
   })
   return !error
 }

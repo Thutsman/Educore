@@ -46,8 +46,7 @@ export function TeacherAllocationsModal({ open, onOpenChange, teacherId, teacher
     const ok = await addAllocation.mutateAsync({ teacherId, subjectId, classId })
     if (ok) {
       toast.success('Allocation added.')
-      setSubjectId('')
-      setClassId('')
+      setClassId('')   // keep subject selected so next class can be added instantly
     } else {
       toast.error('Failed to add allocation. It may already exist for this year.')
     }
@@ -96,13 +95,18 @@ export function TeacherAllocationsModal({ open, onOpenChange, teacherId, teacher
 
         {/* Add allocation form */}
         <div className="space-y-2">
-          <h4 className="text-sm font-semibold">Add Allocation</h4>
+          <div className="flex items-baseline justify-between">
+            <h4 className="text-sm font-semibold">Add Allocation</h4>
+            <p className="text-xs text-muted-foreground">
+              Select a subject + class, then press <strong>+</strong>. Repeat for each class.
+            </p>
+          </div>
           <div className="flex gap-2">
             <Select value={subjectId} onValueChange={setSubjectId}>
               <SelectTrigger className="flex-1">
                 <SelectValue placeholder="Subject" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent position="popper" side="bottom" sideOffset={4}>
                 {subjects.map(s => (
                   <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                 ))}
@@ -113,7 +117,7 @@ export function TeacherAllocationsModal({ open, onOpenChange, teacherId, teacher
               <SelectTrigger className="flex-1">
                 <SelectValue placeholder="Class" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent position="popper" side="bottom" sideOffset={4}>
                 {classes.map(c => (
                   <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                 ))}
@@ -125,6 +129,7 @@ export function TeacherAllocationsModal({ open, onOpenChange, teacherId, teacher
               onClick={handleAdd}
               disabled={!subjectId || !classId || !currentYear || addAllocation.isPending}
               className="shrink-0"
+              title="Add this subject-class pair"
             >
               <Plus className="h-4 w-4" />
             </Button>

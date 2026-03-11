@@ -16,7 +16,7 @@ function createOnboardingClient() {
   })
 }
 
-export async function getTeachers(): Promise<Teacher[]> {
+export async function getTeachers(schoolId: string): Promise<Teacher[]> {
   const [teachersRes, classesRes] = await Promise.all([
     supabase
       .from('teachers')
@@ -26,11 +26,13 @@ export async function getTeachers(): Promise<Teacher[]> {
         profile:profiles(full_name, phone),
         department:departments!teachers_department_id_fkey(name)
       `)
+      .eq('school_id', schoolId)
       .is('deleted_at', null)
       .order('employee_no'),
     supabase
       .from('classes')
       .select('class_teacher_id, name')
+      .eq('school_id', schoolId)
       .not('class_teacher_id', 'is', null)
       .is('deleted_at', null),
   ])
@@ -116,26 +118,29 @@ export async function isEmployeeNoTaken(employeeNo: string, excludeId?: string):
 }
 
 /** All departments for the department dropdown. */
-export async function getDepartmentsForSelect(): Promise<DepartmentOption[]> {
+export async function getDepartmentsForSelect(schoolId: string): Promise<DepartmentOption[]> {
   const { data, error } = await supabase
     .from('departments')
     .select('id, name')
+    .eq('school_id', schoolId)
     .is('deleted_at', null)
     .order('name')
   if (error || !data) return []
   return (data as unknown as DepartmentOption[])
 }
 
-export async function getTeachersForSelect(): Promise<TeacherSelectOption[]> {
+export async function getTeachersForSelect(schoolId: string): Promise<TeacherSelectOption[]> {
   const [teachersRes, classesRes] = await Promise.all([
     supabase
       .from('teachers')
       .select('id, profile:profiles(full_name)')
+      .eq('school_id', schoolId)
       .is('deleted_at', null)
       .order('employee_no'),
     supabase
       .from('classes')
       .select('class_teacher_id, name')
+      .eq('school_id', schoolId)
       .not('class_teacher_id', 'is', null)
       .is('deleted_at', null),
   ])
@@ -171,8 +176,8 @@ export async function getRolesForUser(userId: string): Promise<string[]> {
     .filter((name): name is string => !!name)
 }
 
-/** Replace all roles for a user with the given role names. */
-export async function setUserRoles(userId: string, roleNames: string[]): Promise<boolean> {
+/** Replace all roles for a user (within a school) with the given role names. */
+export async function setUserRoles(userId: string, roleNames: string[], schoolId: string): Promise<boolean> {
   const { data: roleRows } = await supabase
     .from('roles')
     .select('id, name')
@@ -180,7 +185,7 @@ export async function setUserRoles(userId: string, roleNames: string[]): Promise
   const roleIds = (roleRows as { id: string; name: string }[] | null) ?? []
   const roleIdByName = new Map(roleIds.map(r => [r.name, r.id]))
 
-  const { error: delError } = await db.from('user_roles').delete().eq('user_id', userId)
+  const { error: delError } = await db.from('user_roles').delete().eq('user_id', userId).eq('school_id', schoolId)
   if (delError) return false
 
   if (roleNames.length === 0) return true
@@ -190,11 +195,11 @@ export async function setUserRoles(userId: string, roleNames: string[]): Promise
   if (toInsert.length === 0) return true
   const { error: insError } = await db
     .from('user_roles')
-    .insert(toInsert.map(role_id => ({ user_id: userId, role_id })))
+    .insert(toInsert.map(role_id => ({ user_id: userId, role_id, school_id: schoolId })))
   return !insError
 }
 
-export async function createUserAccount(data: CreateUserAccountData): Promise<{ id: string } | null> {
+export async function createUserAccount(data: CreateUserAccountData, schoolId: string): Promise<{ id: string } | null> {
   const onboardingClient = createOnboardingClient()
   const { data: signUpData, error: signUpError } = await onboardingClient.auth.signUp({
     email: data.email,
@@ -219,7 +224,7 @@ export async function createUserAccount(data: CreateUserAccountData): Promise<{ 
     if (!roleId) continue
     const { error: roleError } = await db
       .from('user_roles')
-      .insert({ user_id: userId, role_id: roleId })
+      .insert({ user_id: userId, role_id: roleId, school_id: schoolId })
     if (roleError) return null
   }
 
@@ -230,7 +235,7 @@ export async function createUserAccount(data: CreateUserAccountData): Promise<{ 
   return { id: userId }
 }
 
-export async function createTeacher(data: TeacherFormData): Promise<{ id: string } | null> {
+export async function createTeacher(schoolId: string, data: TeacherFormData): Promise<{ id: string } | null> {
   const { data: result, error } = await db
     .from('teachers')
     .insert({
@@ -242,6 +247,7 @@ export async function createTeacher(data: TeacherFormData): Promise<{ id: string
       qualification:    data.qualification || null,
       specialization:   data.specialization || null,
       status:           data.status,
+      school_id:        schoolId,
     })
     .select('id')
     .single()
@@ -276,20 +282,22 @@ export async function getCurrentAcademicYear(): Promise<{ id: string; label: str
   return (data as { id: string; label: string } | null) ?? null
 }
 
-export async function getSubjectsForSelect(): Promise<SubjectOption[]> {
+export async function getSubjectsForSelect(schoolId: string): Promise<SubjectOption[]> {
   const { data } = await supabase
     .from('subjects')
     .select('id, name, code')
+    .eq('school_id', schoolId)
     .is('deleted_at', null)
     .order('name')
   if (!data) return []
   return data as unknown as SubjectOption[]
 }
 
-export async function getClassesForSelect(): Promise<ClassOption[]> {
+export async function getClassesForSelect(schoolId: string): Promise<ClassOption[]> {
   const { data } = await supabase
     .from('classes')
     .select('id, name, grade_level')
+    .eq('school_id', schoolId)
     .is('deleted_at', null)
     .order('name')
   if (!data) return []
@@ -347,10 +355,11 @@ export async function removeTeacherAllocation(allocationId: string): Promise<boo
   return !error
 }
 
-export async function getStaffMembers(): Promise<StaffMember[]> {
+export async function getStaffMembers(schoolId: string): Promise<StaffMember[]> {
   const { data, error } = await supabase
     .from('staff')
     .select('id, profile_id, employee_no, status, profile:profiles(full_name, phone), role:roles(name)')
+    .eq('school_id', schoolId)
     .order('employee_no')
   if (error || !data) return []
 

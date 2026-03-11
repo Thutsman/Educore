@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { useSchool } from '@/context/SchoolContext'
 import {
   getBursarStats,
   getMonthlyFinancials,
@@ -7,33 +8,45 @@ import {
 } from '@/services/dashboard'
 
 export function useBursarStats() {
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
   return useQuery({
-    queryKey: ['dashboard', 'bursar-stats'],
-    queryFn:  getBursarStats,
+    queryKey: ['dashboard', 'bursar-stats', schoolId],
+    queryFn:  () => getBursarStats(schoolId),
+    enabled:  !!schoolId,
     staleTime: 1000 * 60 * 5,
   })
 }
 
 export function useMonthlyFinancials(months = 12) {
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
   return useQuery({
-    queryKey: ['dashboard', 'monthly-financials', months],
-    queryFn:  () => getMonthlyFinancials(months),
+    queryKey: ['dashboard', 'monthly-financials', schoolId, months],
+    queryFn:  () => getMonthlyFinancials(schoolId, months),
+    enabled:  !!schoolId,
     staleTime: 1000 * 60 * 10,
   })
 }
 
 export function useOutstandingByClass() {
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
   return useQuery({
-    queryKey: ['dashboard', 'outstanding-by-class'],
-    queryFn:  getOutstandingByClass,
+    queryKey: ['dashboard', 'outstanding-by-class', schoolId],
+    queryFn:  () => getOutstandingByClass(schoolId),
+    enabled:  !!schoolId,
     staleTime: 1000 * 60 * 5,
   })
 }
 
 export function usePaymentMethodBreakdown() {
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
   return useQuery({
-    queryKey: ['dashboard', 'payment-methods'],
-    queryFn:  getPaymentMethodBreakdown,
+    queryKey: ['dashboard', 'payment-methods', schoolId],
+    queryFn:  () => getPaymentMethodBreakdown(schoolId),
+    enabled:  !!schoolId,
     staleTime: 1000 * 60 * 10,
   })
 }

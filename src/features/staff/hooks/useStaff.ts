@@ -12,24 +12,39 @@ import {
   setUserRoles,
 } from '../services/staff'
 import type { CreateUserAccountData, TeacherFormData, TeacherSelectOption } from '../types'
+import { useSchool } from '@/context/SchoolContext'
 
 export type { TeacherSelectOption }
 
 export function useTeachers() {
-  return useQuery({ queryKey: ['staff', 'teachers'], queryFn: getTeachers })
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
+  return useQuery({
+    queryKey: ['staff', 'teachers', schoolId],
+    queryFn: () => getTeachers(schoolId),
+    enabled: !!schoolId,
+  })
 }
 
 export function useTeachersForSelect(enabled = true) {
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
   return useQuery({
-    queryKey: ['staff', 'teachers-select'],
-    queryFn: getTeachersForSelect,
-    enabled,
+    queryKey: ['staff', 'teachers-select', schoolId],
+    queryFn: () => getTeachersForSelect(schoolId),
+    enabled: enabled && !!schoolId,
     staleTime: 5 * 60 * 1000,
   })
 }
 
 export function useStaffMembers() {
-  return useQuery({ queryKey: ['staff', 'members'], queryFn: getStaffMembers })
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
+  return useQuery({
+    queryKey: ['staff', 'members', schoolId],
+    queryFn: () => getStaffMembers(schoolId),
+    enabled: !!schoolId,
+  })
 }
 
 export function useProfilesForTeacher() {
@@ -41,9 +56,12 @@ export function useProfilesForTeacher() {
 }
 
 export function useDepartmentsForSelect() {
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
   return useQuery({
-    queryKey: ['staff', 'departments'],
-    queryFn: getDepartmentsForSelect,
+    queryKey: ['staff', 'departments', schoolId],
+    queryFn: () => getDepartmentsForSelect(schoolId),
+    enabled: !!schoolId,
     staleTime: 10 * 60 * 1000,
   })
 }
@@ -66,17 +84,23 @@ export function useCurrentAcademicYear() {
 }
 
 export function useSubjectsForSelect() {
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
   return useQuery({
-    queryKey: ['staff', 'subjects-select'],
-    queryFn: getSubjectsForSelect,
+    queryKey: ['staff', 'subjects-select', schoolId],
+    queryFn: () => getSubjectsForSelect(schoolId),
+    enabled: !!schoolId,
     staleTime: 10 * 60 * 1000,
   })
 }
 
 export function useClassesForSelect() {
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
   return useQuery({
-    queryKey: ['staff', 'classes-select'],
-    queryFn: getClassesForSelect,
+    queryKey: ['staff', 'classes-select', schoolId],
+    queryFn: () => getClassesForSelect(schoolId),
+    enabled: !!schoolId,
     staleTime: 10 * 60 * 1000,
   })
 }
@@ -115,8 +139,10 @@ export function useRemoveTeacherAllocation() {
 
 export function useCreateTeacher() {
   const qc = useQueryClient()
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
   return useMutation({
-    mutationFn: (data: TeacherFormData) => createTeacher(data),
+    mutationFn: (data: TeacherFormData) => createTeacher(schoolId, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['staff', 'teachers'] })
       qc.invalidateQueries({ queryKey: ['staff', 'profiles-unlinked'] })
@@ -126,8 +152,10 @@ export function useCreateTeacher() {
 
 export function useCreateUserAccount() {
   const qc = useQueryClient()
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
   return useMutation({
-    mutationFn: (data: CreateUserAccountData) => createUserAccount(data),
+    mutationFn: (data: CreateUserAccountData) => createUserAccount(data, schoolId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['staff', 'profiles-unlinked'] })
       qc.invalidateQueries({ queryKey: ['staff', 'teachers'] })
@@ -156,9 +184,11 @@ export function useGetRolesForUser(userId: string | null, enabled: boolean) {
 
 export function useSetUserRoles() {
   const qc = useQueryClient()
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
   return useMutation({
     mutationFn: ({ userId, roleNames }: { userId: string; roleNames: string[] }) =>
-      setUserRoles(userId, roleNames),
+      setUserRoles(userId, roleNames, schoolId),
     onSuccess: (_, { userId }) => {
       qc.invalidateQueries({ queryKey: ['staff', 'user-roles', userId] })
       qc.invalidateQueries({ queryKey: ['staff', 'members'] })

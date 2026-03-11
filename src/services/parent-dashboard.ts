@@ -77,10 +77,11 @@ function n(v: unknown): number {
 // ── Queries ───────────────────────────────────────────────────────────────────
 
 /** Look up the guardian row for the currently-logged-in user. */
-export async function getGuardianByProfile(profileId: string): Promise<GuardianRecord | null> {
+export async function getGuardianByProfile(schoolId: string, profileId: string): Promise<GuardianRecord | null> {
   const { data, error } = await supabase
     .from('guardians')
     .select('id, full_name, relationship, phone, email')
+    .eq('school_id', schoolId)
     .eq('profile_id', profileId)
     .is('deleted_at', null)
     .maybeSingle()
@@ -90,13 +91,14 @@ export async function getGuardianByProfile(profileId: string): Promise<GuardianR
 }
 
 /** Get all active children linked to this guardian (primary or secondary). */
-export async function getChildren(guardianId: string): Promise<ChildSummary[]> {
+export async function getChildren(schoolId: string, guardianId: string): Promise<ChildSummary[]> {
   const { data, error } = await supabase
     .from('students')
     .select(`
       id, admission_no, full_name, class_id, status, photo_url,
       class:classes(name, grade_level)
     `)
+    .eq('school_id', schoolId)
     .or(`guardian_id.eq.${guardianId},guardian2_id.eq.${guardianId}`)
     .is('deleted_at', null)
     .eq('status', 'active')
@@ -123,6 +125,7 @@ export async function getChildren(guardianId: string): Promise<ChildSummary[]> {
 
 /** Attendance summary per student over the last N days. */
 export async function getChildrenAttendance(
+  schoolId: string,
   studentIds: string[],
   days = 30,
 ): Promise<ChildAttendanceSummary[]> {
@@ -132,6 +135,7 @@ export async function getChildrenAttendance(
   const { data, error } = await supabase
     .from('attendance_records')
     .select('student_id, status')
+    .eq('school_id', schoolId)
     .in('student_id', studentIds)
     .gte('date', since)
 
@@ -161,12 +165,13 @@ export async function getChildrenAttendance(
 }
 
 /** Fee totals per student — invoiced, paid, outstanding. */
-export async function getChildrenFeeStatus(studentIds: string[]): Promise<ChildFeeStatus[]> {
+export async function getChildrenFeeStatus(schoolId: string, studentIds: string[]): Promise<ChildFeeStatus[]> {
   if (!studentIds.length) return []
 
   const { data, error } = await supabase
     .from('invoices')
     .select('student_id, amount, amount_paid, balance, status')
+    .eq('school_id', schoolId)
     .in('student_id', studentIds)
     .is('deleted_at', null)
     .neq('status', 'void')
@@ -199,7 +204,7 @@ export async function getChildrenFeeStatus(studentIds: string[]): Promise<ChildF
 }
 
 /** All unpaid / partial / overdue invoices for this parent's children (limit 10). */
-export async function getOutstandingInvoices(studentIds: string[]): Promise<OutstandingInvoice[]> {
+export async function getOutstandingInvoices(schoolId: string, studentIds: string[]): Promise<OutstandingInvoice[]> {
   if (!studentIds.length) return []
 
   const { data, error } = await supabase
@@ -209,6 +214,7 @@ export async function getOutstandingInvoices(studentIds: string[]): Promise<Outs
       fee_structure:fee_structures(name, category),
       student:students(full_name)
     `)
+    .eq('school_id', schoolId)
     .in('student_id', studentIds)
     .in('status', ['unpaid', 'partial', 'overdue'])
     .is('deleted_at', null)
@@ -241,7 +247,7 @@ export async function getOutstandingInvoices(studentIds: string[]): Promise<Outs
 }
 
 /** Most recent exam grades across all children (limit 10). */
-export async function getRecentGrades(studentIds: string[]): Promise<RecentGrade[]> {
+export async function getRecentGrades(schoolId: string, studentIds: string[]): Promise<RecentGrade[]> {
   if (!studentIds.length) return []
 
   const { data, error } = await supabase
@@ -251,6 +257,7 @@ export async function getRecentGrades(studentIds: string[]): Promise<RecentGrade
       exam:exams(name, exam_type, exam_date, total_marks, subject:subjects(name)),
       student:students(full_name)
     `)
+    .eq('school_id', schoolId)
     .in('student_id', studentIds)
     .order('created_at', { ascending: false })
     .limit(10)

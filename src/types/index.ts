@@ -1,6 +1,13 @@
 export type { AppRole } from './database.types'
 import type { AppRole } from './database.types'
 
+export interface School {
+  id: string
+  name: string
+  slug: string | null
+  logo_url: string | null
+}
+
 export interface UserProfile {
   id: string
   full_name: string

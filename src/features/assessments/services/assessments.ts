@@ -9,7 +9,7 @@ export interface AssessmentFilters {
   subjectId?: string
 }
 
-export async function getAssessments(filters?: AssessmentFilters): Promise<Assessment[]> {
+export async function getAssessments(schoolId: string, filters?: AssessmentFilters): Promise<Assessment[]> {
   let q = supabase
     .from('assessments')
     .select(`
@@ -17,6 +17,7 @@ export async function getAssessments(filters?: AssessmentFilters): Promise<Asses
       class:classes(name),
       subject:subjects(name)
     `)
+    .eq('school_id', schoolId)
     .order('date', { ascending: false })
 
   if (filters?.classId) q = q.eq('class_id', filters.classId)
@@ -56,10 +57,11 @@ export async function getAssessmentMarks(assessmentId: string): Promise<Assessme
   }))
 }
 
-export async function getEnrolledStudents(classId: string): Promise<{ id: string; full_name: string; admission_no: string }[]> {
+export async function getEnrolledStudents(schoolId: string, classId: string): Promise<{ id: string; full_name: string; admission_no: string }[]> {
   const { data, error } = await supabase
     .from('students')
     .select('id, full_name, admission_no')
+    .eq('school_id', schoolId)
     .eq('class_id', classId)
     .eq('status', 'active')
     .is('deleted_at', null)
@@ -77,8 +79,9 @@ export interface CreateAssessmentInput {
   total_marks: number
 }
 
-export async function createAssessment(input: CreateAssessmentInput, teacherId: string): Promise<boolean> {
+export async function createAssessment(input: CreateAssessmentInput, teacherId: string, schoolId: string): Promise<boolean> {
   const { error } = await db.from('assessments').insert({
+    school_id: schoolId,
     teacher_id: teacherId,
     class_id: input.class_id,
     subject_id: input.subject_id,
@@ -119,10 +122,11 @@ export async function upsertAssessmentMark(
   return !error
 }
 
-export async function getClassAssessmentAverages(classId: string): Promise<{ assessment_id: string; title: string; date: string; average: number; count: number }[]> {
+export async function getClassAssessmentAverages(schoolId: string, classId: string): Promise<{ assessment_id: string; title: string; date: string; average: number; count: number }[]> {
   const { data: assessments, error: e1 } = await supabase
     .from('assessments')
     .select('id, title, date, total_marks')
+    .eq('school_id', schoolId)
     .eq('class_id', classId)
     .order('date', { ascending: false })
     .limit(15)

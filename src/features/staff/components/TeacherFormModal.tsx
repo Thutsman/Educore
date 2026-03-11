@@ -294,6 +294,9 @@ export function TeacherFormModal({ open, onOpenChange, teacher, initialProfileId
                   <FormControl>
                     <Input placeholder="e.g. Mathematics, Science" {...field} />
                   </FormControl>
+                  <p className="text-xs text-muted-foreground">
+                    For HR records only. To assign this teacher to actual subjects and classes, use the <strong>Allocations</strong> button on the teacher list after saving.
+                  </p>
                   <FormMessage />
                 </FormItem>
               )} />

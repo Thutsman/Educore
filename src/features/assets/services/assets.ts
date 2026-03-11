@@ -5,10 +5,11 @@ const db = supabase as any
 
 const n = (v: unknown) => (v != null ? Number(v) : null)
 
-export async function getAssets(filters?: { category?: string; status?: string; search?: string }): Promise<Asset[]> {
+export async function getAssets(schoolId: string, filters?: { category?: string; status?: string; search?: string }): Promise<Asset[]> {
   let q = supabase
     .from('assets')
     .select('id, name, asset_code, category, status, location, purchase_date, purchase_price, description')
+    .eq('school_id', schoolId)
     .is('deleted_at', null)
     .order('name')
   if (filters?.category && filters.category !== 'all') q = q.eq('category', filters.category)
@@ -26,8 +27,9 @@ export async function getAssets(filters?: { category?: string; status?: string; 
   }))
 }
 
-export async function createAsset(d: AssetFormData): Promise<boolean> {
+export async function createAsset(schoolId: string, d: AssetFormData): Promise<boolean> {
   const { error } = await db.from('assets').insert({
+    school_id: schoolId,
     name: d.name, asset_code: d.asset_code, category: d.category, status: d.status,
     location: d.location || null, purchase_date: d.purchase_date || null,
     purchase_price: d.purchase_price ?? null, description: d.description || null,

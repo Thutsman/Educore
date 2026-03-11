@@ -93,10 +93,11 @@ export async function getClassAttendanceSummary(
 }
 
 // ─── Class list (reused) ──────────────────────────────────────────────────────
-export async function getClassesForAttendance(): Promise<{ id: string; name: string }[]> {
+export async function getClassesForAttendance(schoolId: string): Promise<{ id: string; name: string }[]> {
   const { data, error } = await supabase
     .from('classes')
     .select('id, name')
+    .eq('school_id', schoolId)
     .is('deleted_at', null)
     .order('name')
   if (error || !data) return []

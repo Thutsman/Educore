@@ -66,10 +66,11 @@ function n(v: unknown): number {
 // ── Queries ───────────────────────────────────────────────────────────────────
 
 /** Look up the teachers row for the currently-logged-in user. */
-export async function getTeacherByProfile(profileId: string): Promise<TeacherRecord | null> {
+export async function getTeacherByProfile(schoolId: string, profileId: string): Promise<TeacherRecord | null> {
   const { data, error } = await supabase
     .from('teachers')
     .select('id, employee_no, department_id, specialization, qualification')
+    .eq('school_id', schoolId)
     .eq('profile_id', profileId)
     .is('deleted_at', null)
     .maybeSingle()
@@ -79,10 +80,11 @@ export async function getTeacherByProfile(profileId: string): Promise<TeacherRec
 }
 
 /** Get the homeroom class assigned to this teacher (class_teacher_id). */
-export async function getHomeroomClass(teacherId: string): Promise<HomeroomClass | null> {
+export async function getHomeroomClass(schoolId: string, teacherId: string): Promise<HomeroomClass | null> {
   const { data, error } = await supabase
     .from('classes')
     .select('id, name, grade_level, room, capacity')
+    .eq('school_id', schoolId)
     .eq('class_teacher_id', teacherId)
     .is('deleted_at', null)
     .maybeSingle()
@@ -103,7 +105,7 @@ export async function getHomeroomClass(teacherId: string): Promise<HomeroomClass
 }
 
 /** All subject→class assignments for this teacher (current academic year). */
-export async function getTeacherSubjects(teacherId: string): Promise<TeacherSubjectRow[]> {
+export async function getTeacherSubjects(schoolId: string, teacherId: string): Promise<TeacherSubjectRow[]> {
   const { data, error } = await supabase
     .from('teacher_subjects')
     .select(`
@@ -111,6 +113,7 @@ export async function getTeacherSubjects(teacherId: string): Promise<TeacherSubj
       subject:subjects(name),
       class:classes(name, grade_level)
     `)
+    .eq('school_id', schoolId)
     .eq('teacher_id', teacherId)
 
   if (error || !data) return []
@@ -134,12 +137,13 @@ export async function getTeacherSubjects(teacherId: string): Promise<TeacherSubj
 }
 
 /** Today's attendance breakdown for the homeroom class. */
-export async function getTodayAttendance(classId: string): Promise<AttendanceSummary> {
+export async function getTodayAttendance(schoolId: string, classId: string): Promise<AttendanceSummary> {
   const today = format(new Date(), 'yyyy-MM-dd')
 
   const { data, error } = await supabase
     .from('attendance_records')
     .select('status')
+    .eq('school_id', schoolId)
     .eq('class_id', classId)
     .eq('date', today)
 
@@ -161,6 +165,7 @@ export async function getTodayAttendance(classId: string): Promise<AttendanceSum
 
 /** Daily attendance rate for this class over the last N days. */
 export async function getClassAttendanceTrend(
+  schoolId: string,
   classId: string,
   days = 30
 ): Promise<AttendanceTrendPoint[]> {
@@ -169,6 +174,7 @@ export async function getClassAttendanceTrend(
   const { data, error } = await supabase
     .from('attendance_records')
     .select('date, status')
+    .eq('school_id', schoolId)
     .eq('class_id', classId)
     .gte('date', since)
     .order('date')
@@ -195,7 +201,7 @@ export async function getClassAttendanceTrend(
 }
 
 /** Recent exams for any class this teacher teaches. */
-export async function getTeacherRecentExams(classIds: string[]): Promise<TeacherExamRow[]> {
+export async function getTeacherRecentExams(schoolId: string, classIds: string[]): Promise<TeacherExamRow[]> {
   if (!classIds.length) return []
 
   const { data, error } = await supabase
@@ -205,6 +211,7 @@ export async function getTeacherRecentExams(classIds: string[]): Promise<Teacher
       subject:subjects(name),
       class:classes(name)
     `)
+    .eq('school_id', schoolId)
     .in('class_id', classIds)
     .order('exam_date', { ascending: false })
     .limit(8)

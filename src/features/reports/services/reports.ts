@@ -4,7 +4,7 @@ import type { TermReport } from '../types'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = supabase as any
 
-export async function getTermReports(filters?: { termId?: string; classId?: string }): Promise<TermReport[]> {
+export async function getTermReports(schoolId: string, filters?: { termId?: string; classId?: string }): Promise<TermReport[]> {
   let q = supabase
     .from('term_reports')
     .select(`
@@ -15,6 +15,7 @@ export async function getTermReports(filters?: { termId?: string; classId?: stri
       class:classes(name),
       term:terms(name)
     `)
+    .eq('school_id', schoolId)
     .order('class_id')
     .order('rank', { ascending: true })
 
@@ -60,7 +61,7 @@ function recommendation(average: number): string {
   return 'seek extra support and revise consistently'
 }
 
-export async function generateTermReports(termId: string, classId?: string): Promise<{ count: number }> {
+export async function generateTermReports(schoolId: string, termId: string, classId?: string): Promise<{ count: number }> {
   const { data: term, error: termErr } = await supabase
     .from('terms')
     .select('id, start_date, end_date, academic_year_id')
@@ -75,6 +76,7 @@ export async function generateTermReports(termId: string, classId?: string): Pro
   let studentsQ = supabase
     .from('students')
     .select('id, full_name, class_id')
+    .eq('school_id', schoolId)
     .eq('status', 'active')
     .is('deleted_at', null)
   if (classId) studentsQ = studentsQ.eq('class_id', classId)
@@ -151,6 +153,7 @@ export async function generateTermReports(termId: string, classId?: string): Pro
 
     const { error: upsertErr } = await db.from('term_reports').upsert(
       {
+        school_id: schoolId,
         student_id: studentId,
         class_id: cid,
         term_id: termId,

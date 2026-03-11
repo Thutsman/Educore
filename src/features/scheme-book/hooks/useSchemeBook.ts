@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useSchool } from '@/context/SchoolContext'
 import {
   getSchemeBooks,
   createSchemeBook,
@@ -11,30 +12,37 @@ import {
 } from '../services/schemeBook'
 
 const KEY = {
-  list: (f?: SchemeBookFilters) => ['scheme-book', 'list', f] as const,
-  progress: (termId: string) => ['scheme-book', 'progress', termId] as const,
+  list: (schoolId: string, f?: SchemeBookFilters) => ['scheme-book', 'list', schoolId, f] as const,
+  progress: (schoolId: string, termId: string) => ['scheme-book', 'progress', schoolId, termId] as const,
 }
 
 export function useSchemeBooks(filters?: SchemeBookFilters) {
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
   return useQuery({
-    queryKey: KEY.list(filters),
-    queryFn: () => getSchemeBooks(filters),
+    queryKey: KEY.list(schoolId, filters),
+    queryFn: () => getSchemeBooks(schoolId, filters),
+    enabled: !!schoolId,
   })
 }
 
 export function useSchemeBookProgress(termId: string | null) {
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
   return useQuery({
-    queryKey: KEY.progress(termId ?? ''),
-    queryFn: () => getSchemeBookProgressByTerm(termId!),
-    enabled: !!termId,
+    queryKey: KEY.progress(schoolId, termId ?? ''),
+    queryFn: () => getSchemeBookProgressByTerm(schoolId, termId!),
+    enabled: !!termId && !!schoolId,
   })
 }
 
 export function useCreateSchemeBook(teacherId: string | undefined) {
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (input: CreateSchemeBookInput) =>
-      createSchemeBook(input, teacherId!),
+      createSchemeBook(input, teacherId!, schoolId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['scheme-book'] }),
   })
 }

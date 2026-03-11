@@ -7,10 +7,11 @@ const n = (v: unknown) => Number(v) || 0
 
 // ─── Invoices ────────────────────────────────────────────────────────────────
 
-export async function getInvoices(filters?: { status?: string; search?: string }): Promise<Invoice[]> {
+export async function getInvoices(schoolId: string, filters?: { status?: string; search?: string }): Promise<Invoice[]> {
   let q = supabase
     .from('invoices')
     .select('id, invoice_no, student_id, amount, amount_paid, balance, status, due_date, description, created_at, student:students(full_name, class:classes(name))')
+    .eq('school_id', schoolId)
     .order('created_at', { ascending: false })
 
   if (filters?.status && filters.status !== 'all') q = q.eq('status', filters.status)
@@ -108,10 +109,11 @@ export async function recordPayment(d: PaymentFormData): Promise<boolean> {
 
 // ─── Expenses ────────────────────────────────────────────────────────────────
 
-export async function getExpenses(filters?: { category?: string; search?: string }): Promise<Expense[]> {
+export async function getExpenses(schoolId: string, filters?: { category?: string; search?: string }): Promise<Expense[]> {
   let q = supabase
     .from('expenses')
     .select('id, description, amount, category, expense_date, paid_to, reference_number, notes, created_at')
+    .eq('school_id', schoolId)
     .order('expense_date', { ascending: false })
   if (filters?.category && filters.category !== 'all') q = q.eq('category', filters.category)
   if (filters?.search) q = q.ilike('description', `%${filters.search}%`)
@@ -125,11 +127,12 @@ export async function getExpenses(filters?: { category?: string; search?: string
   }))
 }
 
-export async function createExpense(d: ExpenseFormData): Promise<boolean> {
+export async function createExpense(schoolId: string, d: ExpenseFormData): Promise<boolean> {
   const { error } = await db.from('expenses').insert({
     description: d.description, amount: d.amount, category: d.category,
     expense_date: d.expense_date, paid_to: d.paid_to || null,
     reference_number: d.reference_number || null, notes: d.notes || null,
+    school_id: schoolId,
   })
   return !error
 }
@@ -145,10 +148,11 @@ export async function deleteExpense(id: string): Promise<boolean> {
 }
 
 // ─── Students for invoice form ────────────────────────────────────────────────
-export async function getStudentsForInvoice(): Promise<{ id: string; full_name: string; admission_number: string }[]> {
+export async function getStudentsForInvoice(schoolId: string): Promise<{ id: string; full_name: string; admission_number: string }[]> {
   const { data, error } = await supabase
     .from('students')
     .select('id, full_name, admission_no')
+    .eq('school_id', schoolId)
     .eq('status', 'active')
     .is('deleted_at', null)
     .order('full_name')

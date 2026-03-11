@@ -74,7 +74,7 @@ function n(v: unknown): number {
 /**
  * Core KPI figures for the headmaster stat cards.
  */
-export async function getSchoolStats(): Promise<SchoolStats> {
+export async function getSchoolStats(schoolId: string): Promise<SchoolStats> {
   const weekStart = toISO(startOfWeek(new Date(), { weekStartsOn: 1 }))
   const weekEnd   = toISO(endOfWeek(new Date(),   { weekStartsOn: 1 }))
 
@@ -88,29 +88,34 @@ export async function getSchoolStats(): Promise<SchoolStats> {
     supabase
       .from('students')
       .select('status')
+      .eq('school_id', schoolId)
       .is('deleted_at', null),
 
     supabase
       .from('invoices')
       .select('amount, amount_paid, balance, status')
+      .eq('school_id', schoolId)
       .is('deleted_at', null)
       .not('status', 'eq', 'void'),
 
     supabase
       .from('attendance_records')
       .select('status, date')
+      .eq('school_id', schoolId)
       .gte('date', weekStart)
       .lte('date', weekEnd),
 
     supabase
       .from('teachers')
       .select('id', { count: 'exact', head: true })
+      .eq('school_id', schoolId)
       .eq('status', 'active')
       .is('deleted_at', null),
 
     supabase
       .from('staff')
       .select('id', { count: 'exact', head: true })
+      .eq('school_id', schoolId)
       .eq('status', 'active')
       .is('deleted_at', null),
   ])
@@ -152,12 +157,13 @@ export async function getSchoolStats(): Promise<SchoolStats> {
 /**
  * New student enrolments grouped by month for the past N months.
  */
-export async function getEnrollmentTrend(months = 12): Promise<EnrollmentPoint[]> {
+export async function getEnrollmentTrend(schoolId: string, months = 12): Promise<EnrollmentPoint[]> {
   const since = toISO(subMonths(new Date(), months))
 
   const { data } = await supabase
     .from('students')
     .select('admission_date')
+    .eq('school_id', schoolId)
     .gte('admission_date', since)
     .is('deleted_at', null)
 
@@ -180,7 +186,7 @@ export async function getEnrollmentTrend(months = 12): Promise<EnrollmentPoint[]
 /**
  * Average grade per class (current academic year).
  */
-export async function getClassPerformance(): Promise<ClassPerfPoint[]> {
+export async function getClassPerformance(schoolId: string): Promise<ClassPerfPoint[]> {
   const { data } = await supabase
     .from('grades')
     .select(`
@@ -189,6 +195,7 @@ export async function getClassPerformance(): Promise<ClassPerfPoint[]> {
         class:classes(name)
       )
     `)
+    .eq('school_id', schoolId)
     .not('marks_obtained', 'is', null)
 
   if (!data?.length) return []
@@ -223,12 +230,13 @@ export async function getClassPerformance(): Promise<ClassPerfPoint[]> {
 /**
  * Daily attendance rate for the last 30 days.
  */
-export async function getAttendanceTrend(days = 30): Promise<AttendancePoint[]> {
+export async function getAttendanceTrend(schoolId: string, days = 30): Promise<AttendancePoint[]> {
   const since = toISO(subMonths(new Date(), 1))
 
   const { data } = await supabase
     .from('attendance_records')
     .select('date, status')
+    .eq('school_id', schoolId)
     .gte('date', since)
     .order('date')
 
@@ -254,7 +262,7 @@ export async function getAttendanceTrend(days = 30): Promise<AttendancePoint[]> 
 /**
  * Average grade per subject (for deputy's academic overview).
  */
-export async function getSubjectPerformance(): Promise<SubjectPerfPoint[]> {
+export async function getSubjectPerformance(schoolId: string): Promise<SubjectPerfPoint[]> {
   const { data } = await supabase
     .from('grades')
     .select(`
@@ -263,6 +271,7 @@ export async function getSubjectPerformance(): Promise<SubjectPerfPoint[]> {
         subject:subjects(name)
       )
     `)
+    .eq('school_id', schoolId)
     .not('marks_obtained', 'is', null)
 
   if (!data?.length) return []
@@ -291,7 +300,7 @@ export async function getSubjectPerformance(): Promise<SubjectPerfPoint[]> {
 /**
  * Teacher workload summary for the deputy's staff overview.
  */
-export async function getTeacherPerformance(): Promise<TeacherPerfRow[]> {
+export async function getTeacherPerformance(schoolId: string): Promise<TeacherPerfRow[]> {
   const { data } = await supabase
     .from('teachers')
     .select(`
@@ -299,6 +308,7 @@ export async function getTeacherPerformance(): Promise<TeacherPerfRow[]> {
       profile:profiles(full_name),
       teacher_subjects(subject_id, class_id)
     `)
+    .eq('school_id', schoolId)
     .eq('status', 'active')
     .is('deleted_at', null)
     .limit(20)
@@ -325,18 +335,20 @@ export async function getTeacherPerformance(): Promise<TeacherPerfRow[]> {
 /**
  * Monthly revenue (payments) and expenses for the past N months.
  */
-export async function getMonthlyFinancials(months = 12): Promise<FinancePoint[]> {
+export async function getMonthlyFinancials(schoolId: string, months = 12): Promise<FinancePoint[]> {
   const since = toISO(subMonths(new Date(), months))
 
   const [paymentsRes, expensesRes] = await Promise.allSettled([
     supabase
       .from('payments')
       .select('payment_date, amount')
+      .eq('school_id', schoolId)
       .gte('payment_date', since),
 
     supabase
       .from('expenses')
       .select('expense_date, amount')
+      .eq('school_id', schoolId)
       .gte('expense_date', since)
       .eq('status', 'paid'),
   ])
@@ -372,7 +384,7 @@ export async function getMonthlyFinancials(months = 12): Promise<FinancePoint[]>
 /**
  * Top 10 classes by total outstanding balance.
  */
-export async function getOutstandingByClass(): Promise<OutstandingByClass[]> {
+export async function getOutstandingByClass(schoolId: string): Promise<OutstandingByClass[]> {
   const { data } = await supabase
     .from('invoices')
     .select(`
@@ -382,6 +394,7 @@ export async function getOutstandingByClass(): Promise<OutstandingByClass[]> {
         class:classes(name)
       )
     `)
+    .eq('school_id', schoolId)
     .in('status', ['unpaid', 'partial', 'overdue'])
     .is('deleted_at', null)
     .gt('balance', 0)
@@ -413,12 +426,13 @@ export async function getOutstandingByClass(): Promise<OutstandingByClass[]> {
 /**
  * Payment method breakdown — count and total amount per method.
  */
-export async function getPaymentMethodBreakdown(): Promise<PaymentMethodStat[]> {
+export async function getPaymentMethodBreakdown(schoolId: string): Promise<PaymentMethodStat[]> {
   const since = toISO(subMonths(new Date(), 12))
 
   const { data } = await supabase
     .from('payments')
     .select('payment_method, amount')
+    .eq('school_id', schoolId)
     .gte('payment_date', since)
 
   if (!data?.length) return []
@@ -445,24 +459,27 @@ export async function getPaymentMethodBreakdown(): Promise<PaymentMethodStat[]> 
 /**
  * Bursar KPIs: total revenue (YTD), outstanding, total expenses.
  */
-export async function getBursarStats() {
+export async function getBursarStats(schoolId: string) {
   const yearStart = `${new Date().getFullYear()}-01-01`
 
   const [revRes, outRes, expRes] = await Promise.allSettled([
     supabase
       .from('payments')
       .select('amount')
+      .eq('school_id', schoolId)
       .gte('payment_date', yearStart),
 
     supabase
       .from('invoices')
       .select('balance')
+      .eq('school_id', schoolId)
       .in('status', ['unpaid', 'partial', 'overdue'])
       .is('deleted_at', null),
 
     supabase
       .from('expenses')
       .select('amount')
+      .eq('school_id', schoolId)
       .eq('status', 'paid')
       .gte('expense_date', yearStart),
   ])

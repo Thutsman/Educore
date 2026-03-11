@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { UserPlus } from 'lucide-react'
+import { UserPlus, BookOpen, ShieldCheck } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/common/PageHeader'
 import { DataTable, type Column } from '@/components/common/DataTable'
@@ -90,19 +90,23 @@ function TeachersTab() {
       header: '',
       className: 'text-right',
       cell: r => (
-        <div className="flex items-center justify-end gap-1">
+        <div className="flex items-center justify-end gap-2">
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
+            className="gap-1.5 text-xs"
             onClick={e => { e.stopPropagation(); setAllocationsTeacher({ id: r.id, name: r.full_name }) }}
           >
+            <BookOpen className="h-3.5 w-3.5" />
             Allocations
           </Button>
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
+            className="gap-1.5 text-xs"
             onClick={e => { e.stopPropagation(); setManageRolesUser({ id: r.profile_id, name: r.full_name }) }}
           >
+            <ShieldCheck className="h-3.5 w-3.5" />
             Manage roles
           </Button>
         </div>

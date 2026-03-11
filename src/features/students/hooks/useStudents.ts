@@ -4,20 +4,24 @@ import {
   getClassesForSelect, createStudent, updateStudent, deleteStudent,
 } from '../services/students'
 import type { StudentFilters, StudentFormData } from '../types'
+import { useSchool } from '@/context/SchoolContext'
 
 export const studentKeys = {
   all:     ['students'] as const,
-  list:    (f?: Partial<StudentFilters>) => ['students', 'list', f] as const,
+  list:    (schoolId: string, f?: Partial<StudentFilters>) => ['students', 'list', schoolId, f] as const,
   detail:  (id: string) => ['students', 'detail', id] as const,
   guardians: (id: string) => ['students', 'guardians', id] as const,
   fees:    (id: string) => ['students', 'fees', id] as const,
-  classes: ['students', 'classes'] as const,
+  classes: (schoolId: string) => ['students', 'classes', schoolId] as const,
 }
 
 export function useStudents(filters?: Partial<StudentFilters>) {
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
   return useQuery({
-    queryKey: studentKeys.list(filters),
-    queryFn: () => getStudents(filters),
+    queryKey: studentKeys.list(schoolId, filters),
+    queryFn: () => getStudents(schoolId, filters),
+    enabled: !!schoolId,
   })
 }
 
@@ -46,17 +50,22 @@ export function useStudentFeeSummary(studentId: string | null) {
 }
 
 export function useClassesForSelect() {
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
   return useQuery({
-    queryKey: studentKeys.classes,
-    queryFn: getClassesForSelect,
+    queryKey: studentKeys.classes(schoolId),
+    queryFn: () => getClassesForSelect(schoolId),
+    enabled: !!schoolId,
     staleTime: 10 * 60 * 1000,
   })
 }
 
 export function useCreateStudent() {
   const qc = useQueryClient()
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
   return useMutation({
-    mutationFn: (data: StudentFormData) => createStudent(data),
+    mutationFn: (data: StudentFormData) => createStudent(schoolId, data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: studentKeys.all }) },
   })
 }

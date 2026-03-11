@@ -6,27 +6,47 @@ import {
   getExams, createExam, updateExam, deleteExam,
   getExamGrades, upsertGrade, getEnrolledStudents,
 } from '../services/academics'
+import { useSchool } from '@/context/SchoolContext'
 
 const KEY = {
-  classes:   ['academics', 'classes'] as const,
-  subjects:  ['academics', 'subjects'] as const,
-  years:     ['academics', 'years'] as const,
+  classes:   (schoolId: string) => ['academics', 'classes', schoolId] as const,
+  subjects:  (schoolId: string) => ['academics', 'subjects', schoolId] as const,
+  years:     (schoolId: string) => ['academics', 'years', schoolId] as const,
   terms:     (yearId?: string) => ['academics', 'terms', yearId] as const,
-  exams:     (f?: object) => ['academics', 'exams', f] as const,
+  exams:     (schoolId: string, f?: object) => ['academics', 'exams', schoolId, f] as const,
   grades:    (examId: string) => ['academics', 'grades', examId] as const,
   enrolled:  (classId: string) => ['academics', 'enrolled', classId] as const,
 }
 
 export function useClasses() {
-  return useQuery({ queryKey: KEY.classes, queryFn: getClasses })
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
+  return useQuery({
+    queryKey: KEY.classes(schoolId),
+    queryFn: () => getClasses(schoolId),
+    enabled: !!schoolId,
+  })
 }
 
 export function useSubjects() {
-  return useQuery({ queryKey: KEY.subjects, queryFn: getSubjects })
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
+  return useQuery({
+    queryKey: KEY.subjects(schoolId),
+    queryFn: () => getSubjects(schoolId),
+    enabled: !!schoolId,
+  })
 }
 
 export function useAcademicYears() {
-  return useQuery({ queryKey: KEY.years, queryFn: getAcademicYears, staleTime: 10 * 60 * 1000 })
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
+  return useQuery({
+    queryKey: KEY.years(schoolId),
+    queryFn: () => getAcademicYears(schoolId),
+    enabled: !!schoolId,
+    staleTime: 10 * 60 * 1000,
+  })
 }
 
 export function useTerms(academicYearId?: string) {
@@ -34,7 +54,13 @@ export function useTerms(academicYearId?: string) {
 }
 
 export function useExams(filters?: { classId?: string; subjectId?: string; termId?: string }) {
-  return useQuery({ queryKey: KEY.exams(filters), queryFn: () => getExams(filters) })
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
+  return useQuery({
+    queryKey: KEY.exams(schoolId, filters),
+    queryFn: () => getExams(schoolId, filters),
+    enabled: !!schoolId,
+  })
 }
 
 export function useExamGrades(examId: string | null) {
@@ -55,9 +81,11 @@ export function useEnrolledStudents(classId: string | null) {
 
 export function useCreateClass() {
   const qc = useQueryClient()
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
   return useMutation({
-    mutationFn: createClass,
-    onSuccess: () => qc.invalidateQueries({ queryKey: KEY.classes }),
+    mutationFn: (d: Parameters<typeof createClass>[1]) => createClass(schoolId, d),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['academics', 'classes'] }),
   })
 }
 
@@ -65,7 +93,7 @@ export function useUpdateClass() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: Parameters<typeof updateClass>[1] }) => updateClass(id, data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: KEY.classes }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['academics', 'classes'] }),
   })
 }
 
@@ -73,15 +101,17 @@ export function useDeleteClass() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: deleteClass,
-    onSuccess: () => qc.invalidateQueries({ queryKey: KEY.classes }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['academics', 'classes'] }),
   })
 }
 
 export function useCreateSubject() {
   const qc = useQueryClient()
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
   return useMutation({
-    mutationFn: createSubject,
-    onSuccess: () => qc.invalidateQueries({ queryKey: KEY.subjects }),
+    mutationFn: (d: Parameters<typeof createSubject>[1]) => createSubject(schoolId, d),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['academics', 'subjects'] }),
   })
 }
 
@@ -89,7 +119,7 @@ export function useUpdateSubject() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: Parameters<typeof updateSubject>[1] }) => updateSubject(id, data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: KEY.subjects }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['academics', 'subjects'] }),
   })
 }
 
@@ -97,14 +127,16 @@ export function useDeleteSubject() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: deleteSubject,
-    onSuccess: () => qc.invalidateQueries({ queryKey: KEY.subjects }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['academics', 'subjects'] }),
   })
 }
 
 export function useCreateExam() {
   const qc = useQueryClient()
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
   return useMutation({
-    mutationFn: createExam,
+    mutationFn: (d: Parameters<typeof createExam>[1]) => createExam(schoolId, d),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['academics', 'exams'] }),
   })
 }

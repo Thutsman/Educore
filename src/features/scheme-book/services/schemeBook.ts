@@ -11,7 +11,7 @@ export interface SchemeBookFilters {
   teacherId?: string
 }
 
-export async function getSchemeBooks(filters?: SchemeBookFilters): Promise<SchemeBook[]> {
+export async function getSchemeBooks(schoolId: string, filters?: SchemeBookFilters): Promise<SchemeBook[]> {
   let q = supabase
     .from('scheme_books')
     .select(`
@@ -24,6 +24,7 @@ export async function getSchemeBooks(filters?: SchemeBookFilters): Promise<Schem
       term:terms(name),
       teacher:teachers(profile:profiles(full_name))
     `)
+    .eq('school_id', schoolId)
     .order('term_id')
     .order('week')
 
@@ -69,9 +70,11 @@ export interface CreateSchemeBookInput {
 
 export async function createSchemeBook(
   input: CreateSchemeBookInput,
-  teacherId: string
+  teacherId: string,
+  schoolId: string
 ): Promise<boolean> {
   const { error } = await db.from('scheme_books').insert({
+    school_id: schoolId,
     teacher_id: teacherId,
     class_id: input.class_id,
     subject_id: input.subject_id,
@@ -114,10 +117,11 @@ export async function approveSchemeBook(id: string, profileId: string): Promise<
   return !error
 }
 
-export async function getSchemeBookProgressByTerm(termId: string): Promise<{ total: number; completed: number }> {
+export async function getSchemeBookProgressByTerm(schoolId: string, termId: string): Promise<{ total: number; completed: number }> {
   const { data, error } = await supabase
     .from('scheme_books')
     .select('id, status')
+    .eq('school_id', schoolId)
     .eq('term_id', termId)
   if (error || !data) return { total: 0, completed: 0 }
   const completed = data.filter((r: { status: string }) => r.status === 'completed').length

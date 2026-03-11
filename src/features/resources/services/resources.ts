@@ -12,7 +12,7 @@ export interface ResourceFilters {
   topic?: string
 }
 
-export async function getLearningResources(filters?: ResourceFilters): Promise<LearningResource[]> {
+export async function getLearningResources(schoolId: string, filters?: ResourceFilters): Promise<LearningResource[]> {
   let q = supabase
     .from('learning_resources')
     .select(`
@@ -20,6 +20,7 @@ export async function getLearningResources(filters?: ResourceFilters): Promise<L
       subject:subjects(name),
       class:classes(name)
     `)
+    .eq('school_id', schoolId)
     .order('created_at', { ascending: false })
 
   if (filters?.subjectId) q = q.eq('subject_id', filters.subjectId)
@@ -49,8 +50,9 @@ export interface CreateResourceInput {
   topic?: string
 }
 
-export async function createResource(input: CreateResourceInput, teacherId: string): Promise<boolean> {
+export async function createResource(input: CreateResourceInput, teacherId: string, schoolId: string): Promise<boolean> {
   const { error } = await db.from('learning_resources').insert({
+    school_id: schoolId,
     teacher_id: teacherId,
     subject_id: input.subject_id,
     class_id: input.class_id || null,

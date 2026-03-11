@@ -11,7 +11,7 @@ export interface AssignmentFilters {
   subjectId?: string
 }
 
-export async function getAssignments(filters?: AssignmentFilters): Promise<Assignment[]> {
+export async function getAssignments(schoolId: string, filters?: AssignmentFilters): Promise<Assignment[]> {
   let q = supabase
     .from('assignments')
     .select(`
@@ -19,6 +19,7 @@ export async function getAssignments(filters?: AssignmentFilters): Promise<Assig
       class:classes(name),
       subject:subjects(name)
     `)
+    .eq('school_id', schoolId)
     .order('due_date', { ascending: false })
 
   if (filters?.classId) q = q.eq('class_id', filters.classId)
@@ -58,10 +59,11 @@ export async function getAssignmentSubmissions(assignmentId: string): Promise<As
   }))
 }
 
-export async function getEnrolledStudentsForAssignment(classId: string): Promise<{ id: string; full_name: string; admission_no: string }[]> {
+export async function getEnrolledStudentsForAssignment(schoolId: string, classId: string): Promise<{ id: string; full_name: string; admission_no: string }[]> {
   const { data, error } = await supabase
     .from('students')
     .select('id, full_name, admission_no')
+    .eq('school_id', schoolId)
     .eq('class_id', classId)
     .eq('status', 'active')
     .is('deleted_at', null)
@@ -79,8 +81,9 @@ export interface CreateAssignmentInput {
   due_date: string
 }
 
-export async function createAssignment(input: CreateAssignmentInput, teacherId: string): Promise<boolean> {
+export async function createAssignment(input: CreateAssignmentInput, teacherId: string, schoolId: string): Promise<boolean> {
   const { error } = await db.from('assignments').insert({
+    school_id: schoolId,
     teacher_id: teacherId,
     class_id: input.class_id,
     subject_id: input.subject_id,

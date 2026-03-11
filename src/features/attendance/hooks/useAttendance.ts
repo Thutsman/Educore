@@ -4,16 +4,24 @@ import {
   getClassAttendanceSummary, getClassesForAttendance, getStudentsForClass,
 } from '../services/attendance'
 import type { AttendanceStatus } from '../types'
+import { useSchool } from '@/context/SchoolContext'
 
 const KEY = {
-  classes:  ['attendance', 'classes'] as const,
+  classes:  (schoolId: string) => ['attendance', 'classes', schoolId] as const,
   students: (classId: string) => ['attendance', 'students', classId] as const,
   daily:    (classId: string, date: string) => ['attendance', 'daily', classId, date] as const,
   summary:  (classId: string, start: string, end: string) => ['attendance', 'summary', classId, start, end] as const,
 }
 
 export function useAttendanceClasses() {
-  return useQuery({ queryKey: KEY.classes, queryFn: getClassesForAttendance, staleTime: 10 * 60 * 1000 })
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
+  return useQuery({
+    queryKey: KEY.classes(schoolId),
+    queryFn: () => getClassesForAttendance(schoolId),
+    enabled: !!schoolId,
+    staleTime: 10 * 60 * 1000,
+  })
 }
 
 export function useStudentsForClass(classId: string | null) {

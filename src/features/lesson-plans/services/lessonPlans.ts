@@ -11,7 +11,7 @@ export interface LessonPlanFilters {
   endDate?: string
 }
 
-export async function getLessonPlans(filters?: LessonPlanFilters): Promise<LessonPlan[]> {
+export async function getLessonPlans(schoolId: string, filters?: LessonPlanFilters): Promise<LessonPlan[]> {
   let q = supabase
     .from('lesson_plans')
     .select(`
@@ -21,6 +21,7 @@ export async function getLessonPlans(filters?: LessonPlanFilters): Promise<Lesso
       class:classes(name),
       subject:subjects(name)
     `)
+    .eq('school_id', schoolId)
     .order('date', { ascending: false })
 
   if (filters?.classId) q = q.eq('class_id', filters.classId)
@@ -53,8 +54,9 @@ export interface CreateLessonPlanInput {
   homework?: string
 }
 
-export async function createLessonPlan(input: CreateLessonPlanInput, teacherId: string): Promise<boolean> {
+export async function createLessonPlan(input: CreateLessonPlanInput, teacherId: string, schoolId: string): Promise<boolean> {
   const { error } = await db.from('lesson_plans').insert({
+    school_id: schoolId,
     teacher_id: teacherId,
     class_id: input.class_id,
     subject_id: input.subject_id,
@@ -79,7 +81,7 @@ export async function deleteLessonPlan(id: string): Promise<boolean> {
   return !error
 }
 
-export async function duplicateLessonPlan(id: string, newDate: string, teacherId: string): Promise<boolean> {
+export async function duplicateLessonPlan(id: string, newDate: string, teacherId: string, schoolId: string): Promise<boolean> {
   const { data: existing, error: fetchError } = await supabase
     .from('lesson_plans')
     .select('*')
@@ -88,6 +90,7 @@ export async function duplicateLessonPlan(id: string, newDate: string, teacherId
   if (fetchError || !existing) return false
   const row = existing as { class_id: string; subject_id: string; scheme_book_id: string | null; lesson_objectives: string | null; introduction: string | null; lesson_development: string | null; conclusion: string | null; homework: string | null }
   const { error } = await db.from('lesson_plans').insert({
+    school_id: schoolId,
     teacher_id: teacherId,
     class_id: row.class_id,
     subject_id: row.subject_id,

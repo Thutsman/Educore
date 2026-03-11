@@ -7,10 +7,11 @@ const n = (v: unknown): number => Number(v) || 0
 
 // ─── Students ────────────────────────────────────────────────────────────────
 
-export async function getStudents(filters?: Partial<StudentFilters>): Promise<Student[]> {
+export async function getStudents(schoolId: string, filters?: Partial<StudentFilters>): Promise<Student[]> {
   let query = supabase
     .from('students')
     .select('id, admission_no, full_name, date_of_birth, gender, status, admission_date, class_id, class:classes(name)')
+    .eq('school_id', schoolId)
     .is('deleted_at', null)
     .order('full_name')
 
@@ -144,10 +145,11 @@ export async function getStudentFeeSummary(studentId: string): Promise<StudentFe
 
 // ─── Classes (dropdown data) ─────────────────────────────────────────────────
 
-export async function getClassesForSelect(): Promise<{ id: string; name: string }[]> {
+export async function getClassesForSelect(schoolId: string): Promise<{ id: string; name: string }[]> {
   const { data, error } = await supabase
     .from('classes')
     .select('id, name')
+    .eq('school_id', schoolId)
     .is('deleted_at', null)
     .order('name')
 
@@ -158,7 +160,7 @@ export async function getClassesForSelect(): Promise<{ id: string; name: string 
 
 // ─── CRUD ────────────────────────────────────────────────────────────────────
 
-export async function createStudent(data: StudentFormData): Promise<{ id: string } | null> {
+export async function createStudent(schoolId: string, data: StudentFormData): Promise<{ id: string } | null> {
   let guardianId: string | null = null
 
   if (data.guardian_full_name && data.guardian_relationship) {
@@ -170,6 +172,7 @@ export async function createStudent(data: StudentFormData): Promise<{ id: string
         phone:        data.guardian_phone || null,
         email:        data.guardian_email || null,
         address:      data.guardian_address || null,
+        school_id:    schoolId,
       })
       .select('id')
       .single()
@@ -191,6 +194,7 @@ export async function createStudent(data: StudentFormData): Promise<{ id: string
       admission_date: data.admission_date || null,
       class_id:       data.class_id       || null,
       guardian_id:    guardianId,
+      school_id:      schoolId,
     })
     .select('id')
     .single()
