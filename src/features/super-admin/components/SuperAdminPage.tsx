@@ -46,7 +46,7 @@ export function SuperAdminPage() {
     },
     {
       key: 'headmaster_count',
-      header: 'Headmasters',
+      header: 'School Admins',
       cell: r => (
         <span
           className={cn(
@@ -87,7 +87,7 @@ export function SuperAdminPage() {
             onClick={e => { e.stopPropagation(); setBootstrapSchool(r) }}
           >
             <UserPlus className="h-3.5 w-3.5" />
-            Add Headmaster
+            Add School Admin
           </Button>
         </div>
       ),
@@ -98,7 +98,7 @@ export function SuperAdminPage() {
     <div className="space-y-6">
       <PageHeader
         title="Super Admin"
-        subtitle="Manage schools and bootstrap headmaster accounts"
+        subtitle="Manage schools and bootstrap school admin accounts"
         actions={
           <Button
             onClick={() => { setEditSchool(null); setSchoolModalOpen(true) }}
@@ -129,7 +129,7 @@ export function SuperAdminPage() {
             </div>
             <div>
               <p className="text-2xl font-bold tabular-nums">{totalHeadmasters}</p>
-              <p className="text-xs text-muted-foreground">Total Headmasters</p>
+              <p className="text-xs text-muted-foreground">Total School Admins</p>
             </div>
           </div>
         </div>

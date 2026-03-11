@@ -68,9 +68,9 @@ export function BootstrapHeadmasterModal({ open, onOpenChange, school }: Props) 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[480px]">
         <DialogHeader>
-          <DialogTitle>Add Headmaster</DialogTitle>
+          <DialogTitle>Add School Admin</DialogTitle>
           <p className="text-sm text-muted-foreground">
-            Creating headmaster account for <span className="font-medium text-foreground">{school.name}</span>
+            Creating school admin account for <span className="font-medium text-foreground">{school.name}</span>
           </p>
         </DialogHeader>
 
@@ -114,7 +114,7 @@ export function BootstrapHeadmasterModal({ open, onOpenChange, school }: Props) 
           </div>
 
           <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-            A confirmation email will be sent to the headmaster. They can log in after confirming their email.
+            A confirmation email will be sent to the school admin. They can log in after confirming their email.
           </div>
 
           <DialogFooter className="pt-2">

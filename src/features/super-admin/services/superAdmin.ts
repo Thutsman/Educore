@@ -31,7 +31,7 @@ export interface BootstrapHeadmasterData {
   phone?: string
 }
 
-// Fetch all schools with headmaster count
+// Fetch all schools with school_admin count
 export async function getAllSchools(): Promise<SchoolRecord[]> {
   const { data, error } = await supabase
     .from('schools')
@@ -48,25 +48,25 @@ export async function getAllSchools(): Promise<SchoolRecord[]> {
       .eq('school_id', school.id)
       .in(
         'role_id',
-        (await supabase.from('roles').select('id').eq('name', 'headmaster')).data?.map((r: any) => r.id) ?? []
+        (await supabase.from('roles').select('id').eq('name', 'school_admin')).data?.map((r: any) => r.id) ?? []
       )
     results.push({ ...school, headmaster_count: count ?? 0 })
   }
   return results
 }
 
-// Fetch headmasters for a specific school
+// Fetch school admins for a specific school
 export interface SchoolHeadmaster {
   user_id: string
   full_name: string
   email: string | null
 }
 
-export async function getHeadmastersForSchool(schoolId: string): Promise<SchoolHeadmaster[]> {
+export async function getSchoolAdminsForSchool(schoolId: string): Promise<SchoolHeadmaster[]> {
   const { data: roleRow } = await supabase
     .from('roles')
     .select('id')
-    .eq('name', 'headmaster')
+    .eq('name', 'school_admin')
     .single()
   if (!roleRow) return []
   const roleId = (roleRow as unknown as { id: string }).id
@@ -85,6 +85,8 @@ export async function getHeadmastersForSchool(schoolId: string): Promise<SchoolH
     email: null,
   }))
 }
+
+export const getHeadmastersForSchool = getSchoolAdminsForSchool
 
 // Create a new school
 export async function createSchool(data: SchoolFormData): Promise<{ id: string } | null> {
@@ -118,7 +120,7 @@ export async function updateSchool(id: string, data: Partial<SchoolFormData>): P
   return !error
 }
 
-// Bootstrap a headmaster for a school
+// Bootstrap a school_admin for a school
 // Uses a separate ephemeral client (same anon key) to sign up without clobbering the super_admin session
 function createEphemeralClient() {
   return createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_ANON_KEY, {
@@ -126,12 +128,12 @@ function createEphemeralClient() {
       persistSession: false,
       autoRefreshToken: false,
       detectSessionInUrl: false,
-      storageKey: 'educore-headmaster-bootstrap',
+      storageKey: 'educore-school-admin-bootstrap',
     },
   })
 }
 
-export async function bootstrapHeadmaster(
+export async function bootstrapSchoolAdmin(
   schoolId: string,
   data: BootstrapHeadmasterData
 ): Promise<{ success: boolean; error?: string }> {
@@ -152,9 +154,9 @@ export async function bootstrapHeadmaster(
     await db.from('profiles').update({ phone: data.phone.trim(), full_name: data.full_name.trim() }).eq('id', userId)
   }
 
-  // Assign headmaster role scoped to this school
-  const { data: roleRow } = await supabase.from('roles').select('id').eq('name', 'headmaster').single()
-  if (!roleRow) return { success: false, error: 'Headmaster role not found' }
+  // Assign school_admin role scoped to this school
+  const { data: roleRow } = await supabase.from('roles').select('id').eq('name', 'school_admin').single()
+  if (!roleRow) return { success: false, error: 'School Admin role not found' }
   const roleId = (roleRow as unknown as { id: string }).id
 
   const { error: roleError } = await db
@@ -164,3 +166,5 @@ export async function bootstrapHeadmaster(
 
   return { success: true }
 }
+
+export const bootstrapHeadmaster = bootstrapSchoolAdmin

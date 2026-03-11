@@ -24,6 +24,7 @@ import {
   FileText,
   LineChart,
   ShieldCheck,
+  Settings2,
 } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -65,6 +66,17 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
+    label: 'Setup',
+    items: [
+      {
+        label: 'School Setup',
+        icon: Settings2,
+        href: '/dashboard/admin',
+        allowedRoles: ['school_admin'],
+      },
+    ],
+  },
+  {
     label: 'Overview',
     items: [
       {
@@ -82,49 +94,49 @@ const NAV_GROUPS: NavGroup[] = [
         label: 'Students',
         icon: GraduationCap,
         href: '/students',
-        allowedRoles: ['headmaster','deputy_headmaster','hod','class_teacher','teacher'],
+        allowedRoles: ['school_admin','headmaster','deputy_headmaster','hod','class_teacher','teacher'],
       },
       {
         label: 'Academics',
         icon: BookOpen,
         href: '/academics',
-        allowedRoles: ['headmaster','deputy_headmaster','hod','class_teacher','teacher'],
+        allowedRoles: ['school_admin','headmaster','deputy_headmaster','hod','class_teacher','teacher'],
       },
       {
         label: 'Scheme Book',
         icon: BookMarked,
         href: '/scheme-book',
-        allowedRoles: ['headmaster','deputy_headmaster','hod','teacher'],
+        allowedRoles: ['school_admin','headmaster','deputy_headmaster','hod','teacher'],
       },
       {
         label: 'Lesson Plans',
         icon: CalendarDays,
         href: '/lesson-plans',
-        allowedRoles: ['headmaster','deputy_headmaster','hod','teacher'],
+        allowedRoles: ['school_admin','headmaster','deputy_headmaster','hod','teacher'],
       },
       {
         label: 'Assignments',
         icon: FileQuestion,
         href: '/assignments',
-        allowedRoles: ['headmaster','deputy_headmaster','hod','teacher'],
+        allowedRoles: ['school_admin','headmaster','deputy_headmaster','hod','teacher'],
       },
       {
         label: 'Assessments',
         icon: ClipboardList,
         href: '/assessments',
-        allowedRoles: ['headmaster','deputy_headmaster','hod','teacher'],
+        allowedRoles: ['school_admin','headmaster','deputy_headmaster','hod','teacher'],
       },
       {
         label: 'Resources',
         icon: FolderOpen,
         href: '/resources',
-        allowedRoles: ['headmaster','deputy_headmaster','hod','teacher'],
+        allowedRoles: ['school_admin','headmaster','deputy_headmaster','hod','teacher'],
       },
       {
         label: 'Attendance',
         icon: ClipboardCheck,
         href: '/attendance',
-        allowedRoles: ['headmaster','deputy_headmaster','hod','class_teacher','teacher'],
+        allowedRoles: ['school_admin','headmaster','deputy_headmaster','hod','class_teacher','teacher'],
       },
     ],
   },
@@ -135,7 +147,7 @@ const NAV_GROUPS: NavGroup[] = [
         label: 'Finance',
         icon: Banknote,
         href: '/finance',
-        allowedRoles: ['headmaster','deputy_headmaster','bursar'],
+        allowedRoles: ['school_admin','headmaster','deputy_headmaster','bursar'],
       },
     ],
   },
@@ -146,13 +158,13 @@ const NAV_GROUPS: NavGroup[] = [
         label: 'Messages',
         icon: MessageSquare,
         href: '/communication',
-        allowedRoles: ['headmaster','deputy_headmaster','bursar','hod','class_teacher','teacher','non_teaching_staff','parent','student'],
+        allowedRoles: ['school_admin','headmaster','deputy_headmaster','bursar','hod','class_teacher','teacher','non_teaching_staff','parent','student'],
       },
       {
         label: 'Parent Messages',
         icon: MessageCircle,
         href: '/parent-messages',
-        allowedRoles: ['headmaster','deputy_headmaster','hod','class_teacher'],
+        allowedRoles: ['school_admin','headmaster','deputy_headmaster','hod','class_teacher'],
       },
     ],
   },
@@ -163,13 +175,13 @@ const NAV_GROUPS: NavGroup[] = [
         label: 'Term Reports',
         icon: FileText,
         href: '/reports',
-        allowedRoles: ['headmaster','deputy_headmaster','hod','class_teacher'],
+        allowedRoles: ['school_admin','headmaster','deputy_headmaster','hod','class_teacher'],
       },
       {
         label: 'Class Analytics',
         icon: LineChart,
         href: '/class-analytics',
-        allowedRoles: ['headmaster','deputy_headmaster','hod','class_teacher'],
+        allowedRoles: ['school_admin','headmaster','deputy_headmaster','hod','class_teacher'],
       },
     ],
   },
@@ -180,25 +192,25 @@ const NAV_GROUPS: NavGroup[] = [
         label: 'Staff',
         icon: UserCog,
         href: '/staff',
-        allowedRoles: ['headmaster','deputy_headmaster'],
+        allowedRoles: ['school_admin','headmaster','deputy_headmaster'],
       },
       {
         label: 'Assets',
         icon: Package,
         href: '/assets',
-        allowedRoles: ['headmaster','deputy_headmaster','non_teaching_staff'],
+        allowedRoles: ['school_admin','headmaster','deputy_headmaster','non_teaching_staff'],
       },
       {
         label: 'Analytics',
         icon: BarChart3,
         href: '/analytics',
-        allowedRoles: ['headmaster','deputy_headmaster','bursar'],
+        allowedRoles: ['school_admin','headmaster','deputy_headmaster','bursar'],
       },
       {
         label: 'User Management',
         icon: Users,
         href: '/users',
-        allowedRoles: ['headmaster'],
+        allowedRoles: ['school_admin','headmaster'],
       },
     ],
   },
@@ -358,7 +370,7 @@ function SidebarContent({
                 label: 'Settings',
                 icon: Settings,
                 href: '/settings',
-                allowedRoles: ['headmaster','deputy_headmaster','bursar','hod','class_teacher','teacher','non_teaching_staff','parent','student'],
+                allowedRoles: ['school_admin','headmaster','deputy_headmaster','bursar','hod','class_teacher','teacher','non_teaching_staff','parent','student'],
               }}
               collapsed={collapsed}
               onClick={onNavClick}

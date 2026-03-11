@@ -103,9 +103,13 @@ const ClassAnalyticsPage = lazy(() =>
 const SuperAdminPage = lazy(() =>
   import('@/features/super-admin').then(m => ({ default: m.SuperAdminPage }))
 )
+const SchoolAdminDashboard = lazy(() =>
+  import('@/features/dashboard/components/SchoolAdminDashboard').then(m => ({ default: m.SchoolAdminDashboard }))
+)
 
 // ── Role → dashboard path mapping ────────────────────────────────────────────
 const ROLE_DASHBOARD: Record<AppRole, string> = {
+  school_admin:       '/dashboard/admin',
   headmaster:         '/dashboard/headmaster',
   deputy_headmaster:  '/dashboard/deputy',
   bursar:             '/dashboard/bursar',
@@ -181,6 +185,9 @@ export default function App() {
                   <Route element={<ProtectedRoute allowedRoles={['bursar']} />}>
                     <Route path="bursar" element={<BursarDashboard />} />
                   </Route>
+                  <Route element={<ProtectedRoute allowedRoles={['school_admin']} />}>
+                    <Route path="admin" element={<SchoolAdminDashboard />} />
+                  </Route>
                   <Route path="hod"     element={<GeneralDashboard />} />
                   <Route path="teacher" element={<TeacherDashboard />} />
                   <Route path="staff"   element={<GeneralDashboard />} />
@@ -191,7 +198,7 @@ export default function App() {
 
                 {/* ── Students ── */}
                 <Route
-                  element={<ProtectedRoute allowedRoles={['headmaster','deputy_headmaster','hod','class_teacher','teacher','bursar','non_teaching_staff']} />}
+                  element={<ProtectedRoute allowedRoles={['school_admin','headmaster','deputy_headmaster','hod','class_teacher','teacher','bursar','non_teaching_staff']} />}
                 >
                   <Route path="/students" element={<StudentList />} />
                   <Route path="/students/:id" element={<StudentDetail />} />
@@ -199,21 +206,21 @@ export default function App() {
 
                 {/* ── Academics ── */}
                 <Route
-                  element={<ProtectedRoute allowedRoles={['headmaster','deputy_headmaster','hod','class_teacher','teacher']} />}
+                  element={<ProtectedRoute allowedRoles={['school_admin','headmaster','deputy_headmaster','hod','class_teacher','teacher']} />}
                 >
                   <Route path="/academics/*" element={<AcademicsPage />} />
                 </Route>
 
                 {/* ── Attendance ── */}
                 <Route
-                  element={<ProtectedRoute allowedRoles={['headmaster','deputy_headmaster','hod','class_teacher','teacher']} />}
+                  element={<ProtectedRoute allowedRoles={['school_admin','headmaster','deputy_headmaster','hod','class_teacher','teacher']} />}
                 >
                   <Route path="/attendance/*" element={<AttendancePage />} />
                 </Route>
 
                 {/* ── Subject Teacher modules ── */}
                 <Route
-                  element={<ProtectedRoute allowedRoles={['headmaster','deputy_headmaster','hod','teacher']} />}
+                  element={<ProtectedRoute allowedRoles={['school_admin','headmaster','deputy_headmaster','hod','teacher']} />}
                 >
                   <Route path="/scheme-book" element={<SchemeBookPage />} />
                   <Route path="/lesson-plans" element={<LessonPlansPage />} />
@@ -224,7 +231,7 @@ export default function App() {
 
                 {/* ── Class Teacher modules ── */}
                 <Route
-                  element={<ProtectedRoute allowedRoles={['headmaster','deputy_headmaster','hod','class_teacher']} />}
+                  element={<ProtectedRoute allowedRoles={['school_admin','headmaster','deputy_headmaster','hod','class_teacher']} />}
                 >
                   <Route path="/parent-messages" element={<ParentMessagesPage />} />
                   <Route path="/reports" element={<TermReportsPage />} />
@@ -233,7 +240,7 @@ export default function App() {
 
                 {/* ── Finance ── */}
                 <Route
-                  element={<ProtectedRoute allowedRoles={['headmaster','deputy_headmaster','bursar']} />}
+                  element={<ProtectedRoute allowedRoles={['school_admin','headmaster','deputy_headmaster','bursar']} />}
                 >
                   <Route path="/finance/*" element={<FinancePage />} />
                 </Route>
@@ -243,21 +250,21 @@ export default function App() {
 
                 {/* ── Staff ── */}
                 <Route
-                  element={<ProtectedRoute allowedRoles={['headmaster','deputy_headmaster']} />}
+                  element={<ProtectedRoute allowedRoles={['school_admin','headmaster','deputy_headmaster']} />}
                 >
                   <Route path="/staff/*" element={<StaffPage />} />
                 </Route>
 
                 {/* ── Assets ── */}
                 <Route
-                  element={<ProtectedRoute allowedRoles={['headmaster','deputy_headmaster','non_teaching_staff']} />}
+                  element={<ProtectedRoute allowedRoles={['school_admin','headmaster','deputy_headmaster','non_teaching_staff']} />}
                 >
                   <Route path="/assets/*" element={<AssetsPage />} />
                 </Route>
 
                 {/* ── Analytics ── */}
                 <Route
-                  element={<ProtectedRoute allowedRoles={['headmaster','deputy_headmaster','bursar']} />}
+                  element={<ProtectedRoute allowedRoles={['school_admin','headmaster','deputy_headmaster','bursar']} />}
                 >
                   <Route path="/analytics/*" element={<AnalyticsPage />} />
                 </Route>

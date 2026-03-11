@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import {
   getAllSchools, createSchool, updateSchool,
-  getHeadmastersForSchool, bootstrapHeadmaster,
+  getSchoolAdminsForSchool, bootstrapSchoolAdmin,
   type SchoolFormData, type BootstrapHeadmasterData,
 } from '../services/superAdmin'
 
@@ -16,7 +16,7 @@ export function useAllSchools() {
 export function useHeadmastersForSchool(schoolId: string | null) {
   return useQuery({
     queryKey: ['super-admin', 'headmasters', schoolId],
-    queryFn: () => getHeadmastersForSchool(schoolId!),
+    queryFn: () => getSchoolAdminsForSchool(schoolId!),
     enabled: !!schoolId,
   })
 }
@@ -56,16 +56,16 @@ export function useUpdateSchool() {
 export function useBootstrapHeadmaster(schoolId: string) {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (data: BootstrapHeadmasterData) => bootstrapHeadmaster(schoolId, data),
+    mutationFn: (data: BootstrapHeadmasterData) => bootstrapSchoolAdmin(schoolId, data),
     onSuccess: (result) => {
       if (result.success) {
-        toast.success('Headmaster account created. They will receive a confirmation email.')
+        toast.success('School Admin account created. They will receive a confirmation email.')
         qc.invalidateQueries({ queryKey: ['super-admin', 'headmasters', schoolId] })
         qc.invalidateQueries({ queryKey: ['super-admin', 'schools'] })
       } else {
-        toast.error(result.error ?? 'Failed to create headmaster')
+        toast.error(result.error ?? 'Failed to create school admin')
       }
     },
-    onError: () => toast.error('Failed to create headmaster'),
+    onError: () => toast.error('Failed to create school admin'),
   })
 }

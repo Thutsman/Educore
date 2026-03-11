@@ -4,6 +4,7 @@ import type { AppRole } from '@/types'
 
 const ROLE_DASHBOARD_MAP: Record<AppRole, string> = {
   super_admin: '/admin',
+  school_admin: '/dashboard/admin',
   headmaster: '/dashboard/headmaster',
   deputy_headmaster: '/dashboard/deputy',
   bursar: '/dashboard/bursar',

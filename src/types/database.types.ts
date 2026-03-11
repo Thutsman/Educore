@@ -9,6 +9,7 @@
 export type AppRole =
   | 'headmaster'
   | 'deputy_headmaster'
+  | 'school_admin'
   | 'bursar'
   | 'hod'
   | 'class_teacher'
