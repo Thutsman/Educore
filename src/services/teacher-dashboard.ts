@@ -105,7 +105,7 @@ export async function getHomeroomClass(schoolId: string, teacherId: string): Pro
 }
 
 /** All subject→class assignments for this teacher (current academic year). */
-export async function getTeacherSubjects(schoolId: string, teacherId: string): Promise<TeacherSubjectRow[]> {
+export async function getTeacherSubjects(_schoolId: string, teacherId: string): Promise<TeacherSubjectRow[]> {
   const { data, error } = await supabase
     .from('teacher_subjects')
     .select(`
@@ -113,7 +113,6 @@ export async function getTeacherSubjects(schoolId: string, teacherId: string): P
       subject:subjects(name),
       class:classes(name, grade_level)
     `)
-    .eq('school_id', schoolId)
     .eq('teacher_id', teacherId)
 
   if (error || !data) return []

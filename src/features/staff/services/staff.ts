@@ -295,12 +295,14 @@ export async function updateTeacher(id: string, data: Partial<TeacherFormData>):
   return !error
 }
 
-export async function getCurrentAcademicYear(): Promise<{ id: string; label: string } | null> {
-  const { data } = await supabase
+export async function getCurrentAcademicYear(schoolId: string): Promise<{ id: string; label: string } | null> {
+  const { data, error } = await supabase
     .from('academic_years')
     .select('id, label')
+    .eq('school_id', schoolId)
     .eq('is_current', true)
     .maybeSingle()
+  if (error) console.error('[getCurrentAcademicYear]', error)
   return (data as { id: string; label: string } | null) ?? null
 }
 
@@ -361,15 +363,52 @@ export async function getTeacherAllocations(teacherId: string): Promise<TeacherA
 export async function addTeacherAllocation(
   teacherId: string,
   subjectId: string,
-  classId: string
+  classId: string,
+  schoolId: string
 ): Promise<boolean> {
-  const year = await getCurrentAcademicYear()
+  const year = await getCurrentAcademicYear(schoolId)
   if (!year) return false
 
   const { error } = await db
     .from('teacher_subjects')
     .insert({ teacher_id: teacherId, subject_id: subjectId, class_id: classId, academic_year_id: year.id })
   return !error
+}
+
+/** Bulk-assign all provided subjects to a teacher for a class (skips duplicates). */
+export async function addAllSubjectAllocations(
+  teacherId: string,
+  classId: string,
+  subjectIds: string[],
+  schoolId: string
+): Promise<{ added: number; skipped: number }> {
+  const year = await getCurrentAcademicYear(schoolId)
+  if (!year) return { added: 0, skipped: 0 }
+
+  // Fetch already-existing allocations for this teacher+class+year to skip them
+  const { data: existing } = await supabase
+    .from('teacher_subjects')
+    .select('subject_id')
+    .eq('teacher_id', teacherId)
+    .eq('class_id', classId)
+    .eq('academic_year_id', year.id)
+
+  const existingIds = new Set(((existing ?? []) as { subject_id: string }[]).map(r => r.subject_id))
+  const toInsert = subjectIds.filter(id => !existingIds.has(id))
+  const skipped = subjectIds.length - toInsert.length
+
+  if (toInsert.length === 0) return { added: 0, skipped }
+
+  const rows = toInsert.map(subject_id => ({
+    teacher_id: teacherId,
+    subject_id,
+    class_id: classId,
+    academic_year_id: year.id,
+  }))
+
+  const { error } = await db.from('teacher_subjects').insert(rows)
+  if (error) { console.error('[addAllSubjectAllocations]', error); return { added: 0, skipped: subjectIds.length } }
+  return { added: toInsert.length, skipped }
 }
 
 export async function removeTeacherAllocation(allocationId: string): Promise<boolean> {

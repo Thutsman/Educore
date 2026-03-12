@@ -135,7 +135,10 @@ export function useCreateAcademicYear() {
   return useMutation({
     mutationFn: (d: { label: string; start_date: string; end_date: string; is_current: boolean }) =>
       createAcademicYear(schoolId, d),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['academics', 'years'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['academics', 'years'] })
+      qc.invalidateQueries({ queryKey: ['staff', 'current-academic-year'] })
+    },
   })
 }
 
@@ -146,7 +149,10 @@ export function useUpdateAcademicYear() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: Parameters<typeof updateAcademicYear>[2] }) =>
       updateAcademicYear(id, schoolId, data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['academics', 'years'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['academics', 'years'] })
+      qc.invalidateQueries({ queryKey: ['staff', 'current-academic-year'] })
+    },
   })
 }
 

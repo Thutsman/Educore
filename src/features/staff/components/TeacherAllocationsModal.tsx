@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { X, Plus, AlertTriangle, BookOpen } from 'lucide-react'
 import { toast } from 'sonner'
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -12,6 +12,7 @@ import { EmptyState } from '@/components/common/EmptyState'
 import {
   useTeacherAllocations,
   useAddTeacherAllocation,
+  useAddAllSubjectAllocations,
   useRemoveTeacherAllocation,
   useSubjectsForSelect,
   useClassesForSelect,
@@ -35,6 +36,7 @@ export function TeacherAllocationsModal({ open, onOpenChange, teacherId, teacher
   const { data: currentYear }                 = useCurrentAcademicYear()
 
   const addAllocation    = useAddTeacherAllocation()
+  const addAllSubjects   = useAddAllSubjectAllocations()
   const removeAllocation = useRemoveTeacherAllocation()
 
   const handleAdd = async () => {
@@ -46,9 +48,30 @@ export function TeacherAllocationsModal({ open, onOpenChange, teacherId, teacher
     const ok = await addAllocation.mutateAsync({ teacherId, subjectId, classId })
     if (ok) {
       toast.success('Allocation added.')
-      setClassId('')   // keep subject selected so next class can be added instantly
+      setClassId('')
     } else {
       toast.error('Failed to add allocation. It may already exist for this year.')
+    }
+  }
+
+  const handleAddAllSubjects = async () => {
+    if (!teacherId || !classId || subjects.length === 0) return
+    if (!currentYear) {
+      toast.error('No active academic year. Set one in Academics → Academic Years.')
+      return
+    }
+    const { added, skipped } = await addAllSubjects.mutateAsync({
+      teacherId,
+      classId,
+      subjectIds: subjects.map(s => s.id),
+    })
+    if (added > 0) {
+      toast.success(`${added} subject${added !== 1 ? 's' : ''} assigned.${skipped > 0 ? ` ${skipped} already existed.` : ''}`)
+      setClassId('')
+    } else if (skipped > 0) {
+      toast.info('All subjects were already allocated for this class.')
+    } else {
+      toast.error('Failed to assign subjects.')
     }
   }
 
@@ -94,45 +117,65 @@ export function TeacherAllocationsModal({ open, onOpenChange, teacherId, teacher
         )}
 
         {/* Add allocation form */}
-        <div className="space-y-2">
-          <div className="flex items-baseline justify-between">
-            <h4 className="text-sm font-semibold">Add Allocation</h4>
-            <p className="text-xs text-muted-foreground">
-              Select a subject + class, then press <strong>+</strong>. Repeat for each class.
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Select value={subjectId} onValueChange={setSubjectId}>
-              <SelectTrigger className="flex-1">
-                <SelectValue placeholder="Subject" />
-              </SelectTrigger>
-              <SelectContent position="popper" side="bottom" sideOffset={4}>
-                {subjects.map(s => (
-                  <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        <div className="space-y-3">
+          <h4 className="text-sm font-semibold">Add Allocation</h4>
 
-            <Select value={classId} onValueChange={setClassId}>
-              <SelectTrigger className="flex-1">
-                <SelectValue placeholder="Class" />
-              </SelectTrigger>
-              <SelectContent position="popper" side="bottom" sideOffset={4}>
-                {classes.map(c => (
-                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          {/* Class selector shared by both options */}
+          <Select value={classId} onValueChange={setClassId}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select a class first" />
+            </SelectTrigger>
+            <SelectContent position="popper" side="bottom" sideOffset={4}>
+              {classes.map(c => (
+                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
+          {/* Option A: all subjects at once (primary school) */}
+          <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2.5">
+            <div className="flex-1">
+              <p className="text-xs font-medium">All subjects</p>
+              <p className="text-xs text-muted-foreground">Primary class teacher — assigns every subject in one click</p>
+            </div>
             <Button
               size="sm"
-              onClick={handleAdd}
-              disabled={!subjectId || !classId || !currentYear || addAllocation.isPending}
-              className="shrink-0"
-              title="Add this subject-class pair"
+              variant="outline"
+              onClick={handleAddAllSubjects}
+              disabled={!classId || !currentYear || addAllSubjects.isPending || subjects.length === 0}
+              className="shrink-0 text-xs"
             >
-              <Plus className="h-4 w-4" />
+              {addAllSubjects.isPending ? 'Assigning…' : 'Assign all'}
             </Button>
+          </div>
+
+          {/* Option B: single subject (secondary / specialist) */}
+          <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2.5">
+            <div className="flex-1">
+              <p className="text-xs font-medium">Specific subject</p>
+              <p className="text-xs text-muted-foreground">Secondary / specialist teacher</p>
+            </div>
+            <div className="flex gap-2">
+              <Select value={subjectId} onValueChange={setSubjectId}>
+                <SelectTrigger className="w-44">
+                  <SelectValue placeholder="Subject" />
+                </SelectTrigger>
+                <SelectContent position="popper" side="bottom" sideOffset={4}>
+                  {subjects.map(s => (
+                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                size="sm"
+                onClick={handleAdd}
+                disabled={!subjectId || !classId || !currentYear || addAllocation.isPending}
+                className="shrink-0"
+                title="Add this subject-class pair"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -189,6 +232,15 @@ export function TeacherAllocationsModal({ open, onOpenChange, teacherId, teacher
             </div>
           )}
         </div>
+
+        <DialogFooter className="border-t border-border pt-4">
+          <p className="flex-1 text-xs text-muted-foreground">
+            Changes are saved automatically. Close when done.
+          </p>
+          <Button onClick={() => onOpenChange(false)}>
+            Done
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

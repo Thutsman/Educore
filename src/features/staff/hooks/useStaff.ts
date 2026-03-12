@@ -5,7 +5,7 @@ import {
   getTeachersForSelect, getNextTeacherEmployeeNo,
   getCurrentAcademicYear,
   getSubjectsForSelect, getClassesForSelect,
-  getTeacherAllocations, addTeacherAllocation, removeTeacherAllocation,
+  getTeacherAllocations, addTeacherAllocation, addAllSubjectAllocations, removeTeacherAllocation,
   createUserAccount,
   createTeacher, updateTeacher,
   getRolesForUser,
@@ -81,10 +81,13 @@ export function useNextTeacherEmployeeNo(enabled = true) {
 }
 
 export function useCurrentAcademicYear() {
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
   return useQuery({
-    queryKey: ['staff', 'current-academic-year'],
-    queryFn: getCurrentAcademicYear,
-    staleTime: 5 * 60 * 1000,
+    queryKey: ['staff', 'current-academic-year', schoolId],
+    queryFn: () => getCurrentAcademicYear(schoolId),
+    enabled: !!schoolId,
+    staleTime: 2 * 60 * 1000,
   })
 }
 
@@ -120,9 +123,25 @@ export function useTeacherAllocations(teacherId: string | undefined) {
 
 export function useAddTeacherAllocation() {
   const qc = useQueryClient()
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
   return useMutation({
     mutationFn: ({ teacherId, subjectId, classId }: { teacherId: string; subjectId: string; classId: string }) =>
-      addTeacherAllocation(teacherId, subjectId, classId),
+      addTeacherAllocation(teacherId, subjectId, classId, schoolId),
+    onSuccess: (_, { teacherId }) => {
+      qc.invalidateQueries({ queryKey: ['staff', 'teacher-allocations', teacherId] })
+      qc.invalidateQueries({ queryKey: ['staff', 'teachers'] })
+    },
+  })
+}
+
+export function useAddAllSubjectAllocations() {
+  const qc = useQueryClient()
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
+  return useMutation({
+    mutationFn: ({ teacherId, classId, subjectIds }: { teacherId: string; classId: string; subjectIds: string[] }) =>
+      addAllSubjectAllocations(teacherId, classId, subjectIds, schoolId),
     onSuccess: (_, { teacherId }) => {
       qc.invalidateQueries({ queryKey: ['staff', 'teacher-allocations', teacherId] })
       qc.invalidateQueries({ queryKey: ['staff', 'teachers'] })
