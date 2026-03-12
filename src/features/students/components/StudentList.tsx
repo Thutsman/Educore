@@ -28,7 +28,7 @@ const STATUS_STYLES: Record<string, string> = {
 export function StudentList() {
   const navigate = useNavigate()
   const { role } = useAuth()
-  const canAdd = role === 'headmaster' || role === 'deputy_headmaster'
+  const canAdd = role === 'headmaster' || role === 'deputy_headmaster' || role === 'school_admin'
 
   const [filters, setFilters] = useState<StudentFilters>({ search: '', classId: 'all', status: 'all' })
   const [showForm, setShowForm] = useState(false)

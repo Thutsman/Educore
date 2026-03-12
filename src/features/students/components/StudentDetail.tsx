@@ -46,7 +46,7 @@ export function StudentDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { role } = useAuth()
-  const canEdit = role === 'headmaster' || role === 'deputy_headmaster'
+  const canEdit = role === 'headmaster' || role === 'deputy_headmaster' || role === 'school_admin'
 
   const { data: student, isLoading } = useStudent(id ?? null)
   const { data: guardians = [] } = useStudentGuardians(id ?? null)

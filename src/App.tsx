@@ -39,6 +39,9 @@ const BursarDashboard = lazy(() =>
 const GeneralDashboard = lazy(() =>
   import('@/features/dashboard/components/GeneralDashboard').then(m => ({ default: m.GeneralDashboard }))
 )
+const HodDashboard = lazy(() =>
+  import('@/features/dashboard/components/HodDashboard').then(m => ({ default: m.HodDashboard }))
+)
 const TeacherDashboard = lazy(() =>
   import('@/features/dashboard/components/TeacherDashboard').then(m => ({ default: m.TeacherDashboard }))
 )
@@ -188,7 +191,7 @@ export default function App() {
                   <Route element={<ProtectedRoute allowedRoles={['school_admin']} />}>
                     <Route path="admin" element={<SchoolAdminDashboard />} />
                   </Route>
-                  <Route path="hod"     element={<GeneralDashboard />} />
+                  <Route path="hod"     element={<HodDashboard />} />
                   <Route path="teacher" element={<TeacherDashboard />} />
                   <Route path="staff"   element={<GeneralDashboard />} />
                   <Route path="parent"  element={<ParentDashboard />} />
