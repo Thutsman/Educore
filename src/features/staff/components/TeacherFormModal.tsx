@@ -20,6 +20,7 @@ import {
   useNextTeacherEmployeeNo,
 } from '../hooks/useStaff'
 import { isEmployeeNoTaken } from '../services/staff'
+import { useSchool } from '@/context/SchoolContext'
 import type { Teacher } from '../types'
 
 // ── Schema ────────────────────────────────────────────────────────────────────
@@ -27,7 +28,7 @@ import type { Teacher } from '../types'
 const schema = z.object({
   profile_id:      z.string().min(1, 'Select a user profile'),
   employee_no:     z.string().min(1, 'Employee number is required'),
-  department_id:   z.string().min(1, 'Department is required'),
+  department_id:   z.string().optional(),
   employment_type: z.enum(['permanent', 'contract', 'part_time']),
   join_date:       z.string().optional(),
   qualification:   z.string().optional(),
@@ -50,6 +51,8 @@ interface Props {
 
 export function TeacherFormModal({ open, onOpenChange, teacher, initialProfileId }: Props) {
   const isEdit = !!teacher
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
 
   const create = useCreateTeacher()
   const update = useUpdateTeacher()
@@ -105,14 +108,14 @@ export function TeacherFormModal({ open, onOpenChange, teacher, initialProfileId
   }, [suggestedEmployeeNo, open, teacher, form])
 
   const validateEmployeeNo = useCallback(async (value: string) => {
-    if (!value) return
-    const taken = await isEmployeeNoTaken(value, teacher?.id)
+    if (!value || !schoolId) return
+    const taken = await isEmployeeNoTaken(value, schoolId, teacher?.id)
     if (taken) {
       form.setError('employee_no', { message: 'This employee number is already in use' })
     } else {
       form.clearErrors('employee_no')
     }
-  }, [teacher?.id, form])
+  }, [teacher?.id, schoolId, form])
 
   const onSubmit = async (values: FormValues) => {
     const payload = {
@@ -242,19 +245,30 @@ export function TeacherFormModal({ open, onOpenChange, teacher, initialProfileId
             <div className="grid grid-cols-2 gap-4">
               <FormField control={form.control} name="department_id" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Department *</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <FormLabel>Department</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value ?? ''}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select Department" />
+                        <SelectValue placeholder="Select Department (optional)" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {departments.map(d => (
-                        <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
-                      ))}
+                      {departments.length === 0 ? (
+                        <div className="px-3 py-2 text-xs text-muted-foreground">
+                          No departments yet — create them in the Academics module first.
+                        </div>
+                      ) : (
+                        departments.map(d => (
+                          <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
+                  {departments.length === 0 && (
+                    <p className="text-xs text-amber-600">
+                      No departments yet. Go to <strong>Academics → Departments</strong> to create them. You can save without one and update later.
+                    </p>
+                  )}
                   <FormMessage />
                 </FormItem>
               )} />

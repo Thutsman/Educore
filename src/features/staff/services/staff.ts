@@ -75,14 +75,33 @@ export async function getTeachers(schoolId: string): Promise<Teacher[]> {
   }))
 }
 
-/** Profiles not yet linked to any active teacher record — for the Add Teacher dropdown. */
-export async function getProfilesForTeacher(): Promise<ProfileOption[]> {
+/** Profiles not yet linked to any active teacher record in this school — for the Add Teacher dropdown. */
+export async function getProfilesForTeacher(schoolId: string): Promise<ProfileOption[]> {
+  // Step 1: get all user_ids with any role in this school
+  const { data: roleRows } = await supabase
+    .from('user_roles')
+    .select('user_id')
+    .eq('school_id', schoolId)
+
+  if (!roleRows || roleRows.length === 0) return []
+
+  const userIds = [...new Set((roleRows as { user_id: string }[]).map(r => r.user_id))]
+
+  // Step 2: fetch profiles for those users + already-linked teachers in parallel
   const [profilesRes, linkedRes] = await Promise.all([
-    supabase.from('profiles').select('id, full_name').order('full_name'),
-    supabase.from('teachers').select('profile_id').is('deleted_at', null),
+    supabase
+      .from('profiles')
+      .select('id, full_name')
+      .in('id', userIds)
+      .order('full_name'),
+    supabase
+      .from('teachers')
+      .select('profile_id')
+      .eq('school_id', schoolId)
+      .is('deleted_at', null),
   ])
 
-  if (profilesRes.error || !profilesRes.data) return []
+  if (!profilesRes.data) return []
 
   const linked = new Set(
     ((linkedRes.data ?? []) as { profile_id: string }[]).map(r => r.profile_id)
@@ -94,9 +113,9 @@ export async function getProfilesForTeacher(): Promise<ProfileOption[]> {
     .map(p => ({ id: p.id, full_name: p.full_name, email: null }))
 }
 
-/** Returns the next available TCH-NNN employee number based on all existing records. */
-export async function getNextTeacherEmployeeNo(): Promise<string> {
-  const { data } = await supabase.from('teachers').select('employee_no')
+/** Returns the next available TCH-NNN employee number for this school. */
+export async function getNextTeacherEmployeeNo(schoolId: string): Promise<string> {
+  const { data } = await supabase.from('teachers').select('employee_no').eq('school_id', schoolId)
   const nums = ((data ?? []) as { employee_no: string }[])
     .map(r => /^TCH-(\d+)$/i.exec(r.employee_no)?.[1])
     .filter((n): n is string => !!n)
@@ -105,12 +124,13 @@ export async function getNextTeacherEmployeeNo(): Promise<string> {
   return `TCH-${String(next).padStart(3, '0')}`
 }
 
-/** Returns true if the given employee number is already used by another active teacher. */
-export async function isEmployeeNoTaken(employeeNo: string, excludeId?: string): Promise<boolean> {
+/** Returns true if the given employee number is already used by another active teacher in the same school. */
+export async function isEmployeeNoTaken(employeeNo: string, schoolId: string, excludeId?: string): Promise<boolean> {
   const { data } = await supabase
     .from('teachers')
     .select('id')
     .eq('employee_no', employeeNo)
+    .eq('school_id', schoolId)
     .is('deleted_at', null)
   if (!data || data.length === 0) return false
   if (excludeId) return (data as { id: string }[]).some(r => r.id !== excludeId)
@@ -228,9 +248,11 @@ export async function createUserAccount(data: CreateUserAccountData, schoolId: s
     if (roleError) return null
   }
 
-  if (data.phone) {
-    await db.from('profiles').update({ phone: data.phone, full_name: data.full_name }).eq('id', userId)
-  }
+  // Always sync full_name (and phone if provided) — the auth trigger may not pick up metadata immediately
+  await db.from('profiles').update({
+    full_name: data.full_name,
+    ...(data.phone ? { phone: data.phone } : {}),
+  }).eq('id', userId)
 
   return { id: userId }
 }

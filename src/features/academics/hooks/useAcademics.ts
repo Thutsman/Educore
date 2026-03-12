@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
+  getDepartments, createDepartment, updateDepartment, deleteDepartment,
   getClasses, createClass, updateClass, deleteClass,
   getSubjects, createSubject, updateSubject, deleteSubject,
   getAcademicYears, createAcademicYear, updateAcademicYear,
@@ -10,6 +11,7 @@ import {
 import { useSchool } from '@/context/SchoolContext'
 
 const KEY = {
+  departments: (schoolId: string) => ['academics', 'departments', schoolId] as const,
   classes:   (schoolId: string) => ['academics', 'classes', schoolId] as const,
   subjects:  (schoolId: string) => ['academics', 'subjects', schoolId] as const,
   years:     (schoolId: string) => ['academics', 'years', schoolId] as const,
@@ -17,6 +19,52 @@ const KEY = {
   exams:     (schoolId: string, f?: object) => ['academics', 'exams', schoolId, f] as const,
   grades:    (examId: string) => ['academics', 'grades', examId] as const,
   enrolled:  (classId: string) => ['academics', 'enrolled', classId] as const,
+}
+
+export function useDepartments() {
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
+  return useQuery({
+    queryKey: KEY.departments(schoolId),
+    queryFn: () => getDepartments(schoolId),
+    enabled: !!schoolId,
+    staleTime: 10 * 60 * 1000,
+  })
+}
+
+export function useCreateDepartment() {
+  const qc = useQueryClient()
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
+  return useMutation({
+    mutationFn: (d: Parameters<typeof createDepartment>[1]) => createDepartment(schoolId, d),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['academics', 'departments'] })
+      qc.invalidateQueries({ queryKey: ['staff', 'departments'] })
+    },
+  })
+}
+
+export function useUpdateDepartment() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Parameters<typeof updateDepartment>[1] }) => updateDepartment(id, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['academics', 'departments'] })
+      qc.invalidateQueries({ queryKey: ['staff', 'departments'] })
+    },
+  })
+}
+
+export function useDeleteDepartment() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: deleteDepartment,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['academics', 'departments'] })
+      qc.invalidateQueries({ queryKey: ['staff', 'departments'] })
+    },
+  })
 }
 
 export function useClasses() {

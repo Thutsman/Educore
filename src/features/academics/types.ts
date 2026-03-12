@@ -1,3 +1,10 @@
+export interface Department {
+  id: string
+  name: string
+  code: string | null
+  description: string | null
+}
+
 export interface AcademicClass {
   id: string
   name: string

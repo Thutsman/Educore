@@ -9,6 +9,7 @@ INSERT INTO subjects (name, code, department_id, description) VALUES
   ('English Language',   'ENG',     (SELECT id FROM departments WHERE code = 'LANG' LIMIT 1), 'English language and literature'),
   ('English Literature',  'ENGLIT',  (SELECT id FROM departments WHERE code = 'LANG' LIMIT 1), 'Literature in English'),
   ('Shona',               'SHONA',   (SELECT id FROM departments WHERE code = 'LANG' LIMIT 1), 'Shona language'),
+  ('Ndebele',             'NDEB',    (SELECT id FROM departments WHERE code = 'LANG' LIMIT 1), 'Ndebele language'),
   ('Physical Science',    'PHYSCI',  (SELECT id FROM departments WHERE code = 'SCI' LIMIT 1), 'Physics and Chemistry'),
   ('Biology',             'BIO',     (SELECT id FROM departments WHERE code = 'SCI' LIMIT 1), 'Biology'),
   ('Physics',             'PHY',     (SELECT id FROM departments WHERE code = 'SCI' LIMIT 1), 'Physics'),

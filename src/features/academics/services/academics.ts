@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase'
-import type { AcademicClass, Subject, Exam, Grade, AcademicYear, Term, EnrolledStudent } from '../types'
+import type { Department, AcademicClass, Subject, Exam, Grade, AcademicYear, Term, EnrolledStudent } from '../types'
 
 // Bypass generic Database placeholder for write operations
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -11,6 +11,39 @@ function getLetterGrade(pct: number): string {
   if (pct >= 60) return 'C'
   if (pct >= 50) return 'D'
   return 'F'
+}
+
+// ─── Departments ─────────────────────────────────────────────────────────────
+
+export async function getDepartments(schoolId: string): Promise<Department[]> {
+  const { data, error } = await supabase
+    .from('departments')
+    .select('id, name, code, description')
+    .eq('school_id', schoolId)
+    .is('deleted_at', null)
+    .order('name')
+  if (error || !data) return []
+  return data as unknown as Department[]
+}
+
+export async function createDepartment(schoolId: string, d: { name: string; code?: string; description?: string }): Promise<boolean> {
+  const { error } = await db.from('departments').insert({
+    name: d.name,
+    code: d.code || null,
+    description: d.description || null,
+    school_id: schoolId,
+  })
+  return !error
+}
+
+export async function updateDepartment(id: string, d: Partial<{ name: string; code: string; description: string }>): Promise<boolean> {
+  const { error } = await db.from('departments').update(d).eq('id', id)
+  return !error
+}
+
+export async function deleteDepartment(id: string): Promise<boolean> {
+  const { error } = await db.from('departments').update({ deleted_at: new Date().toISOString() }).eq('id', id)
+  return !error
 }
 
 // ─── Classes ─────────────────────────────────────────────────────────────────

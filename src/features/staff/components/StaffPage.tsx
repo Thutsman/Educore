@@ -262,23 +262,23 @@ function StaffHelpGuide() {
   const [open, setOpen] = useState(false)
 
   return (
-    <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+    <div className="rounded-xl border border-primary/20 bg-primary/5 overflow-hidden">
       <button
         type="button"
         onClick={() => setOpen(v => !v)}
-        className="flex w-full items-center justify-between px-5 py-3.5 text-left hover:bg-muted/30 transition-colors"
+        className="flex w-full items-center justify-between px-5 py-3.5 text-left hover:bg-primary/10 transition-colors"
       >
-        <div className="flex items-center gap-2.5 text-sm font-medium">
-          <HelpCircle className="h-4 w-4 text-primary shrink-0" />
+        <div className="flex items-center gap-2.5 text-sm font-semibold text-primary">
+          <HelpCircle className="h-4 w-4 shrink-0" />
           How to add staff — quick guide
         </div>
         {open
-          ? <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" />
-          : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />}
+          ? <ChevronUp className="h-4 w-4 text-primary/60 shrink-0" />
+          : <ChevronDown className="h-4 w-4 text-primary/60 shrink-0" />}
       </button>
 
       {open && (
-        <div className="border-t border-border px-5 py-4 space-y-5 text-sm">
+        <div className="border-t border-primary/15 px-5 py-4 space-y-5 text-sm">
 
           {/* Step-by-step */}
           <div>
@@ -305,7 +305,7 @@ function StaffHelpGuide() {
             </ol>
           </div>
 
-          <div className="h-px bg-border" />
+          <div className="h-px bg-primary/15" />
 
           {/* Unlinked accounts */}
           <div>
@@ -315,7 +315,7 @@ function StaffHelpGuide() {
             </p>
           </div>
 
-          <div className="h-px bg-border" />
+          <div className="h-px bg-primary/15" />
 
           {/* Roles */}
           <div>
@@ -330,7 +330,7 @@ function StaffHelpGuide() {
                 ['Class Teacher',       'Homeroom teacher; additional attendance responsibilities.'],
                 ['Non-Teaching Staff',  'Admin/support staff with limited module access.'],
               ].map(([role, desc]) => (
-                <div key={role} className="rounded-lg border border-border bg-muted/30 px-3 py-2">
+                <div key={role} className="rounded-lg border border-primary/15 bg-background/60 px-3 py-2">
                   <p className="text-xs font-semibold">{role}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>
                 </div>
@@ -338,7 +338,7 @@ function StaffHelpGuide() {
             </div>
           </div>
 
-          <div className="h-px bg-border" />
+          <div className="h-px bg-primary/15" />
 
           {/* Tips */}
           <div>

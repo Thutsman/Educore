@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -26,13 +26,19 @@ interface Props {
 }
 
 export function ManageRolesModal({ open, onOpenChange, userId, userName }: Props) {
-  const { data: currentRoles = [], isLoading } = useGetRolesForUser(userId, open && !!userId)
+  const { data: currentRoles, isLoading } = useGetRolesForUser(userId, open && !!userId)
   const setRoles = useSetUserRoles()
   const [pending, setPending] = useState<string[]>([])
+  const initRef = useRef(false)
 
   useEffect(() => {
-    if (open && currentRoles.length >= 0) setPending([...currentRoles])
-  }, [open, currentRoles])
+    if (!open) { initRef.current = false; setPending([]); return }
+    if (initRef.current) return
+    if (!isLoading && currentRoles !== undefined) {
+      setPending([...currentRoles])
+      initRef.current = true
+    }
+  }, [open, isLoading, currentRoles])
 
   const handleToggle = (roleName: string) => {
     setPending(prev =>

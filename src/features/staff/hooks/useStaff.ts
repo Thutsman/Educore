@@ -48,9 +48,12 @@ export function useStaffMembers() {
 }
 
 export function useProfilesForTeacher() {
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
   return useQuery({
-    queryKey: ['staff', 'profiles-unlinked'],
-    queryFn: getProfilesForTeacher,
+    queryKey: ['staff', 'profiles-unlinked', schoolId],
+    queryFn: () => getProfilesForTeacher(schoolId),
+    enabled: !!schoolId,
     staleTime: 30 * 1000,
   })
 }
@@ -67,10 +70,12 @@ export function useDepartmentsForSelect() {
 }
 
 export function useNextTeacherEmployeeNo(enabled = true) {
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
   return useQuery({
-    queryKey: ['staff', 'next-employee-no'],
-    queryFn: getNextTeacherEmployeeNo,
-    enabled,
+    queryKey: ['staff', 'next-employee-no', schoolId],
+    queryFn: () => getNextTeacherEmployeeNo(schoolId),
+    enabled: enabled && !!schoolId,
     staleTime: 30 * 1000,
   })
 }
