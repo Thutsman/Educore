@@ -13,6 +13,7 @@ import { AuthLayout } from '@/layouts/AuthLayout'
 import { LoginPage } from '@/pages/LoginPage'
 import { UnauthorizedPage } from '@/pages/UnauthorizedPage'
 import { SelectSchoolPage } from '@/pages/SelectSchoolPage'
+import { NotFoundPage } from '@/pages/NotFoundPage'
 import type { AppRole } from '@/types'
 
 // ── Lazy-loaded auth / settings pages ────────────────────────────────────────
@@ -290,7 +291,7 @@ export default function App() {
 
             {/* Fallbacks */}
             <Route path="/"  element={<Navigate to="/dashboard" replace />} />
-            <Route path="*"  element={<Navigate to="/dashboard" replace />} />
+            <Route path="*"  element={<NotFoundPage />} />
 
           </Routes>
         </Suspense>

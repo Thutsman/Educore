@@ -1,73 +1,86 @@
-# React + TypeScript + Vite
+# Educore – Integrated School Management System
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Educore is a React + TypeScript + Vite single-page application (SPA) for school management, using Tailwind CSS, shadcn/ui, React Router, Supabase, and TanStack Query.
 
-Currently, two official plugins are available:
+This document focuses on how to build and deploy Educore, especially to Vercel.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Local development
 
-## React Compiler
+- **Install dependencies**
+  - `npm install`
+- **Run dev server**
+  - `npm run dev`
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+The app will be available on the port printed by Vite (typically `http://localhost:5173`).
 
-## Expanding the ESLint configuration
+## Build
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+Educore uses Vite and outputs its production build to the `dist` directory.
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- **Build command**
+  - `npm run build`
+- **Output directory**
+  - `dist/`
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+The `vite.config.ts` file is configured with:
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```ts
+build: {
+  outDir: 'dist',
+  // …
+}
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Deploying to Vercel
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+Educore is a single-page application that relies on React Router for client-side routing. To avoid 404 errors when directly opening deep links (for example `/dashboard`, `/students`, `/attendance`, `/class-analytics`, `/term-reports`), Vercel must serve `index.html` for all routes.
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### Required Vercel project settings
+
+Configure your Vercel project with the following values:
+
+- **Framework Preset**: `Vite`
+- **Build Command**: `npm run build`
+- **Output Directory**: `dist`
+
+These are the standard defaults for a Vite project on Vercel; if you override them, ensure they match the values above.
+
+### SPA routing (avoiding 404 on deep links)
+
+Educore includes a `vercel.json` file at the project root with:
+
+```json
+{
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/" }
+  ]
+}
 ```
+
+This configuration ensures all incoming paths are rewritten to `/`, letting React Router handle routing inside the SPA. This prevents `404: NOT_FOUND` when directly opening URLs like:
+
+- `/dashboard`
+- `/students`
+- `/attendance`
+- `/class-analytics`
+- `/term-reports`
+
+### Verifying a deployment
+
+After deploying:
+
+1. Open the Vercel URL on desktop and mobile.
+2. Log in and navigate to a deep route (for example `/dashboard/hod` or `/class-analytics`).
+3. Hard refresh the page or open the URL directly in a new tab.
+4. Confirm that the Educore shell (topbar, sidebar, and dashboards) loads correctly instead of a 404 page.
+
+## Mobile and PWA-ready metadata
+
+The root `index.html` includes mobile-friendly meta tags:
+
+- `viewport` with `viewport-fit=cover` for better handling of mobile browser UI.
+- `theme-color` to control the browser UI color on mobile.
+- Basic mobile web app tags (`mobile-web-app-capable`, `apple-mobile-web-app-capable`, `apple-mobile-web-app-status-bar-style`).
+
+These prepare Educore for future Progressive Web App (PWA) support without implementing a full PWA yet (no service worker or manifest is required at this stage).
+
