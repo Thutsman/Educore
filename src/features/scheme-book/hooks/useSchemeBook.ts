@@ -111,7 +111,6 @@ export function useDeleteAttachment() {
     mutationFn: ({
       attachmentId,
       filePath,
-      schemeBookId,
     }: {
       attachmentId: string
       filePath: string
