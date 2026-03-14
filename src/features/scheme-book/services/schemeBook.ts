@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase'
-import type { SchemeBook } from '../types'
+import type { SchemeBook, SchemeBookAttachment } from '../types'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = supabase as any
@@ -115,6 +115,63 @@ export async function approveSchemeBook(id: string, profileId: string): Promise<
     .update({ approved_by: profileId, approved_at: new Date().toISOString() })
     .eq('id', id)
   return !error
+}
+
+const BUCKET = 'academic-files'
+
+export async function getAttachments(schemeBookId: string): Promise<SchemeBookAttachment[]> {
+  const { data, error } = await supabase
+    .from('scheme_book_attachments')
+    .select('*')
+    .eq('scheme_book_id', schemeBookId)
+    .order('uploaded_at')
+  if (error || !data) return []
+  return data as SchemeBookAttachment[]
+}
+
+export async function uploadAttachment(
+  schemeBookId: string,
+  file: File,
+  schoolId: string,
+  teacherId: string
+): Promise<boolean> {
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+  const filePath = `scheme-books/${schoolId}/${schemeBookId}/${crypto.randomUUID()}_${safeName}`
+
+  const { error: storageError } = await supabase.storage
+    .from(BUCKET)
+    .upload(filePath, file, { contentType: file.type })
+  if (storageError) return false
+
+  const { error: dbError } = await db.from('scheme_book_attachments').insert({
+    scheme_book_id: schemeBookId,
+    school_id: schoolId,
+    teacher_id: teacherId,
+    file_path: filePath,
+    file_name: file.name,
+    file_type: file.type,
+    file_size: file.size,
+  })
+
+  if (dbError) {
+    await supabase.storage.from(BUCKET).remove([filePath])
+    return false
+  }
+  return true
+}
+
+export async function deleteAttachment(attachmentId: string, filePath: string): Promise<boolean> {
+  await supabase.storage.from(BUCKET).remove([filePath])
+  const { error } = await db.from('scheme_book_attachments').delete().eq('id', attachmentId)
+  return !error
+}
+
+export async function getAttachmentSignedUrl(filePath: string): Promise<string | null> {
+  const { data, error } = await supabase.storage
+    .from(BUCKET)
+    .createSignedUrl(filePath, 3600)
+  if (error || !data) return null
+  return data.signedUrl
 }
 
 export async function getSchemeBookProgressByTerm(schoolId: string, termId: string): Promise<{ total: number; completed: number }> {

@@ -49,10 +49,20 @@ export function useClassAttendanceSummary(classId: string | null, startDate: str
 }
 
 export function useBatchSaveAttendance() {
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (records: Array<{ studentId: string; classId: string; date: string; status: AttendanceStatus; remarks?: string }>) =>
-      batchUpsertAttendance(records),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['attendance'] }),
+      batchUpsertAttendance(records, schoolId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['attendance'] })
+      // Keep all attendance-based dashboard metrics in sync
+      qc.invalidateQueries({ queryKey: ['teacher-dash', 'today-att'] })
+      qc.invalidateQueries({ queryKey: ['teacher-dash', 'att-trend'] })
+      qc.invalidateQueries({ queryKey: ['dashboard', 'school-stats'] })
+      qc.invalidateQueries({ queryKey: ['dashboard', 'attendance-trend'] })
+      qc.invalidateQueries({ queryKey: ['hod-dash', 'attendance'] })
+    },
   })
 }

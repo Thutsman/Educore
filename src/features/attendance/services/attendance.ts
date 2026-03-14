@@ -41,12 +41,13 @@ export async function upsertAttendance(
 
 // ─── Batch upsert (save all for a class/date) ────────────────────────────────
 export async function batchUpsertAttendance(
-  records: Array<{ studentId: string; classId: string; date: string; status: AttendanceStatus; remarks?: string }>
+  records: Array<{ studentId: string; classId: string; date: string; status: AttendanceStatus; remarks?: string }>,
+  schoolId: string
 ): Promise<boolean> {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return false
   const { error } = await db.from('attendance_records').upsert(
-    records.map(r => ({ student_id: r.studentId, class_id: r.classId, date: r.date, period: 'full_day', status: r.status, reason: r.remarks || null, marked_by: user.id })),
+    records.map(r => ({ student_id: r.studentId, class_id: r.classId, date: r.date, period: 'full_day', status: r.status, reason: r.remarks || null, marked_by: user.id, school_id: schoolId })),
     { onConflict: 'student_id,date,period' }
   )
   return !error

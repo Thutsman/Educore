@@ -25,3 +25,15 @@ export interface SchemeBook {
 }
 
 export type SchemeBookStatus = 'planned' | 'completed'
+
+export interface SchemeBookAttachment {
+  id: string
+  scheme_book_id: string
+  school_id: string
+  teacher_id: string
+  file_path: string
+  file_name: string
+  file_type: string
+  file_size: number | null
+  uploaded_at: string
+}

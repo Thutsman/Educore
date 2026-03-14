@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, Pencil, CheckCircle } from 'lucide-react'
+import { Plus, Pencil, CheckCircle, Paperclip } from 'lucide-react'
 import { PageHeader } from '@/components/common/PageHeader'
 import { DataTable, type Column } from '@/components/common/DataTable'
 import { Button } from '@/components/ui/button'
@@ -29,8 +29,10 @@ import {
   useSchemeBookProgress,
 } from '../hooks/useSchemeBook'
 import { useTeachers } from '@/features/staff/hooks/useStaff'
+import { useSchool } from '@/context/SchoolContext'
 import type { SchemeBook } from '../types'
 import type { CreateSchemeBookInput } from '../services/schemeBook'
+import { SchemeBookAttachmentsSheet } from './SchemeBookAttachmentsSheet'
 
 const schema = z.object({
   class_id: z.string().min(1, 'Required'),
@@ -246,6 +248,8 @@ function SchemeFormModal({
 
 export function SchemeBookPage() {
   const { user, hasRole } = useAuth()
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
   const { data: teacher } = useTeacherRecord(user?.id)
   const [classFilter, setClassFilter] = useState<string>('all')
   const [subjectFilter, setSubjectFilter] = useState<string>('all')
@@ -253,6 +257,7 @@ export function SchemeBookPage() {
   const [teacherFilter, setTeacherFilter] = useState<string>('all')
   const [showForm, setShowForm] = useState(false)
   const [editScheme, setEditScheme] = useState<SchemeBook | null>(null)
+  const [attachmentScheme, setAttachmentScheme] = useState<SchemeBook | null>(null)
 
   const isAdmin = hasRole('headmaster', 'deputy_headmaster')
   const isHod = hasRole('hod')
@@ -298,6 +303,20 @@ export function SchemeBookPage() {
       key: 'approved_at',
       header: 'Final approved',
       cell: (r) => (r.approved_at ? <span className="text-muted-foreground text-xs">Yes</span> : '—'),
+    },
+    {
+      key: 'id',
+      header: 'Files',
+      className: 'w-16 text-center',
+      cell: (r) => (
+        <Button
+          size="icon" variant="ghost" className="h-7 w-7"
+          title="View attachments"
+          onClick={() => setAttachmentScheme(r)}
+        >
+          <Paperclip className="h-3.5 w-3.5" />
+        </Button>
+      ),
     },
     {
       key: 'actions',
@@ -400,6 +419,15 @@ export function SchemeBookPage() {
         onOpenChange={(v) => { setShowForm(v); if (!v) setEditScheme(null) }}
         scheme={editScheme}
         teacherId={teacher?.id}
+      />
+
+      <SchemeBookAttachmentsSheet
+        scheme={attachmentScheme}
+        open={!!attachmentScheme}
+        onOpenChange={(v) => { if (!v) setAttachmentScheme(null) }}
+        teacherId={teacher?.id}
+        schoolId={schoolId}
+        canUpload={!!teacher?.id && attachmentScheme?.teacher_id === teacher?.id}
       />
     </div>
   )

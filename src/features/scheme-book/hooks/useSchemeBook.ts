@@ -7,6 +7,9 @@ import {
   hodApproveSchemeBook,
   approveSchemeBook,
   getSchemeBookProgressByTerm,
+  getAttachments,
+  uploadAttachment,
+  deleteAttachment,
   type SchemeBookFilters,
   type CreateSchemeBookInput,
 } from '../services/schemeBook'
@@ -14,6 +17,7 @@ import {
 const KEY = {
   list: (schoolId: string, f?: SchemeBookFilters) => ['scheme-book', 'list', schoolId, f] as const,
   progress: (schoolId: string, termId: string) => ['scheme-book', 'progress', schoolId, termId] as const,
+  attachments: (schemeBookId: string) => ['scheme-book-attachments', schemeBookId] as const,
 }
 
 export function useSchemeBooks(filters?: SchemeBookFilters) {
@@ -71,5 +75,49 @@ export function useApproveSchemeBook() {
     mutationFn: ({ id, profileId }: { id: string; profileId: string }) =>
       approveSchemeBook(id, profileId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['scheme-book'] }),
+  })
+}
+
+export function useSchemeBookAttachments(schemeBookId: string) {
+  return useQuery({
+    queryKey: KEY.attachments(schemeBookId),
+    queryFn: () => getAttachments(schemeBookId),
+    enabled: !!schemeBookId,
+  })
+}
+
+export function useUploadAttachment() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      schemeBookId,
+      file,
+      schoolId,
+      teacherId,
+    }: {
+      schemeBookId: string
+      file: File
+      schoolId: string
+      teacherId: string
+    }) => uploadAttachment(schemeBookId, file, schoolId, teacherId),
+    onSuccess: (_, { schemeBookId }) =>
+      qc.invalidateQueries({ queryKey: KEY.attachments(schemeBookId) }),
+  })
+}
+
+export function useDeleteAttachment() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      attachmentId,
+      filePath,
+      schemeBookId,
+    }: {
+      attachmentId: string
+      filePath: string
+      schemeBookId: string
+    }) => deleteAttachment(attachmentId, filePath),
+    onSuccess: (_, { schemeBookId }) =>
+      qc.invalidateQueries({ queryKey: KEY.attachments(schemeBookId) }),
   })
 }
