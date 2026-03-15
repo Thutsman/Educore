@@ -72,8 +72,8 @@ export async function createSchemeBook(
   input: CreateSchemeBookInput,
   teacherId: string,
   schoolId: string
-): Promise<boolean> {
-  const { error } = await db.from('scheme_books').insert({
+): Promise<string | null> {
+  const { data, error } = await db.from('scheme_books').insert({
     school_id: schoolId,
     teacher_id: teacherId,
     class_id: input.class_id,
@@ -87,8 +87,9 @@ export async function createSchemeBook(
     references: input.references || null,
     evaluation: input.evaluation || null,
     status: input.status ?? 'planned',
-  })
-  return !error
+  }).select('id').single()
+  if (error || !data) return null
+  return (data as { id: string }).id
 }
 
 export async function updateSchemeBook(

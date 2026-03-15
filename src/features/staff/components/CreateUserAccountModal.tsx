@@ -51,19 +51,33 @@ export function CreateUserAccountModal({ open, onOpenChange, onTeacherCreated }:
       email: '',
       password: '',
       phone: '',
-      roles: ['teacher'],
+      roles: [],
     },
   })
 
   const selectedRoles = form.watch('roles')
   const isTeacherRole = selectedRoles.includes('teacher') || selectedRoles.includes('class_teacher')
 
-  const toggleRole = (role: typeof ROLE_OPTIONS[number]['value']) => {
+  // Roles that are fully exclusive — selecting one clears everything else
+  const EXCLUSIVE_ROLES: StaffRole[] = ['headmaster', 'deputy_headmaster', 'bursar', 'non_teaching_staff']
+
+  const toggleRole = (role: StaffRole) => {
     const current = form.getValues('roles')
-    const next = current.includes(role)
-      ? current.filter(r => r !== role)
-      : [...current, role]
-    form.setValue('roles', next)
+    if (current.includes(role)) {
+      // Deselect — always allowed (but keep at least nothing, validation catches empty)
+      form.setValue('roles', current.filter(r => r !== role))
+      return
+    }
+    if (EXCLUSIVE_ROLES.includes(role)) {
+      // Management / support roles: select this one only
+      form.setValue('roles', [role])
+    } else if (role === 'hod') {
+      // HOD: clear management/support roles but keep teaching roles
+      form.setValue('roles', [...current.filter(r => !EXCLUSIVE_ROLES.includes(r)), role])
+    } else {
+      // teacher / class_teacher: clear management/support roles, keep HOD
+      form.setValue('roles', [...current.filter(r => !EXCLUSIVE_ROLES.includes(r)), role])
+    }
   }
 
   const onSubmit = async (values: FormValues) => {
@@ -131,7 +145,10 @@ export function CreateUserAccountModal({ open, onOpenChange, onTeacherCreated }:
               render={() => (
                 <FormItem>
                   <FormLabel>Roles *</FormLabel>
-                  <p className="text-xs text-muted-foreground mb-2">Select one or more (e.g. Teacher + Class Teacher for both module sets).</p>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Select a role. Management roles (Headmaster, Deputy, Bursar, Non-Teaching) are exclusive.
+                    HOD can optionally be combined with Teacher.
+                  </p>
                   <div className="grid grid-cols-2 gap-2 rounded-md border border-border p-3">
                     {ROLE_OPTIONS.map(r => (
                       <button

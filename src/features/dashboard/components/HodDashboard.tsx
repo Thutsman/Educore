@@ -8,6 +8,7 @@ import {
   UserCog,
   LineChart,
   HelpCircle,
+  BookMarked,
 } from 'lucide-react'
 import { PageHeader } from '@/components/common/PageHeader'
 import { StatCard } from '@/components/common/StatCard'
@@ -25,6 +26,7 @@ import {
   useDepartmentAttendanceTrend,
   useDepartmentTeacherWorkload,
   useDepartmentClassesOverview,
+  usePendingSchemeApprovals,
 } from '@/features/dashboard/hooks/useHodDashboard'
 import type { DepartmentTeacherRow, DepartmentClassRow } from '@/services/hod-dashboard'
 import { formatPercent } from '@/utils/format'
@@ -133,6 +135,7 @@ export function HodDashboard() {
     data: classes,
     isLoading: classRowsLoading,
   } = useDepartmentClassesOverview(departmentId, 7)
+  const { data: pendingApprovals = 0 } = usePendingSchemeApprovals()
 
   const [activeTab, setActiveTab] = useState('overview')
   const [hasSeen, setHasSeen] = useState(true)
@@ -219,9 +222,9 @@ export function HodDashboard() {
             </div>
           )}
 
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
             {statsLoading ? (
-              Array.from({ length: 4 }).map((_, i) => <CardSkeleton key={i} />)
+              Array.from({ length: 5 }).map((_, i) => <CardSkeleton key={i} />)
             ) : !stats ? (
               <>
                 <StatCard
@@ -285,6 +288,18 @@ export function HodDashboard() {
                 />
               </>
             )}
+            <Link to="/scheme-book" className="block rounded-xl border border-border bg-card p-6 shadow-sm transition-colors hover:bg-muted/30">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-muted-foreground">Pending Approvals</p>
+                  <p className="mt-1 text-3xl font-bold tabular-nums">{pendingApprovals}</p>
+                  <p className="mt-1 truncate text-xs text-muted-foreground">Scheme books awaiting review</p>
+                </div>
+                <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${pendingApprovals > 0 ? 'bg-amber-500/10 text-amber-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
+                  <BookMarked className="h-5 w-5" />
+                </span>
+              </div>
+            </Link>
           </div>
 
           <div className="grid gap-6 lg:grid-cols-2">

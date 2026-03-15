@@ -53,8 +53,9 @@ Project-specific instructions for Claude Code. These override default behaviour.
 
 - Migrations live in `supabase/migrations/` — numbered sequentially
 - Always read the relevant migration before writing a service query to confirm column names, constraints, and defaults
-- Key tables: `students`, `classes`, `teachers`, `staff`, `profiles`, `attendance_records`, `invoices`, `payments`, `expenses`, `grades`, `exams`, `subjects`
-- `attendance_records` unique constraint: `(student_id, date, period)` — column is `reason` (not `remarks`), `marked_by` is NOT NULL
+- Multi-school: most data is scoped by `school_id` (see migration 020). Include `school_id` when inserting/upserting on school-scoped tables (e.g. `attendance_records`, `invoices`, `students`).
+- Key tables: `schools`, `students`, `classes`, `teachers`, `staff`, `profiles`, `attendance_records`, `invoices`, `payments`, `expenses`, `grades`, `exams`, `subjects`, `scheme_books`, `scheme_book_attachments`, `learning_resources`, `term_reports`, `assignments`, `assessments`, `lesson_plans`
+- `attendance_records` unique constraint: `(student_id, date, period)` — column is `reason` (not `remarks`), `marked_by` and `school_id` are NOT NULL
 - Soft deletes via `deleted_at` — always filter `.is('deleted_at', null)` on user-facing queries
 
 ## Role Hierarchy
@@ -71,19 +72,32 @@ Headmaster > Deputy Headmaster > Bursar > HOD > Teacher / Class Teacher > Non-te
 ```
 src/
   features/
-    attendance/   services/, hooks/, components/, types.ts
+    attendance/     services/, hooks/, components/, types.ts
     students/
     academics/
     finance/
     staff/
     assets/
     communication/
-    dashboard/
-  services/       dashboard.ts, teacher-dashboard.ts, parent-dashboard.ts
-  components/ui/  shadcn components
-  lib/            supabase.ts
-  utils/          cn.ts
-  context/        AuthContext.tsx
+    dashboard/      hooks/, components/ (e.g. HeadmasterDashboard, TeacherDashboard)
+    scheme-book/
+    resources/
+    parent-messages/
+    reports/
+    super-admin/
+    analytics/
+    assignments/
+    assessments/
+    lesson-plans/
+    class-analytics/
+    auth/           ProtectedRoute, useRoleRedirect
+  services/         dashboard.ts, teacher-dashboard.ts, parent-dashboard.ts, hod-dashboard.ts
+  components/ui/    shadcn components
+  lib/              supabase.ts, validations/, query-client.ts
+  utils/            cn.ts, format.ts
+  context/          AuthContext.tsx
+  pages/            route-level pages (LoginPage, SelectSchoolPage, etc.)
+  layouts/         AppLayout.tsx, AuthLayout.tsx
 ```
 
 ## What NOT to Do

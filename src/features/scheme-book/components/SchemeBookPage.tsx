@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { Plus, Pencil, CheckCircle, Paperclip } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Plus, Pencil, CheckCircle, Paperclip, Upload, X, FileText, FileImage } from 'lucide-react'
 import { PageHeader } from '@/components/common/PageHeader'
 import { DataTable, type Column } from '@/components/common/DataTable'
 import { Button } from '@/components/ui/button'
@@ -9,6 +9,7 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import {
   Form, FormField, FormItem, FormLabel, FormControl, FormMessage,
 } from '@/components/ui/form'
@@ -17,6 +18,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { toast } from 'sonner'
 import { useAuth } from '@/hooks/useAuth'
 import { useTeacherRecord } from '@/features/dashboard/hooks/useTeacherDashboard'
 import { useClasses, useSubjects, useTerms } from '@/features/academics/hooks/useAcademics'
@@ -27,6 +29,7 @@ import {
   useHodApproveSchemeBook,
   useApproveSchemeBook,
   useSchemeBookProgress,
+  useUploadAttachment,
 } from '../hooks/useSchemeBook'
 import { useTeachers } from '@/features/staff/hooks/useStaff'
 import { useSchool } from '@/context/SchoolContext'
@@ -49,20 +52,33 @@ const schema = z.object({
 })
 type FormValues = z.infer<typeof schema>
 
+const MAX_FILE_BYTES = 10 * 1024 * 1024
+
+function formatBytes(n: number) {
+  if (n < 1024) return `${n} B`
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`
+}
+
 function SchemeFormModal({
   open,
   onOpenChange,
   scheme,
   teacherId,
+  schoolId,
 }: {
   open: boolean
   onOpenChange: (v: boolean) => void
   scheme?: SchemeBook | null
   teacherId: string | undefined
+  schoolId: string
 }) {
   const isEdit = !!scheme
   const create = useCreateSchemeBook(teacherId)
   const update = useUpdateSchemeBook()
+  const uploadFile = useUploadAttachment()
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [pendingFiles, setPendingFiles] = useState<File[]>([])
   const { data: classes = [] } = useClasses()
   const { data: subjects = [] } = useSubjects()
   const { data: terms = [] } = useTerms()
@@ -99,8 +115,18 @@ function SchemeFormModal({
         evaluation: scheme?.evaluation ?? '',
         status: scheme?.status ?? 'planned',
       })
+      setPendingFiles([])
     }
   }, [open, scheme, form])
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const picked = Array.from(e.target.files ?? []).filter((f) => {
+      if (f.size > MAX_FILE_BYTES) { toast.error(`${f.name}: exceeds 10 MB`); return false }
+      return true
+    })
+    setPendingFiles((prev) => [...prev, ...picked])
+    e.target.value = ''
+  }
 
   const onSubmit = async (v: FormValues) => {
     const payload: CreateSchemeBookInput = {
@@ -116,13 +142,24 @@ function SchemeFormModal({
       evaluation: v.evaluation || undefined,
       status: v.status as 'planned' | 'completed',
     }
-    const ok = isEdit && scheme
-      ? await update.mutateAsync({ id: scheme.id, data: payload })
-      : await create.mutateAsync(payload)
-    if (ok) {
-      form.reset()
-      onOpenChange(false)
+
+    let schemeId: string | null = null
+    if (isEdit && scheme) {
+      const ok = await update.mutateAsync({ id: scheme.id, data: payload })
+      if (!ok) return
+      schemeId = scheme.id
+    } else {
+      schemeId = await create.mutateAsync(payload)
+      if (!schemeId) return
     }
+
+    for (const file of pendingFiles) {
+      await uploadFile.mutateAsync({ schemeBookId: schemeId, file, schoolId, teacherId: teacherId! })
+    }
+
+    form.reset()
+    setPendingFiles([])
+    onOpenChange(false)
   }
 
   return (
@@ -133,110 +170,184 @@ function SchemeFormModal({
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="flex min-h-0 flex-1 flex-col overflow-hidden">
-            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pr-1">
-            <div className="grid grid-cols-2 gap-4">
-              <FormField control={form.control} name="class_id" render={({ field }) => (
+            {/* ── Required fields — always visible ── */}
+            <div className="shrink-0 space-y-4 pb-4">
+              <div className="grid grid-cols-2 gap-4">
+                <FormField control={form.control} name="class_id" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Class *</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl><SelectTrigger><SelectValue placeholder="Select class" /></SelectTrigger></FormControl>
+                      <SelectContent>{classes.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="subject_id" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Subject *</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl><SelectTrigger><SelectValue placeholder="Select subject" /></SelectTrigger></FormControl>
+                      <SelectContent>{subjects.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <FormField control={form.control} name="term_id" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Term *</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl><SelectTrigger><SelectValue placeholder="Select term" /></SelectTrigger></FormControl>
+                      <SelectContent>{terms.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="week" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Week *</FormLabel>
+                    <FormControl><Input type="number" min={1} max={52} {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              </div>
+              <FormField control={form.control} name="topic" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Class *</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl><SelectTrigger><SelectValue placeholder="Select class" /></SelectTrigger></FormControl>
-                    <SelectContent>{classes.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <FormField control={form.control} name="subject_id" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Subject *</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl><SelectTrigger><SelectValue placeholder="Select subject" /></SelectTrigger></FormControl>
-                    <SelectContent>{subjects.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
-                  </Select>
+                  <FormLabel>Topic *</FormLabel>
+                  <FormControl><Input placeholder="Topic title" {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <FormField control={form.control} name="term_id" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Term *</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl><SelectTrigger><SelectValue placeholder="Select term" /></SelectTrigger></FormControl>
-                    <SelectContent>{terms.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <FormField control={form.control} name="week" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Week *</FormLabel>
-                  <FormControl><Input type="number" min={1} max={52} {...field} /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-            </div>
-            <FormField control={form.control} name="topic" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Topic *</FormLabel>
-                <FormControl><Input placeholder="Topic title" {...field} /></FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
-            <FormField control={form.control} name="objectives" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Objectives</FormLabel>
-                <FormControl><Textarea rows={2} placeholder="Learning objectives..." {...field} /></FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
-            <FormField control={form.control} name="teaching_methods" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Teaching methods</FormLabel>
-                <FormControl><Textarea rows={1} placeholder="Methods" {...field} /></FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
-            <FormField control={form.control} name="teaching_aids" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Teaching aids</FormLabel>
-                <FormControl><Input placeholder="Aids" {...field} /></FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
-            <FormField control={form.control} name="references" render={({ field }) => (
-              <FormItem>
-                <FormLabel>References</FormLabel>
-                <FormControl><Input placeholder="References" {...field} /></FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
-            <FormField control={form.control} name="evaluation" render={({ field }) => (
-              <FormItem>
-                <FormLabel>Evaluation</FormLabel>
-                <FormControl><Textarea rows={1} {...field} /></FormControl>
-                <FormMessage />
-              </FormItem>
-            )} />
-            {isEdit && (
-              <FormField control={form.control} name="status" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Status</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                    <SelectContent>
-                      <SelectItem value="planned">Planned</SelectItem>
-                      <SelectItem value="completed">Completed</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )} />
-            )}
-            </div>
-            <DialogFooter className="shrink-0 border-t pt-4">
+
+            {/* ── Tabs: Fill form / Upload scan ── */}
+            <p className="shrink-0 text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2">
+              Choose submission method
+            </p>
+            <Tabs defaultValue="form" className="flex min-h-0 flex-1 flex-col">
+              <TabsList className="shrink-0 w-full h-11 rounded-lg border border-border bg-muted p-1 gap-1">
+                <TabsTrigger
+                  value="form"
+                  className="flex-1 h-full gap-2 rounded-md text-sm font-medium transition-all
+                    data-[state=active]:bg-primary data-[state=active]:text-primary-foreground
+                    data-[state=active]:shadow-sm"
+                >
+                  <Pencil className="h-3.5 w-3.5" /> Fill form
+                </TabsTrigger>
+                <TabsTrigger
+                  value="upload"
+                  className="flex-1 h-full gap-2 rounded-md text-sm font-medium transition-all
+                    data-[state=active]:bg-primary data-[state=active]:text-primary-foreground
+                    data-[state=active]:shadow-sm"
+                >
+                  <Upload className="h-3.5 w-3.5" /> Upload scan
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="form" className="min-h-0 flex-1 overflow-y-auto space-y-4 pt-4 pr-1">
+                <FormField control={form.control} name="objectives" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Objectives</FormLabel>
+                    <FormControl><Textarea rows={2} placeholder="Learning objectives..." {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="teaching_methods" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Teaching methods</FormLabel>
+                    <FormControl><Textarea rows={1} placeholder="Methods" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="teaching_aids" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Teaching aids</FormLabel>
+                    <FormControl><Input placeholder="Aids" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="references" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>References</FormLabel>
+                    <FormControl><Input placeholder="References" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={form.control} name="evaluation" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Evaluation</FormLabel>
+                    <FormControl><Textarea rows={1} {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                {isEdit && (
+                  <FormField control={form.control} name="status" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Status</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                        <SelectContent>
+                          <SelectItem value="planned">Planned</SelectItem>
+                          <SelectItem value="completed">Completed</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
+                )}
+              </TabsContent>
+
+              <TabsContent value="upload" className="flex flex-col items-center justify-center gap-4 pt-6 pb-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="application/pdf,image/*"
+                  multiple
+                  className="hidden"
+                  onChange={handleFileChange}
+                />
+                {pendingFiles.length === 0 ? (
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex w-full cursor-pointer flex-col items-center gap-3 rounded-xl border-2 border-dashed border-border px-6 py-10 text-center transition-colors hover:border-primary hover:bg-muted/40"
+                  >
+                    <Upload className="h-8 w-8 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm font-medium">Click to upload files</p>
+                      <p className="text-xs text-muted-foreground mt-1">PDF or image (photo/scan) · up to 10 MB each</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="w-full space-y-3">
+                    <ul className="space-y-1.5">
+                      {pendingFiles.map((f, i) => (
+                        <li key={i} className="flex items-center gap-2 rounded-md border bg-muted/40 px-3 py-1.5 text-sm">
+                          {f.type.startsWith('image/')
+                            ? <FileImage className="h-4 w-4 shrink-0 text-blue-500" />
+                            : <FileText className="h-4 w-4 shrink-0 text-red-500" />
+                          }
+                          <span className="min-w-0 flex-1 truncate">{f.name}</span>
+                          <span className="shrink-0 text-xs text-muted-foreground">{formatBytes(f.size)}</span>
+                          <button type="button" onClick={() => setPendingFiles(prev => prev.filter((_, j) => j !== i))} className="shrink-0 text-muted-foreground hover:text-destructive">
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                    <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+                      <Upload className="mr-2 h-3.5 w-3.5" /> Add more files
+                    </Button>
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
+
+            <DialogFooter className="shrink-0 border-t pt-4 mt-4">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-              <Button type="submit" disabled={create.isPending || update.isPending}>
-                {create.isPending || update.isPending ? 'Saving...' : 'Save'}
+              <Button type="submit" disabled={create.isPending || update.isPending || uploadFile.isPending}>
+                {create.isPending || update.isPending || uploadFile.isPending ? 'Saving...' : 'Save'}
               </Button>
             </DialogFooter>
           </form>
@@ -419,6 +530,7 @@ export function SchemeBookPage() {
         onOpenChange={(v) => { setShowForm(v); if (!v) setEditScheme(null) }}
         scheme={editScheme}
         teacherId={teacher?.id}
+        schoolId={schoolId}
       />
 
       <SchemeBookAttachmentsSheet

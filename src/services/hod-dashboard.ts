@@ -2,6 +2,16 @@ import { format, subDays, startOfWeek, endOfWeek } from 'date-fns'
 import { supabase } from '@/lib/supabase'
 import type { SubjectPerfPoint, AttendancePoint, TeacherPerfRow } from '@/services/dashboard'
 
+export async function getPendingSchemeApprovals(schoolId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from('scheme_books')
+    .select('id', { count: 'exact', head: true })
+    .eq('school_id', schoolId)
+    .is('hod_approved_at', null)
+  if (error) return 0
+  return count ?? 0
+}
+
 export interface DepartmentStats {
   totalStudents: number
   activeStudents: number

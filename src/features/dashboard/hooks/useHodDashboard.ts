@@ -8,18 +8,20 @@ import {
   getDepartmentAttendanceTrend,
   getDepartmentTeacherWorkload,
   getDepartmentClassesOverview,
+  getPendingSchemeApprovals,
 } from '@/services/hod-dashboard'
 
 export const hodDashboardKeys = {
-  teacher:        (schoolId: string, profileId: string)  => ['hod-dash', 'teacher',        schoolId, profileId] as const,
-  departmentMeta: (schoolId: string, departmentId: string) => ['hod-dash', 'department',    schoolId, departmentId] as const,
-  stats:          (schoolId: string, departmentId: string) => ['hod-dash', 'stats',        schoolId, departmentId] as const,
-  subjectPerf:    (schoolId: string, departmentId: string) => ['hod-dash', 'subject-perf', schoolId, departmentId] as const,
-  attendance:     (schoolId: string, departmentId: string, days: number) =>
+  teacher:         (schoolId: string, profileId: string)   => ['hod-dash', 'teacher',        schoolId, profileId] as const,
+  departmentMeta:  (schoolId: string, departmentId: string) => ['hod-dash', 'department',    schoolId, departmentId] as const,
+  stats:           (schoolId: string, departmentId: string) => ['hod-dash', 'stats',        schoolId, departmentId] as const,
+  subjectPerf:     (schoolId: string, departmentId: string) => ['hod-dash', 'subject-perf', schoolId, departmentId] as const,
+  attendance:      (schoolId: string, departmentId: string, days: number) =>
     ['hod-dash', 'attendance', schoolId, departmentId, days] as const,
-  teachers:       (schoolId: string, departmentId: string) => ['hod-dash', 'teachers',     schoolId, departmentId] as const,
-  classes:        (schoolId: string, departmentId: string, days: number) =>
+  teachers:        (schoolId: string, departmentId: string) => ['hod-dash', 'teachers',     schoolId, departmentId] as const,
+  classes:         (schoolId: string, departmentId: string, days: number) =>
     ['hod-dash', 'classes', schoolId, departmentId, days] as const,
+  pendingApproval: (schoolId: string) => ['hod-dash', 'pending-approval', schoolId] as const,
 }
 
 export function useHodTeacher() {
@@ -101,6 +103,18 @@ export function useDepartmentClassesOverview(
     queryFn: () => getDepartmentClassesOverview(schoolId, departmentId!, days),
     enabled: !!schoolId && !!departmentId,
     staleTime: 10 * 60 * 1000,
+  })
+}
+
+export function usePendingSchemeApprovals() {
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
+
+  return useQuery({
+    queryKey: hodDashboardKeys.pendingApproval(schoolId),
+    queryFn: () => getPendingSchemeApprovals(schoolId),
+    enabled: !!schoolId,
+    staleTime: 60 * 1000,
   })
 }
 
