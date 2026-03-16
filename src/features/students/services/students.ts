@@ -1,9 +1,22 @@
+import { createClient } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import type { Student, Guardian, StudentFeeSummary, StudentFilters, StudentFormData } from '../types'
+import { setUserRoles } from '@/features/staff/services/staff'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = supabase as any
 
 const n = (v: unknown): number => Number(v) || 0
+
+function createOnboardingClient() {
+  return createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_ANON_KEY, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+      storageKey: 'educore-onboarding-auth',
+    },
+  })
+}
 
 // ─── Students ────────────────────────────────────────────────────────────────
 
@@ -99,7 +112,7 @@ export async function getStudentGuardians(studentId: string): Promise<Guardian[]
 
   const { data, error } = await supabase
     .from('guardians')
-    .select('id, full_name, relationship, phone, email, address')
+    .select('id, full_name, relationship, phone, email, address, profile_id')
     .in('id', guardianIds)
     .is('deleted_at', null)
 
@@ -107,7 +120,7 @@ export async function getStudentGuardians(studentId: string): Promise<Guardian[]
 
   type RawGuardian = {
     id: string; full_name: string; relationship: string
-    phone: string | null; email: string | null; address: string | null
+    phone: string | null; email: string | null; address: string | null; profile_id: string | null
   }
 
   const guardians = (data as unknown as RawGuardian[]).map(r => ({
@@ -119,6 +132,7 @@ export async function getStudentGuardians(studentId: string): Promise<Guardian[]
     email:        r.email,
     address:      r.address,
     is_primary:   r.id === primaryId,
+    has_portal_access: !!r.profile_id,
   }))
 
   guardians.sort((a, b) => Number(b.is_primary) - Number(a.is_primary))
@@ -227,4 +241,51 @@ export async function deleteStudent(id: string): Promise<boolean> {
     .update({ deleted_at: new Date().toISOString() })
     .eq('id', id)
   return !error
+}
+
+export async function inviteGuardianAsParent(guardianId: string, schoolId: string): Promise<'created' | 'already_linked' | 'missing_email' | 'error'> {
+  const { data, error } = await supabase
+    .from('guardians')
+    .select('id, full_name, email, profile_id')
+    .eq('id', guardianId)
+    .eq('school_id', schoolId)
+    .maybeSingle()
+
+  if (error || !data) return 'error'
+
+  const guardian = data as { id: string; full_name: string; email: string | null; profile_id: string | null }
+
+  if (!guardian.email) return 'missing_email'
+  if (guardian.profile_id) return 'already_linked'
+
+  const onboardingClient = createOnboardingClient()
+  const tempPassword = crypto.randomUUID()
+
+  const { data: signUpData, error: signUpError } = await onboardingClient.auth.signUp({
+    email: guardian.email,
+    password: tempPassword,
+    options: {
+      data: { full_name: guardian.full_name },
+    },
+  })
+
+  if (signUpError || !signUpData.user) {
+    // If the user already exists or another error occurred, surface a generic error for now
+    // to avoid making assumptions about the existing account.
+    return 'error'
+  }
+
+  const userId = signUpData.user.id
+
+  const rolesOk = await setUserRoles(userId, ['parent'], schoolId)
+  if (!rolesOk) return 'error'
+
+  const { error: linkError } = await db
+    .from('guardians')
+    .update({ profile_id: userId })
+    .eq('id', guardianId)
+
+  if (linkError) return 'error'
+
+  return 'created'
 }

@@ -15,9 +15,13 @@ import { useAuth } from '@/hooks/useAuth'
 import { getInitials, formatDate, formatCurrency } from '@/utils/format'
 import { cn } from '@/utils/cn'
 import {
-  useStudent, useStudentGuardians, useStudentFeeSummary,
+  useStudent,
+  useStudentGuardians,
+  useStudentFeeSummary,
   useDeleteStudent,
+  useInviteGuardianAsParent,
 } from '../hooks/useStudents'
+import { toast } from 'sonner'
 import { StudentFormModal } from './StudentFormModal'
 
 const STATUS_STYLES: Record<string, string> = {
@@ -52,6 +56,7 @@ export function StudentDetail() {
   const { data: guardians = [] } = useStudentGuardians(id ?? null)
   const { data: fees } = useStudentFeeSummary(id ?? null)
   const deleteStudent = useDeleteStudent()
+  const inviteGuardian = useInviteGuardianAsParent(id ?? null)
 
   const [showEdit, setShowEdit] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
@@ -60,6 +65,20 @@ export function StudentDetail() {
     if (!id) return
     const ok = await deleteStudent.mutateAsync(id)
     if (ok) navigate('/students')
+  }
+
+  const handleInviteGuardian = async (guardianId: string, guardianName: string) => {
+    if (!id) return
+    const result = await inviteGuardian.mutateAsync({ guardianId })
+    if (result === 'created') {
+      toast.success(`Portal access created for ${guardianName}. The parent will receive an email to set their password.`)
+    } else if (result === 'missing_email') {
+      toast.error('Cannot invite this guardian because no email address is recorded.')
+    } else if (result === 'already_linked') {
+      toast.success('This guardian already has portal access.')
+    } else {
+      toast.error('Failed to invite guardian. Please try again or check the email address.')
+    }
   }
 
   if (isLoading) {
@@ -195,14 +214,50 @@ export function StudentDetail() {
             ) : (
               <div className="space-y-4">
                 {guardians.map(g => (
-                  <div key={g.id} className={cn('rounded-lg p-3', g.is_primary ? 'bg-primary/5 border border-primary/20' : 'bg-muted/40')}>
-                    <div className="flex items-center justify-between">
-                      <p className="font-medium text-sm">{g.full_name}</p>
-                      {g.is_primary && <span className="text-[10px] font-semibold uppercase text-primary">Primary</span>}
+                  <div
+                    key={g.id}
+                    className={cn(
+                      'rounded-lg p-3',
+                      g.is_primary ? 'bg-primary/5 border border-primary/20' : 'bg-muted/40'
+                    )}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div>
+                        <p className="font-medium text-sm">{g.full_name}</p>
+                        <p className="text-xs text-muted-foreground capitalize">{g.relationship}</p>
+                        {g.phone && <p className="mt-1 text-xs">{g.phone}</p>}
+                        {g.email && <p className="text-xs text-muted-foreground">{g.email}</p>}
+                      </div>
+                      <div className="flex flex-col items-end gap-1">
+                        {g.is_primary && (
+                          <span className="text-[10px] font-semibold uppercase text-primary">
+                            Primary
+                          </span>
+                        )}
+                        {g.has_portal_access ? (
+                          <span className="text-[11px] text-emerald-600">
+                            Portal access: Active
+                          </span>
+                        ) : (
+                          canEdit && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 text-xs cursor-pointer"
+                              disabled={inviteGuardian.isPending || !g.email}
+                              onClick={() => handleInviteGuardian(g.id, g.full_name)}
+                            >
+                              {inviteGuardian.isPending ? 'Inviting...' : 'Invite to portal'}
+                            </Button>
+                          )
+                        )}
+                        {!g.email && !g.has_portal_access && canEdit && (
+                          <span className="mt-1 max-w-[140px] text-right text-[10px] text-muted-foreground">
+                            Add an email to invite this guardian.
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <p className="text-xs text-muted-foreground capitalize">{g.relationship}</p>
-                    {g.phone && <p className="mt-1 text-xs">{g.phone}</p>}
-                    {g.email && <p className="text-xs text-muted-foreground">{g.email}</p>}
                   </div>
                 ))}
               </div>

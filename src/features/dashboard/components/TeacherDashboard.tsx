@@ -25,6 +25,7 @@ import {
 } from '@/features/dashboard/hooks/useTeacherDashboard'
 import { ClassTeacherHelp }   from '@/features/dashboard/components/help/ClassTeacherHelp'
 import { SubjectTeacherHelp } from '@/features/dashboard/components/help/SubjectTeacherHelp'
+import { TeacherTimetableCard } from '@/features/timetable'
 import { formatDate, formatPercent } from '@/utils/format'
 import { cn } from '@/utils/cn'
 
@@ -61,17 +62,21 @@ const EXAM_TYPE_STYLES: Record<string, string> = {
 // ── Quick link definitions ───────────────────────────────────────────────────
 
 const CLASS_TEACHER_LINKS = [
+  { to: '/academics?tab=grades', label: 'Enter Grades', icon: FileText },
+  { to: '/reports', label: 'Term Reports', icon: FileTextIcon },
   { to: '/parent-messages', label: 'Parent Messages', icon: MessageCircle },
   { to: '/attendance', label: 'Attendance', icon: ClipboardCheck },
-  { to: '/reports', label: 'Term Reports', icon: FileTextIcon },
+  { to: '/timetable', label: 'Timetable', icon: CalendarDays },
   { to: '/class-analytics', label: 'Class Analytics', icon: LineChart },
 ]
 const SUBJECT_TEACHER_LINKS = [
+  { to: '/academics?tab=grades', label: 'Enter Grades', icon: FileText },
   { to: '/scheme-book', label: 'Scheme Book', icon: BookMarked },
   { to: '/lesson-plans', label: 'Lesson Plans', icon: CalendarDays },
   { to: '/assignments', label: 'Assignments', icon: FileQuestion },
   { to: '/assessments', label: 'Assessments', icon: ClipboardList },
   { to: '/resources', label: 'Resources', icon: FolderOpen },
+  { to: '/timetable', label: 'Timetable', icon: CalendarDays },
 ]
 
 const CLASS_TEACHER_ROLES   = ['headmaster', 'deputy_headmaster', 'hod', 'class_teacher'] as const
@@ -371,6 +376,11 @@ export function TeacherDashboard() {
                 )}
               </div>
             </div>
+          )}
+
+          {/* Timetable (teachers) */}
+          {(showClassTeacherLinks || showSubjectTeacherLinks) && (
+            <TeacherTimetableCard />
           )}
 
           {/* Subjects & Recent Exams */}

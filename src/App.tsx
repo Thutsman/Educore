@@ -104,6 +104,9 @@ const TermReportsPage = lazy(() =>
 const ClassAnalyticsPage = lazy(() =>
   import('@/features/class-analytics').then(m => ({ default: m.ClassAnalyticsPage }))
 )
+const TimetablePage = lazy(() =>
+  import('@/features/timetable').then(m => ({ default: m.TimetablePage }))
+)
 const SuperAdminPage = lazy(() =>
   import('@/features/super-admin').then(m => ({ default: m.SuperAdminPage }))
 )
@@ -213,6 +216,7 @@ export default function App() {
                   element={<ProtectedRoute allowedRoles={['school_admin','headmaster','deputy_headmaster','hod','class_teacher','teacher']} />}
                 >
                   <Route path="/academics/*" element={<AcademicsPage />} />
+                  <Route path="/timetable" element={<TimetablePage />} />
                 </Route>
 
                 {/* ── Attendance ── */}

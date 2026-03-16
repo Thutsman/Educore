@@ -83,7 +83,7 @@ export function TermReportsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Term Reports"
-        subtitle="Generate and edit end-of-term reports"
+        subtitle="1. Choose term and class · 2. Generate reports · 3. Edit teacher comments"
         actions={
           <Button onClick={() => setGenerateTermId(terms[0]?.id ?? '')}>
             <Play className="mr-2 h-4 w-4" /> Generate term reports

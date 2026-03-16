@@ -37,7 +37,7 @@ Roles are **not** assigned automatically when a user signs up. A new user gets a
 2. Find the user and copy their **UUID** (shown in the `id` column or in the user detail panel).
    This UUID is the same across `auth.users` and `profiles`.
 
-> **Tip:** If you can't find the user in Authentication, they haven't signed up yet. Create them first via **Authentication → Users → Add user** (or invite via email).
+> **Tip:** If you can't find the user in Authentication, they haven't signed up yet. Create them first via **Authentication → Users → Add user** (or invite via email). For parents, use the **Invite to portal** button on a student's Guardians card — see `docs/parent-onboarding-and-timetable.md`.
 
 ---
 

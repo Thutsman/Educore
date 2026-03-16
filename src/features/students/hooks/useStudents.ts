@@ -1,7 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  getStudents, getStudentById, getStudentGuardians, getStudentFeeSummary,
-  getClassesForSelect, createStudent, updateStudent, deleteStudent,
+  getStudents,
+  getStudentById,
+  getStudentGuardians,
+  getStudentFeeSummary,
+  getClassesForSelect,
+  createStudent,
+  updateStudent,
+  deleteStudent,
+  inviteGuardianAsParent,
 } from '../services/students'
 import type { StudentFilters, StudentFormData } from '../types'
 import { useSchool } from '@/context/SchoolContext'
@@ -87,5 +94,20 @@ export function useDeleteStudent() {
   return useMutation({
     mutationFn: (id: string) => deleteStudent(id),
     onSuccess: () => { qc.invalidateQueries({ queryKey: studentKeys.all }) },
+  })
+}
+
+export function useInviteGuardianAsParent(studentId: string | null) {
+  const qc = useQueryClient()
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
+
+  return useMutation({
+    mutationFn: ({ guardianId }: { guardianId: string }) => inviteGuardianAsParent(guardianId, schoolId),
+    onSuccess: () => {
+      if (studentId) {
+        qc.invalidateQueries({ queryKey: studentKeys.guardians(studentId) })
+      }
+    },
   })
 }

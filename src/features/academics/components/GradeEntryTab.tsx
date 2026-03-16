@@ -131,6 +131,7 @@ export function GradeEntryTab() {
         <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border py-20 text-center">
           <ClipboardEdit className="h-10 w-10 text-muted-foreground/40" />
           <p className="text-sm text-muted-foreground">Select an exam above to begin entering grades</p>
+          <p className="text-xs text-muted-foreground">Grades entered here feed into Term Reports.</p>
         </div>
       )}
 
@@ -142,6 +143,7 @@ export function GradeEntryTab() {
 
       {rows.length > 0 && selectedExam && (
         <div className="overflow-hidden rounded-xl border border-border bg-card">
+          <p className="mb-2 text-xs text-muted-foreground">Grades entered here feed into Term Reports.</p>
           {/* Header info */}
           <div className="flex flex-wrap items-center gap-6 border-b border-border bg-muted/40 px-4 py-3 text-sm">
             <span><span className="text-muted-foreground">Exam:</span> <strong>{selectedExam.name}</strong></span>
