@@ -8,9 +8,9 @@ export function FinancePage() {
     <div className="space-y-6">
       <PageHeader title="Finance" subtitle="Invoices, payments and expenses" />
       <Tabs defaultValue="invoices">
-        <TabsList>
-          <TabsTrigger value="invoices">Invoices & Payments</TabsTrigger>
-          <TabsTrigger value="expenses">Expenses</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2 sm:inline-flex sm:w-auto">
+          <TabsTrigger value="invoices" className="h-9 sm:h-10">Invoices & Payments</TabsTrigger>
+          <TabsTrigger value="expenses" className="h-9 sm:h-10">Expenses</TabsTrigger>
         </TabsList>
         <div className="mt-6">
           <TabsContent value="invoices"><InvoicesTab /></TabsContent>

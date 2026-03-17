@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Plus, Search, CreditCard, XCircle, AlertCircle } from 'lucide-react'
+import { Plus, Search, CreditCard, XCircle, AlertCircle, Printer } from 'lucide-react'
 import { DataTable, type Column } from '@/components/common/DataTable'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/form'
 import { Separator } from '@/components/ui/separator'
 import { useAuth } from '@/hooks/useAuth'
+import { useSchool } from '@/context/SchoolContext'
 import { formatCurrency, formatDate } from '@/utils/format'
 import { cn } from '@/utils/cn'
 import {
@@ -26,6 +27,7 @@ import {
 } from '../hooks/useFinance'
 import { toast } from 'sonner'
 import { useAcademicYears, useTerms } from '@/features/academics/hooks/useAcademics'
+import { FinanceTermSelector, type FinanceTermSelection } from './FinanceTermSelector'
 import type { Invoice } from '../types'
 
 const STATUS_STYLES: Record<string, string> = {
@@ -191,13 +193,18 @@ function RecordPaymentModal({ invoiceId, studentId, maxAmount, open, onOpenChang
     try {
       const ok = await record.mutateAsync({ invoice_id: invoiceId, student_id: studentId, ...v })
       if (ok) {
+        toast.success('Payment recorded successfully')
         form.reset()
         onOpenChange(false)
       } else {
-        setServerError('Failed to record payment. Please try again.')
+        const message = 'Failed to record payment. Please try again.'
+        setServerError(message)
+        toast.error(message)
       }
     } catch (err) {
-      setServerError(err instanceof Error ? err.message : 'Failed to record payment. Please try again.')
+      const message = err instanceof Error ? err.message : 'Failed to record payment. Please try again.'
+      setServerError(message)
+      toast.error(message)
     }
   }
   return (
@@ -256,8 +263,120 @@ function InvoiceDetailModal({ invoiceId, open, onOpenChange }: { invoiceId: stri
   const { data: payments = [] } = usePaymentsForInvoice(invoiceId)
   const voidInv = useVoidInvoice()
   const [showPayment, setShowPayment] = useState(false)
+  const { currentSchool } = useSchool()
 
   if (!invoice) return null
+
+  const handlePrintPdf = () => {
+    const schoolName = currentSchool?.name ?? 'Educore ISMS'
+    const win = window.open('', '_blank', 'width=900,height=1200')
+    if (!win) return
+
+    const paymentsRows = payments.map(p => `
+      <tr>
+        <td>${formatCurrency(p.amount)}</td>
+        <td>${formatDate(p.payment_date)}</td>
+        <td>${p.payment_method.replace('_', ' ')}</td>
+        <td>${p.reference_number ?? ''}</td>
+      </tr>
+    `).join('')
+
+    win.document.write(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charSet="utf-8" />
+  <title>${invoice.invoice_number} - ${schoolName}</title>
+  <style>
+    body { font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 40px; color: #0f172a; }
+    h1 { font-size: 20px; margin: 0; }
+    h2 { font-size: 14px; text-transform: uppercase; letter-spacing: .08em; color: #6b7280; margin-top: 32px; margin-bottom: 8px; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+    .school { font-size: 18px; font-weight: 700; }
+    .muted { color: #6b7280; font-size: 12px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 32px; font-size: 13px; margin-bottom: 16px; }
+    .label { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: #9ca3af; }
+    .value { font-weight: 500; }
+    .amounts { margin-top: 16px; font-size: 13px; }
+    .amount-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
+    .amount-row.balance { font-weight: 600; }
+    .amount-row.balance.positive { color: #059669; }
+    .amount-row.balance.negative { color: #b91c1c; }
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 12px; }
+    th, td { border: 1px solid #e5e7eb; padding: 6px 8px; text-align: left; }
+    th { background-color: #f9fafb; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: #6b7280; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <div class="school">${schoolName}</div>
+      <div class="muted">${invoice.invoice_number}</div>
+    </div>
+    <div class="muted">${new Date().toLocaleDateString()}</div>
+  </div>
+
+  <h2>Invoice Details</h2>
+  <div class="grid">
+    <div>
+      <div class="label">Student</div>
+      <div class="value">${invoice.student_name}</div>
+    </div>
+    <div>
+      <div class="label">Class</div>
+      <div class="value">${invoice.class_name ?? '—'}</div>
+    </div>
+    <div>
+      <div class="label">Issued</div>
+      <div class="value">${formatDate(invoice.created_at)}</div>
+    </div>
+    <div>
+      <div class="label">Due Date</div>
+      <div class="value">${formatDate(invoice.due_date)}</div>
+    </div>
+    ${invoice.description ? `
+    <div style="grid-column: span 2;">
+      <div class="label">Description</div>
+      <div class="value">${invoice.description}</div>
+    </div>` : ''}
+  </div>
+
+  <div class="amounts">
+    <div class="amount-row">
+      <span>Invoice Amount</span>
+      <span>${formatCurrency(invoice.amount)}</span>
+    </div>
+    <div class="amount-row">
+      <span>Amount Paid</span>
+      <span>${formatCurrency(invoice.amount_paid)}</span>
+    </div>
+    <div class="amount-row balance ${invoice.balance > 0 ? 'negative' : 'positive'}">
+      <span>Balance</span>
+      <span>${formatCurrency(invoice.balance)}</span>
+    </div>
+  </div>
+
+  ${payments.length ? `
+    <h2>Payment History</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Amount</th>
+          <th>Date</th>
+          <th>Method</th>
+          <th>Reference</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${paymentsRows}
+      </tbody>
+    </table>
+  ` : ''}
+</body>
+</html>`)
+    win.document.close()
+    win.focus()
+    win.print()
+  }
 
   return (
     <>
@@ -278,6 +397,8 @@ function InvoiceDetailModal({ invoiceId, open, onOpenChange }: { invoiceId: stri
               <div><p className="text-muted-foreground">Class</p><p className="font-medium">{invoice.class_name || '—'}</p></div>
               <div><p className="text-muted-foreground">Issued</p><p>{formatDate(invoice.created_at)}</p></div>
               <div><p className="text-muted-foreground">Due Date</p><p>{formatDate(invoice.due_date)}</p></div>
+              <div><p className="text-muted-foreground">Last Payment</p><p>{payments.length ? formatDate(payments[0].payment_date) : '—'}</p></div>
+              <div><p className="text-muted-foreground">Payments</p><p>{payments.length} payment{payments.length !== 1 ? 's' : ''}</p></div>
               {invoice.description && <div className="col-span-2"><p className="text-muted-foreground">Description</p><p>{invoice.description}</p></div>}
             </div>
 
@@ -311,6 +432,15 @@ function InvoiceDetailModal({ invoiceId, open, onOpenChange }: { invoiceId: stri
           </div>
 
           <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              type="button"
+              onClick={handlePrintPdf}
+            >
+              <Printer className="mr-2 h-4 w-4" />
+              Print / PDF
+            </Button>
             {invoice.status !== 'paid' && invoice.status !== 'void' && (
               <Button variant="outline" size="sm" onClick={() => setShowPayment(true)}>
                 <CreditCard className="mr-2 h-4 w-4" />Record Payment
@@ -349,8 +479,19 @@ export function InvoicesTab() {
   const [search, setSearch] = useState('')
   const [showCreate, setShowCreate] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [termSelection, setTermSelection] = useState<FinanceTermSelection>({
+    academic_year_id: undefined,
+    term_id: undefined,
+    date_from: undefined,
+    date_to: undefined,
+  })
 
-  const { data: invoices = [], isLoading } = useInvoices({ status: statusFilter, search })
+  const { data: invoices = [], isLoading } = useInvoices({
+    status: statusFilter,
+    search,
+    academic_year_id: termSelection.academic_year_id,
+    term_id: termSelection.term_id,
+  })
 
   const columns: Column<Invoice>[] = [
     { key: 'invoice_number', header: 'Invoice #', sortable: true, className: 'font-mono text-xs' },
@@ -368,13 +509,14 @@ export function InvoicesTab() {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
+          <FinanceTermSelector value={termSelection} onChange={setTermSelection} />
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="Invoice number..." className="pl-9 w-52" value={search} onChange={e => setSearch(e.target.value)} />
+            <Input placeholder="Invoice number..." className="pl-9 w-52 h-9 sm:h-10" value={search} onChange={e => setSearch(e.target.value)} />
           </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-36"><SelectValue placeholder="All Statuses" /></SelectTrigger>
+            <SelectTrigger className="w-36 h-9 sm:h-10"><SelectValue placeholder="All Statuses" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Statuses</SelectItem>
               <SelectItem value="unpaid">Unpaid</SelectItem>
@@ -386,19 +528,21 @@ export function InvoicesTab() {
           </Select>
         </div>
         {canCreate && (
-          <Button onClick={() => setShowCreate(true)}>
+          <Button onClick={() => setShowCreate(true)} className="h-9 sm:h-10">
             <Plus className="mr-2 h-4 w-4" />Create Invoice
           </Button>
         )}
       </div>
 
-      <DataTable<Invoice>
-        columns={columns}
-        data={invoices}
-        keyExtractor={r => r.id}
-        loading={isLoading}
-        onRowClick={r => setSelectedId(r.id)}
-      />
+      <div className="overflow-x-auto">
+        <DataTable<Invoice>
+          columns={columns}
+          data={invoices}
+          keyExtractor={r => r.id}
+          loading={isLoading}
+          onRowClick={r => setSelectedId(r.id)}
+        />
+      </div>
 
       <CreateInvoiceModal open={showCreate} onOpenChange={setShowCreate} />
       <InvoiceDetailModal invoiceId={selectedId} open={!!selectedId} onOpenChange={v => { if (!v) setSelectedId(null) }} />

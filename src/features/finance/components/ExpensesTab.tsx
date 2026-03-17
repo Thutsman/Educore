@@ -140,11 +140,11 @@ export function ExpensesTab() {
       className: 'text-right',
       cell: (r: Expense) => (
         <div className="flex justify-end gap-2">
-          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={e => { e.stopPropagation(); setEditTarget(r); setShowForm(true) }}>
-            <Pencil className="h-3.5 w-3.5" />
+          <Button size="icon" variant="ghost" className="h-9 w-9" onClick={e => { e.stopPropagation(); setEditTarget(r); setShowForm(true) }}>
+            <Pencil className="h-4 w-4" />
           </Button>
-          <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:text-destructive" onClick={e => { e.stopPropagation(); setDeleteId(r.id) }}>
-            <Trash2 className="h-3.5 w-3.5" />
+          <Button size="icon" variant="ghost" className="h-9 w-9 text-destructive hover:text-destructive" onClick={e => { e.stopPropagation(); setDeleteId(r.id) }}>
+            <Trash2 className="h-4 w-4" />
           </Button>
         </div>
       ),
@@ -153,14 +153,14 @@ export function ExpensesTab() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex gap-3">
-          <div className="relative">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+        <div className="flex flex-wrap gap-3">
+          <div className="relative min-w-0 flex-1 sm:flex-initial">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="Search expenses..." className="pl-9 w-52" value={search} onChange={e => setSearch(e.target.value)} />
+            <Input placeholder="Search expenses..." className="pl-9 w-full sm:w-52 h-9 sm:h-10" value={search} onChange={e => setSearch(e.target.value)} />
           </div>
           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="w-40"><SelectValue placeholder="All Categories" /></SelectTrigger>
+            <SelectTrigger className="w-full sm:w-40 h-9 sm:h-10"><SelectValue placeholder="All Categories" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Categories</SelectItem>
               {CATEGORIES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
@@ -170,19 +170,21 @@ export function ExpensesTab() {
         <div className="flex items-center gap-4">
           <p className="text-sm text-muted-foreground">Total: <span className="font-semibold text-foreground">{formatCurrency(totalAmount)}</span></p>
           {canEdit && (
-            <Button onClick={() => { setEditTarget(null); setShowForm(true) }}>
+            <Button onClick={() => { setEditTarget(null); setShowForm(true) }} className="h-9 sm:h-10">
               <Plus className="mr-2 h-4 w-4" />Add Expense
             </Button>
           )}
         </div>
       </div>
 
-      <DataTable<Expense>
+      <div className="overflow-x-auto">
+        <DataTable<Expense>
         columns={columns}
         data={expenses}
         keyExtractor={r => r.id}
         loading={isLoading}
       />
+      </div>
 
       <ExpenseFormModal open={showForm} onOpenChange={v => { setShowForm(v); if (!v) setEditTarget(null) }} expense={editTarget} />
 

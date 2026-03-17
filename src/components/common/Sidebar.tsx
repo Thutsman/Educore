@@ -153,6 +153,19 @@ const NAV_GROUPS: NavGroup[] = [
         icon: Banknote,
         href: '/finance',
         allowedRoles: ['headmaster','deputy_headmaster','bursar'],
+        exact: true,
+      },
+      {
+        label: 'Budgets',
+        icon: Banknote,
+        href: '/finance/budgets',
+        allowedRoles: ['headmaster','deputy_headmaster','bursar'],
+      },
+      {
+        label: 'Reports',
+        icon: LineChart,
+        href: '/finance/reports',
+        allowedRoles: ['headmaster','deputy_headmaster','bursar'],
       },
     ],
   },
@@ -221,8 +234,9 @@ function SidebarNavItem({
   onClick?: () => void
 }) {
   const location = useLocation()
-  const isActive =
-    item.href === '/dashboard'
+  const isActive = item.exact
+    ? location.pathname === item.href || location.pathname === `${item.href}/`
+    : item.href === '/dashboard'
       ? location.pathname.startsWith('/dashboard')
       : location.pathname.startsWith(item.href)
 
@@ -458,7 +472,7 @@ export function Sidebar() {
       {/* ── Desktop sidebar ── */}
       <aside
         className={cn(
-          'relative hidden h-full shrink-0 transition-all duration-300 ease-in-out lg:block',
+          'relative hidden h-screen shrink-0 transition-all duration-300 ease-in-out lg:block',
           collapsed ? 'w-[60px]' : 'w-[220px]'
         )}
       >

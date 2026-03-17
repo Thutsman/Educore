@@ -349,8 +349,7 @@ export async function getMonthlyFinancials(schoolId: string, months = 12): Promi
       .from('expenses')
       .select('expense_date, amount')
       .eq('school_id', schoolId)
-      .gte('expense_date', since)
-      .eq('status', 'paid'),
+      .gte('expense_date', since),
   ])
 
   type RawPayment = { payment_date: string | null; amount: unknown }
@@ -480,7 +479,6 @@ export async function getBursarStats(schoolId: string) {
       .from('expenses')
       .select('amount')
       .eq('school_id', schoolId)
-      .eq('status', 'paid')
       .gte('expense_date', yearStart),
   ])
 

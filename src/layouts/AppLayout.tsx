@@ -16,11 +16,11 @@ export function AppLayout() {
 
   return (
     <SidebarContext.Provider value={sidebarState}>
-      <div className="flex min-h-screen overflow-hidden bg-slate-50">
+      <div className="flex h-screen overflow-hidden bg-slate-50">
         <Sidebar />
-        <div className="flex flex-1 flex-col overflow-hidden">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <Topbar />
-          <main className="flex-1 overflow-y-auto bg-slate-50">
+          <main className="min-h-0 flex-1 overflow-y-auto bg-slate-50">
             <div className="mx-auto max-w-screen-2xl p-4 sm:p-6">
               <Outlet />
             </div>

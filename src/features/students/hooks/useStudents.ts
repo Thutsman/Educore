@@ -9,6 +9,7 @@ import {
   updateStudent,
   deleteStudent,
   inviteGuardianAsParent,
+  updateGuardian,
 } from '../services/students'
 import type { StudentFilters, StudentFormData } from '../types'
 import { useSchool } from '@/context/SchoolContext'
@@ -105,6 +106,20 @@ export function useInviteGuardianAsParent(studentId: string | null) {
   return useMutation({
     mutationFn: ({ guardianId }: { guardianId: string }) => inviteGuardianAsParent(guardianId, schoolId),
     onSuccess: () => {
+      if (studentId) {
+        qc.invalidateQueries({ queryKey: studentKeys.guardians(studentId) })
+      }
+    },
+  })
+}
+
+export function useUpdateGuardian(studentId: string | null) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Parameters<typeof updateGuardian>[1] }) =>
+      updateGuardian(id, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: studentKeys.all })
       if (studentId) {
         qc.invalidateQueries({ queryKey: studentKeys.guardians(studentId) })
       }

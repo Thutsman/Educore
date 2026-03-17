@@ -57,6 +57,21 @@ Project-specific instructions for Claude Code. These override default behaviour.
 - Key tables: `schools`, `students`, `classes`, `teachers`, `staff`, `profiles`, `attendance_records`, `invoices`, `payments`, `expenses`, `grades`, `exams`, `subjects`, `scheme_books`, `scheme_book_attachments`, `learning_resources`, `term_reports`, `assignments`, `assessments`, `lesson_plans`
 - `attendance_records` unique constraint: `(student_id, date, period)` — column is `reason` (not `remarks`), `marked_by` and `school_id` are NOT NULL
 - Soft deletes via `deleted_at` — always filter `.is('deleted_at', null)` on user-facing queries
+- When debugging insert failures: check NOT NULL defaults first (e.g. `teachers.join_date` is `NOT NULL DEFAULT CURRENT_DATE` — omit the field to use the DB default; do not send `null`)
+
+## School Admin Setup (key product decisions)
+
+- School Admin setup steps are tracked via lightweight counts (see `useSchoolAdminSetupStats`). Step completion should invalidate the `['school-admin-setup', schoolId]` query key after relevant mutations.
+- Class teacher (homeroom) assignment happens in **Staff → Allocations**, not as a required part of class creation. Class creation may leave homeroom as `null`.
+- Timetable management supports an **All classes** view for admin/management roles (default), with an optional single-class view mode.
+- `school_admin` UI should stay focused on setup/admin tasks. Hide teacher-only modules in sidebar and restrict direct access via `ProtectedRoute` (e.g. Scheme Book, Lesson Plans, Assignments, Assessments, Attendance).
+
+## Supabase Multi-school gotchas (must align schema + UI)
+
+- Uniqueness constraints must be per-school where appropriate (migration 020 pattern). If a concept can exist across multiple schools for the same user, avoid global UNIQUE constraints.
+- Teachers/staff linking:
+  - If a single user can be staff in multiple schools, enforce uniqueness as `(school_id, profile_id)` (see migration `037_teacher_profile_per_school.sql`).
+  - Employee numbers should be unique per school: `(school_id, employee_no)` (migration 020).
 
 ## Role Hierarchy
 

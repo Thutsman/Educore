@@ -157,6 +157,21 @@ export async function getStudentFeeSummary(studentId: string): Promise<StudentFe
   }
 }
 
+export async function updateGuardian(id: string, data: Partial<Pick<Guardian, 'full_name' | 'relationship' | 'phone' | 'email' | 'address'>>): Promise<boolean> {
+  const { error } = await db
+    .from('guardians')
+    .update({
+      ...(data.full_name     !== undefined && { full_name: data.full_name }),
+      ...(data.relationship  !== undefined && { relationship: data.relationship }),
+      ...(data.phone         !== undefined && { phone: data.phone || null }),
+      ...(data.email         !== undefined && { email: data.email || null }),
+      ...(data.address       !== undefined && { address: data.address || null }),
+    })
+    .eq('id', id)
+
+  return !error
+}
+
 // ─── Classes (dropdown data) ─────────────────────────────────────────────────
 
 export async function getClassesForSelect(schoolId: string): Promise<{ id: string; name: string }[]> {
@@ -213,7 +228,22 @@ export async function createStudent(schoolId: string, data: StudentFormData): Pr
     .select('id')
     .single()
 
-  if (error || !result) return null
+  if (error) {
+    const msg = String((error as { message?: unknown }).message ?? '')
+    const code = String((error as { code?: unknown }).code ?? '')
+
+    // Postgres unique violation (commonly surfaces as 409 in Supabase REST)
+    if (code === '23505' || msg.toLowerCase().includes('duplicate') || msg.toLowerCase().includes('unique')) {
+      if (msg.toLowerCase().includes('admission') || msg.toLowerCase().includes('admission_no')) {
+        throw new Error('Admission number already in use')
+      }
+      throw new Error('A record with the same unique value already exists')
+    }
+
+    throw new Error(msg || 'Failed to add student')
+  }
+
+  if (!result) throw new Error('Failed to add student')
   return { id: (result as unknown as { id: string }).id }
 }
 

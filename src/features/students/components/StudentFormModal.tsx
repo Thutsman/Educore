@@ -16,6 +16,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { useCreateStudent, useUpdateStudent, useClassesForSelect } from '../hooks/useStudents'
 import type { Student } from '../types'
+import { toast } from 'sonner'
 
 const schema = z.object({
   full_name:      z.string().min(1, 'Required'),
@@ -101,12 +102,21 @@ export function StudentFormModal({ open, onOpenChange, student }: Props) {
       guardian_email: values.guardian_email || undefined,
       guardian_address: values.guardian_address || undefined,
     }
-    if (isEdit && student) {
-      const ok = await update.mutateAsync({ id: student.id, data: payload })
-      if (ok) onOpenChange(false)
-    } else {
-      const result = await create.mutateAsync(payload as Parameters<typeof create.mutateAsync>[0])
-      if (result) onOpenChange(false)
+    try {
+      if (isEdit && student) {
+        const ok = await update.mutateAsync({ id: student.id, data: payload })
+        if (!ok) throw new Error('Update failed')
+        toast.success('Student updated successfully')
+      } else {
+        const created = await create.mutateAsync(payload as Parameters<typeof create.mutateAsync>[0])
+        if (!created) throw new Error('Create failed')
+        toast.success('Student added successfully')
+      }
+      onOpenChange(false)
+    } catch (e) {
+      const fallback = isEdit ? 'Failed to update student' : 'Failed to add student'
+      const message = e instanceof Error ? e.message : fallback
+      toast.error(message || fallback)
     }
   }
 

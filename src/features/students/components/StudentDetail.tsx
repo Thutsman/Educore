@@ -23,6 +23,7 @@ import {
 } from '../hooks/useStudents'
 import { toast } from 'sonner'
 import { StudentFormModal } from './StudentFormModal'
+import { GuardianFormModal } from './GuardianFormModal'
 
 const STATUS_STYLES: Record<string, string> = {
   active:      'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20',
@@ -60,6 +61,8 @@ export function StudentDetail() {
 
   const [showEdit, setShowEdit] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [editingGuardian, setEditingGuardian] = useState<null | { id: string }>(null)
+  const [showGuardianEdit, setShowGuardianEdit] = useState(false)
 
   const handleDelete = async () => {
     if (!id) return
@@ -97,6 +100,11 @@ export function StudentDetail() {
       </div>
     )
   }
+
+  const primaryGuardian = guardians.find(g => g.is_primary) ?? guardians[0]
+  const contactPhone = student.phone ?? primaryGuardian?.phone ?? null
+  const contactEmail = student.email ?? primaryGuardian?.email ?? null
+  const guardianToEdit = editingGuardian ? (guardians.find(g => g.id === editingGuardian.id) ?? null) : null
 
   return (
     <div className="space-y-6">
@@ -150,8 +158,8 @@ export function StudentDetail() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <InfoRow icon={Hash} label="Admission Number" value={student.admission_no} />
               <InfoRow icon={Calendar} label="Date of Birth" value={formatDate(student.date_of_birth)} />
-              <InfoRow icon={Phone} label="Phone" value={student.phone} />
-              <InfoRow icon={Mail} label="Email" value={student.email} />
+              <InfoRow icon={Phone} label="Phone" value={contactPhone} />
+              <InfoRow icon={Mail} label="Email" value={contactEmail} />
               <InfoRow icon={MapPin} label="Address" value={student.address} />
             </div>
           </div>
@@ -234,6 +242,19 @@ export function StudentDetail() {
                             Primary
                           </span>
                         )}
+                        {canEdit && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={() => {
+                              setEditingGuardian({ id: g.id })
+                              setShowGuardianEdit(true)
+                            }}
+                          >
+                            Edit
+                          </Button>
+                        )}
                         {g.has_portal_access ? (
                           <span className="text-[11px] text-emerald-600">
                             Portal access: Active
@@ -269,6 +290,15 @@ export function StudentDetail() {
 
       {/* Edit modal */}
       <StudentFormModal open={showEdit} onOpenChange={setShowEdit} student={student} />
+      <GuardianFormModal
+        open={showGuardianEdit}
+        onOpenChange={(v) => {
+          setShowGuardianEdit(v)
+          if (!v) setEditingGuardian(null)
+        }}
+        guardian={guardianToEdit}
+        studentId={id ?? null}
+      />
 
       {/* Delete confirmation */}
       <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>

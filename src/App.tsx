@@ -66,6 +66,12 @@ const AttendancePage = lazy(() =>
 const FinancePage = lazy(() =>
   import('@/features/finance').then(m => ({ default: m.FinancePage }))
 )
+const FinanceReportsPage = lazy(() =>
+  import('@/features/finance').then(m => ({ default: m.FinanceReportsPage }))
+)
+const FinanceBudgetsPage = lazy(() =>
+  import('@/features/finance').then(m => ({ default: m.FinanceBudgetsPage }))
+)
 const CommunicationPage = lazy(() =>
   import('@/features/communication').then(m => ({ default: m.CommunicationPage }))
 )
@@ -250,7 +256,9 @@ export default function App() {
                 <Route
                   element={<ProtectedRoute allowedRoles={['headmaster','deputy_headmaster','bursar']} />}
                 >
-                  <Route path="/finance/*" element={<FinancePage />} />
+                  <Route path="/finance" element={<FinancePage />} />
+                  <Route path="/finance/reports" element={<FinanceReportsPage />} />
+                  <Route path="/finance/budgets" element={<FinanceBudgetsPage />} />
                 </Route>
 
                 {/* ── Communication ── */}

@@ -2,6 +2,8 @@ export type InvoiceStatus = 'unpaid' | 'partial' | 'paid' | 'overdue' | 'void'
 export type PaymentMethod = 'cash' | 'bank_transfer' | 'mobile_money' | 'cheque' | 'other'
 export type ExpenseCategory = 'salaries' | 'utilities' | 'maintenance' | 'supplies' | 'transport' | 'other'
 
+export type BudgetCategory = 'salaries' | 'utilities' | 'maintenance' | 'supplies' | 'equipment' | 'transport' | 'events' | 'other'
+
 export interface Invoice {
   id: string
   invoice_number: string
@@ -40,6 +42,18 @@ export interface Expense {
   created_at: string
 }
 
+export interface Budget {
+  id: string
+  school_id: string
+  category: BudgetCategory
+  allocated_amount: number
+  academic_year_id: string
+  term_id: string | null
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
 export interface InvoiceFormData {
   student_id: string
   amount: number
@@ -68,3 +82,12 @@ export interface ExpenseFormData {
   reference_number?: string
   notes?: string
 }
+
+export interface BudgetFormData {
+  category: BudgetCategory
+  allocated_amount: number
+  academic_year_id: string
+  term_id?: string
+  notes?: string
+}
+
