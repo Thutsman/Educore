@@ -265,7 +265,8 @@ export async function createTeacher(schoolId: string, data: TeacherFormData): Pr
       employee_no:      data.employee_no,
       department_id:    data.department_id || null,
       employment_type:  data.employment_type,
-      join_date:        data.join_date || null,
+      // join_date is NOT NULL with DEFAULT CURRENT_DATE in DB; omit to use default
+      ...(data.join_date ? { join_date: data.join_date } : {}),
       qualification:    data.qualification || null,
       specialization:   data.specialization || null,
       status:           data.status,
@@ -274,7 +275,10 @@ export async function createTeacher(schoolId: string, data: TeacherFormData): Pr
     .select('id')
     .single()
 
-  if (error || !result) return null
+  if (error || !result) {
+    console.error('[createTeacher]', error)
+    return null
+  }
   return { id: (result as unknown as { id: string }).id }
 }
 
@@ -285,7 +289,7 @@ export async function updateTeacher(id: string, data: Partial<TeacherFormData>):
       ...(data.employee_no   !== undefined && { employee_no:     data.employee_no }),
       ...(data.department_id !== undefined && { department_id:   data.department_id || null }),
       ...(data.employment_type !== undefined && { employment_type: data.employment_type }),
-      ...(data.join_date     !== undefined && { join_date:       data.join_date || null }),
+      ...(data.join_date     !== undefined && { join_date:       data.join_date || undefined }),
       ...(data.qualification !== undefined && { qualification:   data.qualification || null }),
       ...(data.specialization !== undefined && { specialization: data.specialization || null }),
       ...(data.status        !== undefined && { status:          data.status }),
@@ -320,12 +324,35 @@ export async function getSubjectsForSelect(schoolId: string): Promise<SubjectOpt
 export async function getClassesForSelect(schoolId: string): Promise<ClassOption[]> {
   const { data } = await supabase
     .from('classes')
-    .select('id, name, grade_level')
+    .select('id, name, grade_level, class_teacher_id')
     .eq('school_id', schoolId)
     .is('deleted_at', null)
     .order('name')
   if (!data) return []
   return data as unknown as ClassOption[]
+}
+
+export async function clearHomeroomForTeacher(teacherId: string, schoolId: string): Promise<boolean> {
+  const { error } = await db
+    .from('classes')
+    .update({ class_teacher_id: null })
+    .eq('school_id', schoolId)
+    .eq('class_teacher_id', teacherId)
+    .is('deleted_at', null)
+  return !error
+}
+
+export async function setHomeroomClass(teacherId: string, classId: string, schoolId: string): Promise<boolean> {
+  const cleared = await clearHomeroomForTeacher(teacherId, schoolId)
+  if (!cleared) return false
+
+  const { error } = await db
+    .from('classes')
+    .update({ class_teacher_id: teacherId })
+    .eq('id', classId)
+    .eq('school_id', schoolId)
+    .is('deleted_at', null)
+  return !error
 }
 
 export async function getTeacherAllocations(teacherId: string): Promise<TeacherAllocation[]> {

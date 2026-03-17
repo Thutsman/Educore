@@ -52,7 +52,7 @@ export async function getClasses(schoolId: string): Promise<AcademicClass[]> {
   const { data, error } = await supabase
     .from('classes')
     .select(`
-      id, name, grade_level, stream, academic_year_id, class_teacher_id,
+      id, name, grade_level, stream, academic_year_id, class_teacher_id, room,
       academic_year:academic_years(label),
       class_teacher:teachers(id, profile:profiles(full_name))
     `)
@@ -67,6 +67,7 @@ export async function getClasses(schoolId: string): Promise<AcademicClass[]> {
     stream: string | null
     academic_year_id: string | null
     class_teacher_id: string | null
+    room: string | null
     academic_year: { label: string } | null
     class_teacher: { id: string; profile: { full_name: string } | null } | null
   }
@@ -76,6 +77,7 @@ export async function getClasses(schoolId: string): Promise<AcademicClass[]> {
     academic_year_name: r.academic_year?.label ?? null,
     class_teacher_id: r.class_teacher_id,
     class_teacher_name: r.class_teacher?.profile?.full_name ?? null,
+    room: r.room ?? null,
   }))
 }
 

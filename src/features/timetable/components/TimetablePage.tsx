@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, Pencil, Trash2, Clock, Calendar } from 'lucide-react'
+import { Plus, Pencil, Trash2, Clock, Calendar, HelpCircle, ChevronDown, ChevronUp } from 'lucide-react'
 import { PageHeader } from '@/components/common/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -28,6 +28,54 @@ import { toast } from 'sonner'
 import type { TimetableEntry } from '../types'
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'] as const
+
+function TimetableHelpGuide() {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <div className="rounded-xl border border-primary/20 bg-primary/5 overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen(v => !v)}
+        className="flex w-full items-center justify-between px-5 py-3.5 text-left hover:bg-primary/10 transition-colors"
+      >
+        <div className="flex items-center gap-2.5 text-sm font-semibold text-primary">
+          <HelpCircle className="h-4 w-4 shrink-0" />
+          How the timetable works — quick guide
+        </div>
+        {open
+          ? <ChevronUp className="h-4 w-4 text-primary/60 shrink-0" />
+          : <ChevronDown className="h-4 w-4 text-primary/60 shrink-0" />}
+      </button>
+
+      {open && (
+        <div className="border-t border-primary/15 px-5 py-4 space-y-4 text-sm">
+          <ol className="ml-4 list-decimal list-outside space-y-2 text-muted-foreground">
+            <li>
+              <span className="font-medium text-foreground">Add periods first</span>{' '}
+              (e.g. Period 1: 08:00–08:45). Click <strong>Add period</strong> — periods become the rows of the timetable.
+            </li>
+            <li>
+              <span className="font-medium text-foreground">Choose the class</span>{' '}
+              using the Class dropdown. The timetable grid you edit is for that selected class.
+            </li>
+            <li>
+              <span className="font-medium text-foreground">Fill day cells</span>{' '}
+              by clicking <strong>Add</strong> inside a day cell. Pick the subject and teacher (optional room), then Save.
+            </li>
+            <li>
+              <span className="font-medium text-foreground">Edit or delete</span>{' '}
+              an entry by hovering a filled cell and using the pencil/bin buttons.
+            </li>
+          </ol>
+          <div className="rounded-lg border border-border bg-background/60 px-3 py-2 text-xs text-muted-foreground">
+            Tip: If you see “Failed to save. Check for teacher double-booking.” it means that teacher is already assigned in another class for the same day + period.
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
 
 function PeriodFormModal({ open, onOpenChange, onSuccess }: { open: boolean; onOpenChange: (v: boolean) => void; onSuccess: () => void }) {
   const [label, setLabel] = useState('')
@@ -102,16 +150,28 @@ function EntryFormModal({
   const [subjectId, setSubjectId] = useState(existing?.subject_id ?? '')
   const [teacherId, setTeacherId] = useState(existing?.teacher_id ?? '')
   const [room, setRoom] = useState(existing?.room ?? '')
+  const [roomMode, setRoomMode] = useState<'pick' | 'custom'>(existing?.room ? 'custom' : 'pick')
   useEffect(() => {
     if (open) {
       setSubjectId(existing?.subject_id ?? '')
       setTeacherId(existing?.teacher_id ?? '')
       setRoom(existing?.room ?? '')
+      setRoomMode(existing?.room ? 'custom' : 'pick')
     }
   }, [open, existing?.subject_id, existing?.teacher_id, existing?.room])
   const upsert = useUpsertTimetableEntry()
   const { data: subjects = [] } = useSubjects()
   const { data: teachers = [] } = useTeachersForSelect()
+  const { data: classes = [] } = useClasses()
+
+  const roomOptions = Array.from(
+    new Set(
+      classes
+        .map((c) => c.room)
+        .filter((r): r is string => Boolean(r && r.trim()))
+        .map((r) => r.trim())
+    )
+  ).sort((a, b) => a.localeCompare(b))
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -155,7 +215,40 @@ function EntryFormModal({
           </div>
           <div>
             <Label>Room</Label>
-            <Input value={room} onChange={(e) => setRoom(e.target.value)} placeholder="e.g. Room 12" className="mt-1" />
+            {roomOptions.length > 0 && (
+              <div className="mt-1 grid grid-cols-2 gap-2">
+                <Select
+                  value={roomMode}
+                  onValueChange={(v) => {
+                    const mode = v as 'pick' | 'custom'
+                    setRoomMode(mode)
+                    if (mode === 'pick') setRoom('')
+                  }}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pick">Pick from classrooms</SelectItem>
+                    <SelectItem value="custom">Custom room</SelectItem>
+                  </SelectContent>
+                </Select>
+                {roomMode === 'pick' ? (
+                  <Select value={room} onValueChange={setRoom}>
+                    <SelectTrigger><SelectValue placeholder="Select room (optional)" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">None</SelectItem>
+                      {roomOptions.map((r) => (
+                        <SelectItem key={r} value={r}>{r}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input value={room} onChange={(e) => setRoom(e.target.value)} placeholder="e.g. Room 12" />
+                )}
+              </div>
+            )}
+            {roomOptions.length === 0 && (
+              <Input value={room} onChange={(e) => setRoom(e.target.value)} placeholder="e.g. Room 12" className="mt-1" />
+            )}
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
@@ -254,9 +347,12 @@ export function TimetablePage() {
     return <TeacherTimetableView />
   }
 
+  const [viewMode, setViewMode] = useState<'all' | 'single'>('all')
   const [classFilter, setClassFilter] = useState<string>('')
   const [showPeriodModal, setShowPeriodModal] = useState(false)
   const [entryModal, setEntryModal] = useState<{
+    classId: string
+    academicYearId: string
     periodId: string
     dayOfWeek: number
     existing: TimetableEntry | null
@@ -266,18 +362,24 @@ export function TimetablePage() {
   const { data: years = [] } = useAcademicYears()
   const { data: periods = [], isLoading: periodsLoading } = usePeriods()
 
+  const defaultAcademicYearId = years.find((y) => y.is_current)?.id ?? years[0]?.id ?? ''
   const selectedClass = classes.find((c) => c.id === classFilter)
-  const academicYearId = selectedClass?.academic_year_id ?? years.find((y) => y.is_current)?.id ?? years[0]?.id ?? ''
+  const academicYearId = selectedClass?.academic_year_id ?? defaultAcademicYearId ?? ''
 
-  const { data: entries = [] } = useTimetableEntries({
-    classId: classFilter || undefined,
-    academicYearId: academicYearId || undefined,
-  })
+  const { data: entries = [] } = useTimetableEntries(
+    viewMode === 'all'
+      ? { academicYearId: defaultAcademicYearId || undefined }
+      : { classId: classFilter || undefined, academicYearId: academicYearId || undefined }
+  )
   const deletePeriod = useDeletePeriod()
   const deleteEntry = useDeleteTimetableEntry()
 
-  const getEntry = (periodId: string, dayOfWeek: number) =>
-    entries.find((e) => e.period_id === periodId && e.day_of_week === dayOfWeek) ?? null
+  const entryMap = new Map<string, TimetableEntry>()
+  for (const e of entries) {
+    entryMap.set(`${e.class_id}-${e.period_id}-${e.day_of_week}`, e)
+  }
+  const getEntry = (classId: string, periodId: string, dayOfWeek: number) =>
+    entryMap.get(`${classId}-${periodId}-${dayOfWeek}`) ?? null
 
   const handleDeletePeriod = async (id: string) => {
     if (!confirm('Delete this period? All entries in this slot will be removed.')) return
@@ -300,7 +402,7 @@ export function TimetablePage() {
     <div className="space-y-6">
       <PageHeader
         title="Timetable"
-        subtitle="Manage periods and timetable entries by class"
+        subtitle={viewMode === 'all' ? 'View and manage timetables for all classes' : 'Manage periods and timetable entries by class'}
         actions={
           <Button onClick={() => setShowPeriodModal(true)}>
             <Plus className="mr-2 h-4 w-4" /> Add period
@@ -308,18 +410,33 @@ export function TimetablePage() {
         }
       />
 
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="w-48">
-          <Label className="text-xs text-muted-foreground">Class</Label>
-          <Select value={classFilter} onValueChange={setClassFilter}>
-            <SelectTrigger><SelectValue placeholder="Select class" /></SelectTrigger>
+      <TimetableHelpGuide />
+
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="w-56">
+          <Label className="text-xs text-muted-foreground">View</Label>
+          <Select value={viewMode} onValueChange={(v) => setViewMode(v as 'all' | 'single')}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
-              {classes.map((c) => (
-                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-              ))}
+              <SelectItem value="all">All classes</SelectItem>
+              <SelectItem value="single">Single class</SelectItem>
             </SelectContent>
           </Select>
         </div>
+
+        {viewMode === 'single' && (
+          <div className="w-56">
+            <Label className="text-xs text-muted-foreground">Class</Label>
+            <Select value={classFilter} onValueChange={setClassFilter}>
+              <SelectTrigger><SelectValue placeholder="Select class" /></SelectTrigger>
+              <SelectContent>
+                {classes.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
 
       {periods.length === 0 && !periodsLoading ? (
@@ -329,6 +446,102 @@ export function TimetablePage() {
           description="Add periods (e.g. Period 1: 08:00–08:45) to build your timetable."
           action={<Button onClick={() => setShowPeriodModal(true)}>Add period</Button>}
         />
+      ) : viewMode === 'all' ? (
+        classes.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No classes found. Create classes in Academics first.</p>
+        ) : (
+          <div className="space-y-6">
+            {classes.map((cls) => {
+              const clsYearId = cls.academic_year_id ?? defaultAcademicYearId
+              return (
+                <div key={cls.id} className="rounded-xl border border-border bg-card">
+                  <div className="flex items-center justify-between gap-3 border-b border-border bg-muted/20 px-4 py-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold">{cls.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {cls.academic_year_name ? `Academic year: ${cls.academic_year_name}` : 'Academic year not set'}
+                      </p>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {periods.length} period{periods.length !== 1 ? 's' : ''}
+                    </div>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border bg-muted/40">
+                          <th className="w-28 px-3 py-2 text-left font-medium text-muted-foreground">Period</th>
+                          {DAYS.map((_, i) => (
+                            <th key={i} className="min-w-[140px] px-3 py-2 text-center font-medium text-muted-foreground">
+                              {DAYS[i]}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {periods.map((p) => (
+                          <tr key={p.id} className="border-b border-border last:border-0">
+                            <td className="px-3 py-2">
+                              <span className="font-medium">{p.label}</span>
+                              <p className="text-[10px] text-muted-foreground">
+                                {p.start_time.slice(0, 5)}–{p.end_time.slice(0, 5)}
+                              </p>
+                            </td>
+                            {DAYS.map((_, i) => {
+                              const day = i + 1
+                              const entry = getEntry(cls.id, p.id, day)
+                              return (
+                                <td key={i} className="min-w-[140px] border-l border-border p-1 align-top">
+                                  <div className="min-h-[60px] rounded-lg border border-dashed border-border bg-muted/20 p-2">
+                                    {entry ? (
+                                      <div className="group relative">
+                                        <p className="font-medium text-xs">{entry.subject_name}</p>
+                                        <p className="text-[10px] text-muted-foreground">{entry.teacher_name}</p>
+                                        {entry.room && <p className="text-[10px] text-muted-foreground">{entry.room}</p>}
+                                        <div className="mt-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-6 text-xs"
+                                            onClick={() => setEntryModal({ classId: cls.id, academicYearId: clsYearId, periodId: p.id, dayOfWeek: day, existing: entry })}
+                                          >
+                                            <Pencil className="h-3 w-3" />
+                                          </Button>
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-6 text-xs text-destructive"
+                                            onClick={() => handleDeleteEntry(entry.id)}
+                                          >
+                                            <Trash2 className="h-3 w-3" />
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-full w-full text-muted-foreground hover:text-foreground"
+                                        onClick={() => setEntryModal({ classId: cls.id, academicYearId: clsYearId, periodId: p.id, dayOfWeek: day, existing: null })}
+                                      >
+                                        <Plus className="mr-1 h-3 w-3" /> Add
+                                      </Button>
+                                    )}
+                                  </div>
+                                </td>
+                              )
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )
       ) : !classFilter ? (
         <p className="text-sm text-muted-foreground">Select a class to view and edit the timetable.</p>
       ) : (
@@ -368,7 +581,7 @@ export function TimetablePage() {
                   </td>
                   {DAYS.map((_, i) => {
                     const day = i + 1
-                    const entry = getEntry(p.id, day)
+                    const entry = getEntry(classFilter, p.id, day)
                     return (
                       <td key={i} className="min-w-[140px] border-l border-border p-1 align-top">
                         <div className="min-h-[60px] rounded-lg border border-dashed border-border bg-muted/20 p-2">
@@ -382,7 +595,7 @@ export function TimetablePage() {
                                   variant="ghost"
                                   size="sm"
                                   className="h-6 text-xs"
-                                  onClick={() => setEntryModal({ periodId: p.id, dayOfWeek: day, existing: entry })}
+                                  onClick={() => setEntryModal({ classId: classFilter, academicYearId, periodId: p.id, dayOfWeek: day, existing: entry })}
                                 >
                                   <Pencil className="h-3 w-3" />
                                 </Button>
@@ -401,7 +614,7 @@ export function TimetablePage() {
                               variant="ghost"
                               size="sm"
                               className="h-full w-full text-muted-foreground hover:text-foreground"
-                              onClick={() => setEntryModal({ periodId: p.id, dayOfWeek: day, existing: null })}
+                              onClick={() => setEntryModal({ classId: classFilter, academicYearId, periodId: p.id, dayOfWeek: day, existing: null })}
                             >
                               <Plus className="mr-1 h-3 w-3" /> Add
                             </Button>
@@ -418,12 +631,12 @@ export function TimetablePage() {
       )}
 
       <PeriodFormModal open={showPeriodModal} onOpenChange={setShowPeriodModal} onSuccess={() => {}} />
-      {entryModal && classFilter && academicYearId && (
+      {entryModal && entryModal.classId && entryModal.academicYearId && (
         <EntryFormModal
           open={!!entryModal}
           onOpenChange={() => setEntryModal(null)}
-          classId={classFilter}
-          academicYearId={academicYearId}
+          classId={entryModal.classId}
+          academicYearId={entryModal.academicYearId}
           periodId={entryModal.periodId}
           dayOfWeek={entryModal.dayOfWeek}
           existing={entryModal.existing}

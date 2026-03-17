@@ -10,6 +10,8 @@ import {
   createTeacher, updateTeacher,
   getRolesForUser,
   setUserRoles,
+  setHomeroomClass,
+  clearHomeroomForTeacher,
 } from '../services/staff'
 import type { CreateUserAccountData, TeacherFormData, TeacherSelectOption } from '../types'
 import { useSchool } from '@/context/SchoolContext'
@@ -157,6 +159,36 @@ export function useRemoveTeacherAllocation() {
     onSuccess: (_, { teacherId }) => {
       qc.invalidateQueries({ queryKey: ['staff', 'teacher-allocations', teacherId] })
       qc.invalidateQueries({ queryKey: ['staff', 'teachers'] })
+    },
+  })
+}
+
+export function useSetHomeroomClass() {
+  const qc = useQueryClient()
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
+  return useMutation({
+    mutationFn: ({ teacherId, classId }: { teacherId: string; classId: string }) =>
+      setHomeroomClass(teacherId, classId, schoolId),
+    onSuccess: (_, { teacherId }) => {
+      qc.invalidateQueries({ queryKey: ['staff', 'teachers'] })
+      qc.invalidateQueries({ queryKey: ['academics', 'classes'] })
+      qc.invalidateQueries({ queryKey: ['staff', 'teacher-allocations', teacherId] })
+    },
+  })
+}
+
+export function useClearHomeroomForTeacher() {
+  const qc = useQueryClient()
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
+  return useMutation({
+    mutationFn: ({ teacherId }: { teacherId: string }) =>
+      clearHomeroomForTeacher(teacherId, schoolId),
+    onSuccess: (_, { teacherId }) => {
+      qc.invalidateQueries({ queryKey: ['staff', 'teachers'] })
+      qc.invalidateQueries({ queryKey: ['academics', 'classes'] })
+      qc.invalidateQueries({ queryKey: ['staff', 'teacher-allocations', teacherId] })
     },
   })
 }

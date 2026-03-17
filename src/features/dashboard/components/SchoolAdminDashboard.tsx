@@ -22,6 +22,8 @@ export function SchoolAdminDashboard() {
   const { profile } = useAuth()
   const { currentSchool } = useSchool()
   const { data: stats, isLoading } = useSchoolAdminSetupStats()
+  const deptCount = stats?.departmentCount ?? 0
+  const subjectCount = stats?.subjectCount ?? 0
 
   const steps: SetupStep[] = [
     {
@@ -108,6 +110,14 @@ export function SchoolAdminDashboard() {
                 </span>
               </div>
               <p className="mt-1.5 text-xs text-muted-foreground leading-relaxed">{step.description}</p>
+              {step.number === 2 && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  <span className="font-medium text-foreground">Recommended:</span>{' '}
+                  Departments: <span className={cn(deptCount > 0 ? 'text-foreground' : 'text-amber-600')}>{deptCount}</span>
+                  {' '}•{' '}
+                  Subjects: <span className={cn(subjectCount > 0 ? 'text-foreground' : 'text-amber-600')}>{subjectCount}</span>
+                </p>
+              )}
               <Button
                 variant="ghost"
                 size="sm"

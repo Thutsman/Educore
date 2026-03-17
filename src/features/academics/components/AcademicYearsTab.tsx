@@ -11,6 +11,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog'
 import { useAuth } from '@/hooks/useAuth'
+import { toast } from 'sonner'
 import {
   useAcademicYears, useTerms,
   useCreateAcademicYear, useUpdateAcademicYear,
@@ -52,6 +53,7 @@ function YearModal({ open, onOpenChange, year }: { open: boolean; onOpenChange: 
       ? await update.mutateAsync({ id: year.id, data: v })
       : await create.mutateAsync(v)
     if (ok) onOpenChange(false)
+    else toast.error('Failed to save academic year. Check your permissions.')
   }
 
   return (

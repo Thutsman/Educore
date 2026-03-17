@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { X, Plus, AlertTriangle, BookOpen } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { X, Plus, AlertTriangle, BookOpen, Home } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -17,6 +17,8 @@ import {
   useSubjectsForSelect,
   useClassesForSelect,
   useCurrentAcademicYear,
+  useSetHomeroomClass,
+  useClearHomeroomForTeacher,
 } from '../hooks/useStaff'
 
 interface Props {
@@ -29,6 +31,7 @@ interface Props {
 export function TeacherAllocationsModal({ open, onOpenChange, teacherId, teacherName }: Props) {
   const [subjectId, setSubjectId] = useState('')
   const [classId, setClassId]     = useState('')
+  const [homeroomClassId, setHomeroomClassId] = useState('')
 
   const { data: allocations = [], isLoading } = useTeacherAllocations(teacherId ?? undefined)
   const { data: subjects = [] }               = useSubjectsForSelect()
@@ -38,6 +41,12 @@ export function TeacherAllocationsModal({ open, onOpenChange, teacherId, teacher
   const addAllocation    = useAddTeacherAllocation()
   const addAllSubjects   = useAddAllSubjectAllocations()
   const removeAllocation = useRemoveTeacherAllocation()
+  const setHomeroom = useSetHomeroomClass()
+  const clearHomeroom = useClearHomeroomForTeacher()
+
+  const currentHomeroom = useMemo(() => {
+    return classes.find(c => c.class_teacher_id === teacherId) ?? null
+  }, [classes, teacherId])
 
   const handleAdd = async () => {
     if (!teacherId || !subjectId || !classId) return
@@ -52,6 +61,24 @@ export function TeacherAllocationsModal({ open, onOpenChange, teacherId, teacher
     } else {
       toast.error('Failed to add allocation. It may already exist for this year.')
     }
+  }
+
+  const handleSetHomeroom = async () => {
+    if (!teacherId || !homeroomClassId) return
+    const ok = await setHomeroom.mutateAsync({ teacherId, classId: homeroomClassId })
+    if (ok) {
+      toast.success('Homeroom class assigned.')
+      setHomeroomClassId('')
+    } else {
+      toast.error('Failed to assign homeroom class.')
+    }
+  }
+
+  const handleClearHomeroom = async () => {
+    if (!teacherId) return
+    const ok = await clearHomeroom.mutateAsync({ teacherId })
+    if (ok) toast.success('Homeroom class cleared.')
+    else toast.error('Failed to clear homeroom class.')
   }
 
   const handleAddAllSubjects = async () => {
@@ -93,12 +120,63 @@ export function TeacherAllocationsModal({ open, onOpenChange, teacherId, teacher
   }, {})
 
   return (
-    <Dialog open={open} onOpenChange={v => { onOpenChange(v); if (!v) { setSubjectId(''); setClassId('') } }}>
+    <Dialog open={open} onOpenChange={v => { onOpenChange(v); if (!v) { setSubjectId(''); setClassId(''); setHomeroomClassId('') } }}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Subject Allocations</DialogTitle>
           <p className="text-sm text-muted-foreground">{teacherName}</p>
         </DialogHeader>
+
+        {/* Homeroom (Class Teacher) */}
+        <div className="space-y-2">
+          <h4 className="text-sm font-semibold">Homeroom (Class Teacher)</h4>
+          <div className="rounded-lg border border-border bg-muted/30 px-3 py-2.5">
+            <div className="flex items-start gap-2">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-emerald-500/10">
+                <Home className="h-3.5 w-3.5 text-emerald-600" />
+              </div>
+              <div className="flex-1">
+                <p className="text-xs font-medium">Current homeroom</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {currentHomeroom ? currentHomeroom.name : '—'}
+                </p>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleClearHomeroom}
+                disabled={!teacherId || !currentHomeroom || clearHomeroom.isPending || setHomeroom.isPending}
+                className="shrink-0 text-xs"
+              >
+                {clearHomeroom.isPending ? 'Clearing…' : 'Clear'}
+              </Button>
+            </div>
+          </div>
+
+          <div className="flex gap-2">
+            <Select value={homeroomClassId} onValueChange={setHomeroomClassId}>
+              <SelectTrigger className="flex-1">
+                <SelectValue placeholder="Select homeroom class to assign" />
+              </SelectTrigger>
+              <SelectContent position="popper" side="bottom" sideOffset={4}>
+                {classes.map(c => (
+                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              size="sm"
+              onClick={handleSetHomeroom}
+              disabled={!teacherId || !homeroomClassId || setHomeroom.isPending || clearHomeroom.isPending}
+              className="shrink-0 text-xs"
+            >
+              {setHomeroom.isPending ? 'Assigning…' : 'Assign'}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Assigning a homeroom class will automatically remove any previous homeroom assignment for this teacher.
+          </p>
+        </div>
 
         {/* Academic year indicator */}
         {currentYear ? (

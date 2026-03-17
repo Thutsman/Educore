@@ -140,7 +140,7 @@ export function TeacherFormModal({ open, onOpenChange, teacher, initialProfileId
         toast.success('Teacher added successfully.')
         onOpenChange(false)
       } else {
-        toast.error('Failed to add teacher. The employee number may already be in use, or check the browser console.')
+        toast.error('Failed to add teacher. Check the browser console for the exact database error.')
       }
     }
   }

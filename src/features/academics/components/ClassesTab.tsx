@@ -286,6 +286,12 @@ export function ClassesTab() {
   return (
     <div className="space-y-4">
       {canEdit && (
+        <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+          During setup, you can create classes first and assign homeroom (class teachers) later in{' '}
+          <span className="font-medium text-foreground">Staff → Allocations</span>.
+        </div>
+      )}
+      {canEdit && (
         <div className="flex justify-end">
           <Button onClick={() => { setEditTarget(null); setShowForm(true) }}>
             <Plus className="mr-2 h-4 w-4" />Add Class

@@ -138,6 +138,7 @@ export function useCreateAcademicYear() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['academics', 'years'] })
       qc.invalidateQueries({ queryKey: ['staff', 'current-academic-year'] })
+      qc.invalidateQueries({ queryKey: ['school-admin-setup', schoolId] })
     },
   })
 }
@@ -152,31 +153,47 @@ export function useUpdateAcademicYear() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['academics', 'years'] })
       qc.invalidateQueries({ queryKey: ['staff', 'current-academic-year'] })
+      qc.invalidateQueries({ queryKey: ['school-admin-setup', schoolId] })
     },
   })
 }
 
 export function useCreateTerm() {
   const qc = useQueryClient()
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
   return useMutation({
     mutationFn: createTerm,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['academics', 'terms'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['academics', 'terms'] })
+      qc.invalidateQueries({ queryKey: ['school-admin-setup', schoolId] })
+    },
   })
 }
 
 export function useUpdateTerm() {
   const qc = useQueryClient()
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: Parameters<typeof updateTerm>[1] }) => updateTerm(id, data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['academics', 'terms'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['academics', 'terms'] })
+      qc.invalidateQueries({ queryKey: ['school-admin-setup', schoolId] })
+    },
   })
 }
 
 export function useDeleteTerm() {
   const qc = useQueryClient()
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
   return useMutation({
     mutationFn: deleteTerm,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['academics', 'terms'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['academics', 'terms'] })
+      qc.invalidateQueries({ queryKey: ['school-admin-setup', schoolId] })
+    },
   })
 }
 

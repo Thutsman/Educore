@@ -221,14 +221,14 @@ export default function App() {
 
                 {/* ── Attendance ── */}
                 <Route
-                  element={<ProtectedRoute allowedRoles={['school_admin','headmaster','deputy_headmaster','hod','class_teacher','teacher']} />}
+                  element={<ProtectedRoute allowedRoles={['headmaster','deputy_headmaster','hod','class_teacher','teacher']} />}
                 >
                   <Route path="/attendance/*" element={<AttendancePage />} />
                 </Route>
 
                 {/* ── Subject Teacher modules ── */}
                 <Route
-                  element={<ProtectedRoute allowedRoles={['school_admin','headmaster','deputy_headmaster','hod','teacher']} />}
+                  element={<ProtectedRoute allowedRoles={['headmaster','deputy_headmaster','hod','teacher']} />}
                 >
                   <Route path="/scheme-book" element={<SchemeBookPage />} />
                   <Route path="/lesson-plans" element={<LessonPlansPage />} />
@@ -239,7 +239,7 @@ export default function App() {
 
                 {/* ── Class Teacher modules ── */}
                 <Route
-                  element={<ProtectedRoute allowedRoles={['school_admin','headmaster','deputy_headmaster','hod','class_teacher']} />}
+                  element={<ProtectedRoute allowedRoles={['headmaster','deputy_headmaster','hod','class_teacher']} />}
                 >
                   <Route path="/parent-messages" element={<ParentMessagesPage />} />
                   <Route path="/reports" element={<TermReportsPage />} />
@@ -248,7 +248,7 @@ export default function App() {
 
                 {/* ── Finance ── */}
                 <Route
-                  element={<ProtectedRoute allowedRoles={['school_admin','headmaster','deputy_headmaster','bursar']} />}
+                  element={<ProtectedRoute allowedRoles={['headmaster','deputy_headmaster','bursar']} />}
                 >
                   <Route path="/finance/*" element={<FinancePage />} />
                 </Route>
@@ -272,7 +272,7 @@ export default function App() {
 
                 {/* ── Analytics ── */}
                 <Route
-                  element={<ProtectedRoute allowedRoles={['school_admin','headmaster','deputy_headmaster','bursar']} />}
+                  element={<ProtectedRoute allowedRoles={['headmaster','deputy_headmaster','bursar']} />}
                 >
                   <Route path="/analytics/*" element={<AnalyticsPage />} />
                 </Route>

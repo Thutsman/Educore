@@ -123,9 +123,9 @@ export function SchoolAdminHelp() {
           <StepList items={[
             'Go to Academics → Classes.',
             'Click "Add Class".',
-            'Enter the class name, grade level, capacity, and room number.',
+            'Select the level and (optional) stream/section.',
             'Link the class to the current academic year.',
-            'You can assign a class teacher after teacher accounts are created.',
+            'Leave the class teacher as "None" for now — you will assign homeroom classes in Staff after teacher accounts are created.',
           ]} />
           <GoTo to="/academics" label="Go to Academics" />
         </>
@@ -159,8 +159,7 @@ export function SchoolAdminHelp() {
             'Go to Staff → Teachers and click "Add Teacher" to create a staff record.',
             'Click "Create User Account" to create a login account.',
             'Use "Manage Roles" to assign the appropriate role (teacher, class_teacher, hod, bursar).',
-            'Use the Allocations button to assign a teacher to their subjects and classes.',
-            'Return to Academics → Classes and set each class\'s class teacher.',
+            'Use the Allocations button to (1) assign a homeroom class (class teacher) and (2) assign subjects to classes for each teacher.',
           ]} />
           <GoTo to="/staff" label="Go to Staff" />
         </>

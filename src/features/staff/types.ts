@@ -86,6 +86,7 @@ export interface ClassOption {
   id: string
   name: string
   grade_level: number
+  class_teacher_id: string | null
 }
 
 export interface CreateUserAccountData {

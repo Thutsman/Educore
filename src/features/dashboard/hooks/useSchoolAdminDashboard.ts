@@ -9,12 +9,14 @@ export function useSchoolAdminSetupStats() {
   return useQuery({
     queryKey: ['school-admin-setup', schoolId],
     queryFn: async () => {
-      const [studentsRes, teachersRes, classesRes, usersRes, yearsRes] = await Promise.all([
+      const [studentsRes, teachersRes, classesRes, usersRes, yearsRes, departmentsRes, subjectsRes] = await Promise.all([
         supabase.from('students').select('id', { count: 'exact', head: true }).eq('school_id', schoolId).is('deleted_at', null),
         supabase.from('teachers').select('id', { count: 'exact', head: true }).eq('school_id', schoolId).is('deleted_at', null),
         supabase.from('classes').select('id', { count: 'exact', head: true }).eq('school_id', schoolId).is('deleted_at', null),
         supabase.from('user_roles').select('id', { count: 'exact', head: true }).eq('school_id', schoolId),
         supabase.from('academic_years').select('id', { count: 'exact', head: true }).eq('school_id', schoolId),
+        supabase.from('departments').select('id', { count: 'exact', head: true }).eq('school_id', schoolId).is('deleted_at', null),
+        supabase.from('subjects').select('id', { count: 'exact', head: true }).eq('school_id', schoolId).is('deleted_at', null),
       ])
       return {
         studentCount:       studentsRes.count  ?? 0,
@@ -22,6 +24,8 @@ export function useSchoolAdminSetupStats() {
         classCount:         classesRes.count   ?? 0,
         userCount:          usersRes.count     ?? 0,
         academicYearCount:  yearsRes.count     ?? 0,
+        departmentCount:    departmentsRes.count ?? 0,
+        subjectCount:       subjectsRes.count ?? 0,
       }
     },
     enabled: !!schoolId,
