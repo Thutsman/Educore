@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useLocation, useNavigate, Link } from 'react-router-dom'
 import {
   Bell,
   Moon,
@@ -56,16 +56,21 @@ const NOTIF_TYPE_COLOR: Record<string, string> = {
 }
 
 export function Topbar() {
-  const { profile, role, signOut } = useAuth()
+  const { profile, role, signOut, hasRole } = useAuth()
   const { theme, setTheme } = useTheme()
   const { openMobile } = useSidebar()
   const navigate = useNavigate()
+  const location = useLocation()
   const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS)
 
   const unreadCount = notifications.filter(n => !n.is_read).length
 
   const ThemeIcon = THEME_ICONS[theme as ThemeMode] ?? Sun
   const nextTheme: ThemeMode = theme === 'dark' ? 'light' : 'dark'
+
+  const showDashboardToggle = hasRole('hod') && hasRole('class_teacher')
+  const isHodView = location.pathname.startsWith('/dashboard/hod')
+  const isClassTeacherView = location.pathname.startsWith('/dashboard/teacher')
 
   const handleSignOut = async () => {
     await signOut()
@@ -98,6 +103,36 @@ export function Topbar() {
 
       {/* ── Right: Actions ── */}
       <div className="flex items-center gap-1">
+
+        {/* Dashboard view toggle (HOD + Class Teacher) */}
+        {showDashboardToggle && (
+          <div className="mr-2 hidden items-center rounded-lg border border-border bg-muted/30 p-1 sm:flex">
+            <button
+              type="button"
+              onClick={() => navigate('/dashboard/teacher')}
+              className={cn(
+                'h-8 rounded-md px-3 text-xs font-semibold transition-colors',
+                isClassTeacherView
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              Class Teacher
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/dashboard/hod')}
+              className={cn(
+                'h-8 rounded-md px-3 text-xs font-semibold transition-colors',
+                isHodView
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              HOD
+            </button>
+          </div>
+        )}
 
         {/* Theme toggle */}
         <button

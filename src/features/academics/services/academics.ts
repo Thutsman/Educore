@@ -52,9 +52,10 @@ export async function getClasses(schoolId: string): Promise<AcademicClass[]> {
   const { data, error } = await supabase
     .from('classes')
     .select(`
-      id, name, grade_level, stream, academic_year_id, class_teacher_id, room,
+      id, name, grade_level, stream, academic_year_id, class_teacher_id, department_id, room,
       academic_year:academic_years(label),
-      class_teacher:teachers(id, profile:profiles(full_name))
+      class_teacher:teachers(id, profile:profiles(full_name)),
+      department:departments(name)
     `)
     .eq('school_id', schoolId)
     .is('deleted_at', null)
@@ -67,9 +68,11 @@ export async function getClasses(schoolId: string): Promise<AcademicClass[]> {
     stream: string | null
     academic_year_id: string | null
     class_teacher_id: string | null
+    department_id: string | null
     room: string | null
     academic_year: { label: string } | null
     class_teacher: { id: string; profile: { full_name: string } | null } | null
+    department: { name: string } | null
   }
   return (data as unknown as Raw[]).map(r => ({
     id: r.id, name: r.name, level: r.grade_level, stream: r.stream,
@@ -77,17 +80,23 @@ export async function getClasses(schoolId: string): Promise<AcademicClass[]> {
     academic_year_name: r.academic_year?.label ?? null,
     class_teacher_id: r.class_teacher_id,
     class_teacher_name: r.class_teacher?.profile?.full_name ?? null,
+    department_id: r.department_id,
+    department_name: r.department?.name ?? null,
     room: r.room ?? null,
   }))
 }
 
-export async function createClass(schoolId: string, d: { name: string; level: number; stream?: string; academic_year_id: string; class_teacher_id?: string }): Promise<boolean> {
+export async function createClass(
+  schoolId: string,
+  d: { name: string; level: number; stream?: string; academic_year_id: string; class_teacher_id?: string; department_id?: string | null },
+): Promise<boolean> {
   const { error } = await db.from('classes').insert({
     name: d.name,
     grade_level: d.level,
     stream: d.stream || null,
     academic_year_id: d.academic_year_id,
     class_teacher_id: d.class_teacher_id || null,
+    department_id: d.department_id || null,
     school_id: schoolId,
   })
   return !error
@@ -95,7 +104,7 @@ export async function createClass(schoolId: string, d: { name: string; level: nu
 
 export async function updateClass(
   id: string,
-  d: Partial<{ name: string; level: number; stream: string; academic_year_id: string; class_teacher_id: string | null }>
+  d: Partial<{ name: string; level: number; stream: string; academic_year_id: string; class_teacher_id: string | null; department_id: string | null }>,
 ): Promise<boolean> {
   const payload: Record<string, unknown> = {}
   if (d.name !== undefined) payload.name = d.name
@@ -103,6 +112,7 @@ export async function updateClass(
   if (d.stream !== undefined) payload.stream = d.stream || null
   if (d.academic_year_id !== undefined) payload.academic_year_id = d.academic_year_id
   if (d.class_teacher_id !== undefined) payload.class_teacher_id = d.class_teacher_id
+  if (d.department_id !== undefined) payload.department_id = d.department_id
 
   const { error } = await db.from('classes').update(payload).eq('id', id)
   return !error

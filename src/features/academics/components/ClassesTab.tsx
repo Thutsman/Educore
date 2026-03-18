@@ -17,7 +17,7 @@ import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useAuth } from '@/hooks/useAuth'
-import { useAcademicYears, useClasses, useCreateClass, useUpdateClass, useDeleteClass } from '../hooks/useAcademics'
+import { useAcademicYears, useClasses, useCreateClass, useUpdateClass, useDeleteClass, useDepartments } from '../hooks/useAcademics'
 import { useTeachersForSelect, type TeacherSelectOption } from '@/features/staff/hooks/useStaff'
 import type { AcademicClass } from '../types'
 
@@ -71,6 +71,7 @@ const schema = z.object({
   level_key:        z.string().min(1, 'Level is required'),
   stream:           z.string().optional(),
   class_teacher_id: z.string().optional(),
+  department_id:    z.string().optional(),
 })
 type FormValues = z.infer<typeof schema>
 
@@ -83,6 +84,7 @@ function ClassFormModal({ open, onOpenChange, cls }: {
   const { data: years = [] } = useAcademicYears()
   const currentYear = years.find(y => y.is_current) ?? years[0]
   const { data: teachers = [] } = useTeachersForSelect(open)
+  const { data: departments = [] } = useDepartments()
 
   function getTeacherWarning(t: TeacherSelectOption): string | null {
     if (!t.homeroom_class_name) return null
@@ -92,7 +94,7 @@ function ClassFormModal({ open, onOpenChange, cls }: {
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema) as Resolver<FormValues>,
-    defaultValues: { name: '', academic_year_id: '', level_key: '', stream: '', class_teacher_id: '__none__' },
+    defaultValues: { name: '', academic_year_id: '', level_key: '', stream: '', class_teacher_id: '__none__', department_id: '__none__' },
   })
 
   useEffect(() => {
@@ -103,6 +105,7 @@ function ClassFormModal({ open, onOpenChange, cls }: {
       level_key:        cls ? levelKeyFromClass(cls) : '',
       stream:           cls?.stream ?? '',
       class_teacher_id: cls?.class_teacher_id ?? '__none__',
+      department_id:    cls?.department_id ?? '__none__',
     })
   }, [open, cls, currentYear?.id, form])
 
@@ -130,6 +133,7 @@ function ClassFormModal({ open, onOpenChange, cls }: {
       level:            opt?.level ?? 1,
       stream:           v.stream || undefined,
       class_teacher_id: v.class_teacher_id === '__none__' ? undefined : (v.class_teacher_id || undefined),
+      department_id:    v.department_id === '__none__' ? null : (v.department_id || null),
     }
     const ok = isEdit && cls
       ? await update.mutateAsync({ id: cls.id, data: payload })
@@ -210,6 +214,24 @@ function ClassFormModal({ open, onOpenChange, cls }: {
               </FormItem>
             )} />
 
+            <FormField control={form.control} name="department_id" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Department</FormLabel>
+                <Select onValueChange={field.onChange} value={field.value ?? '__none__'}>
+                  <FormControl>
+                    <SelectTrigger><SelectValue placeholder="None" /></SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="__none__">None</SelectItem>
+                    {departments.map(d => (
+                      <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )} />
+
             <FormField control={form.control} name="class_teacher_id" render={({ field }) => (
               <FormItem>
                 <FormLabel>Class Teacher (Homeroom)</FormLabel>
@@ -264,6 +286,7 @@ export function ClassesTab() {
     { key: 'name', header: 'Class Name', sortable: true, cell: r => <span className="font-medium">{r.name}</span> },
     { key: 'level', header: 'Level', cell: r => r.level != null ? String(r.level) : '—' },
     { key: 'stream', header: 'Stream', cell: r => r.stream || '—' },
+    { key: 'department_name', header: 'Department', cell: r => r.department_name || '—' },
     { key: 'academic_year_name', header: 'Academic Year', cell: r => r.academic_year_name || '—' },
     { key: 'class_teacher_name', header: 'Class Teacher', cell: r => r.class_teacher_name || '—' },
     ...(canEdit ? [{

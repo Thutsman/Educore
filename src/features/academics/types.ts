@@ -14,6 +14,8 @@ export interface AcademicClass {
   academic_year_name: string | null
   class_teacher_id: string | null
   class_teacher_name: string | null
+  department_id: string | null
+  department_name: string | null
   room: string | null
 }
 

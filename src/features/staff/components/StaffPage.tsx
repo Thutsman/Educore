@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { UserPlus, BookOpen, ShieldCheck, HelpCircle, ChevronDown, ChevronUp } from 'lucide-react'
+import { UserPlus, BookOpen, ShieldCheck, HelpCircle, ChevronDown, ChevronUp, Pencil } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/common/PageHeader'
 import { DataTable, type Column } from '@/components/common/DataTable'
@@ -91,6 +91,15 @@ function TeachersTab() {
       className: 'text-right',
       cell: r => (
         <div className="flex items-center justify-end gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 text-xs"
+            onClick={e => { e.stopPropagation(); openEdit(r) }}
+          >
+            <Pencil className="h-3.5 w-3.5" />
+            Edit
+          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -346,6 +355,7 @@ function StaffHelpGuide() {
             <ul className="space-y-1 text-xs text-muted-foreground list-disc list-inside">
               <li>A teacher can hold multiple roles — e.g. <strong>Teacher + HOD</strong>.</li>
               <li>To change a staff member's roles later, click <strong>Manage Roles</strong> on their row.</li>
+              <li>For HOD role: assign a <strong>Department</strong> via <strong>Edit</strong> — required for the HOD dashboard.</li>
               <li>To assign subjects to a teacher, click <strong>Allocations</strong> on their row.</li>
               <li>Non-teaching staff are managed on the <strong>Non-Teaching Staff</strong> tab.</li>
             </ul>

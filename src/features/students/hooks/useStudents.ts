@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   getStudents,
+  getAtRiskStudents,
   getStudentById,
   getStudentGuardians,
   getStudentFeeSummary,
@@ -30,6 +31,17 @@ export function useStudents(filters?: Partial<StudentFilters>) {
     queryKey: studentKeys.list(schoolId, filters),
     queryFn: () => getStudents(schoolId, filters),
     enabled: !!schoolId,
+  })
+}
+
+export function useAtRiskStudents(departmentId: string | null) {
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
+  return useQuery({
+    queryKey: ['students', 'at-risk', schoolId, departmentId ?? ''] as const,
+    queryFn: () => getAtRiskStudents(schoolId, departmentId!),
+    enabled: !!schoolId && !!departmentId,
+    staleTime: 10 * 60 * 1000,
   })
 }
 

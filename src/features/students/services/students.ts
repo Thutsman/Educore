@@ -7,6 +7,8 @@ const db = supabase as any
 
 const n = (v: unknown): number => Number(v) || 0
 
+const PASS_THRESHOLD = 50
+
 function createOnboardingClient() {
   return createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_ANON_KEY, {
     auth: {
@@ -61,6 +63,196 @@ export async function getStudents(schoolId: string, filters?: Partial<StudentFil
     class_id:       r.class_id,
     class_name:     r.class?.name ?? null,
   }))
+}
+
+async function getCurrentAcademicYearId(schoolId: string): Promise<string | null> {
+  const { data, error } = await db
+    .from('academic_years')
+    .select('id')
+    .eq('school_id', schoolId)
+    .eq('is_current', true)
+    .maybeSingle()
+
+  if (error || !data?.id) return null
+  return data.id as string
+}
+
+async function getCurrentTermId(schoolId: string): Promise<string | null> {
+  const academicYearId = await getCurrentAcademicYearId(schoolId)
+  if (!academicYearId) return null
+
+  const { data, error } = await db
+    .from('terms')
+    .select('id')
+    .eq('academic_year_id', academicYearId)
+    .eq('is_current', true)
+    .maybeSingle()
+
+  if (error || !data?.id) return null
+  return data.id as string
+}
+
+async function getDepartmentClassIds(schoolId: string, departmentId: string): Promise<string[]> {
+  const { data, error } = await db
+    .from('classes')
+    .select('id')
+    .eq('school_id', schoolId)
+    .eq('department_id', departmentId)
+    .is('deleted_at', null)
+
+  if (error || !data) return []
+  return (data as unknown as { id: string }[]).map(r => r.id)
+}
+
+/**
+ * Students who are "at-risk" based on the latest exam window in the current term:
+ * average percentage < PASS_THRESHOLD (missing grade data => at-risk).
+ */
+export async function getAtRiskStudents(
+  schoolId: string,
+  departmentId: string
+): Promise<Student[]> {
+  const termId = await getCurrentTermId(schoolId)
+  if (!termId) return []
+
+  const classIds = await getDepartmentClassIds(schoolId, departmentId)
+  if (!classIds.length) return []
+
+  const { data: examRows, error: examError } = await db
+    .from('exams')
+    .select('id, exam_date, created_at')
+    .eq('school_id', schoolId)
+    .eq('term_id', termId)
+    .in('class_id', classIds)
+
+  if (examError || !examRows?.length) return []
+
+  type ExamRow = { id: string; exam_date: string | null; created_at: string }
+  const exams = examRows as unknown as ExamRow[]
+
+  const dateKey = (r: ExamRow) => {
+    if (r.exam_date) return r.exam_date
+    // created_at is timestamptz; slicing keeps the date portion we received
+    return r.created_at.slice(0, 10)
+  }
+
+  const latestDateKey = exams.reduce((acc, r) => {
+    const k = dateKey(r)
+    return k > acc ? k : acc
+  }, dateKey(exams[0]))
+
+  const latestExamIds = exams.filter(r => dateKey(r) === latestDateKey).map(r => r.id)
+  if (!latestExamIds.length) return []
+
+  // Fetch all students in the department classes (used for denom + output rows).
+  const { data: studentRows, error: studentError } = await db
+    .from('students')
+    .select(`
+      id, admission_no, full_name,
+      date_of_birth, gender, status,
+      admission_date,
+      class_id,
+      class:classes(name)
+    `)
+    .eq('school_id', schoolId)
+    .in('class_id', classIds)
+    .is('deleted_at', null)
+    .order('full_name')
+
+  if (studentError || !studentRows) return []
+
+  type StudentRow = {
+    id: string
+    admission_no: string
+    full_name: string
+    date_of_birth: string | null
+    gender: string | null
+    status: string
+    admission_date: string | null
+    class_id: string | null
+    class: { name: string } | null
+  }
+
+  const students = studentRows as unknown as StudentRow[]
+  const activeStudentIds = students.filter(s => s.status === 'active').map(s => s.id)
+  const targetStudentIds = activeStudentIds.length ? activeStudentIds : students.map(s => s.id)
+
+  if (!targetStudentIds.length) return []
+
+  const targetSet = new Set(targetStudentIds)
+
+  // Latest window grades with exam.total_marks (needed for % computation).
+  const { data: gradeRows, error: gradeError } = await db
+    .from('grades')
+    .select('student_id, marks_obtained, exam:exams(total_marks)')
+    .eq('school_id', schoolId)
+    .in('exam_id', latestExamIds)
+    .not('marks_obtained', 'is', null)
+
+  if (gradeError || !gradeRows) {
+    // No grade rows => everyone in denom is "at-risk" in the existing dashboard logic.
+    return students
+      .filter(s => targetSet.has(s.id))
+      .map(s => ({
+        id: s.id,
+        admission_no: s.admission_no,
+        full_name: s.full_name,
+        date_of_birth: s.date_of_birth,
+        gender: s.gender as Student['gender'],
+        address: null,
+        phone: null,
+        email: null,
+        status: s.status as Student['status'],
+        admission_date: s.admission_date,
+        class_id: s.class_id,
+        class_name: s.class?.name ?? null,
+      }))
+  }
+
+  type GradeRow = {
+    student_id: string
+    marks_obtained: unknown
+    exam: { total_marks: unknown } | null
+  }
+
+  const grades = gradeRows as unknown as GradeRow[]
+
+  const byStudent: Record<string, { sum: number; count: number }> = {}
+  grades.forEach(g => {
+    if (!targetSet.has(g.student_id)) return
+    const totalMarks = Number(g.exam?.total_marks ?? 0)
+    const marks = Number(g.marks_obtained)
+    if (!isFinite(marks) || !isFinite(totalMarks) || totalMarks <= 0) return
+    const pct = (marks / totalMarks) * 100
+
+    if (!byStudent[g.student_id]) byStudent[g.student_id] = { sum: 0, count: 0 }
+    byStudent[g.student_id].sum += pct
+    byStudent[g.student_id].count += 1
+  })
+
+  const atRiskIds = targetStudentIds.filter(sid => {
+    const entry = byStudent[sid]
+    const avg = entry && entry.count > 0 ? entry.sum / entry.count : null
+    return avg == null || avg < PASS_THRESHOLD
+  })
+
+  const atRiskSet = new Set(atRiskIds)
+  return students
+    .filter(s => atRiskSet.has(s.id))
+    .map(s => ({
+      id: s.id,
+      admission_no: s.admission_no,
+      full_name: s.full_name,
+      date_of_birth: s.date_of_birth,
+      gender: s.gender as Student['gender'],
+      address: null,
+      phone: null,
+      email: null,
+      status: s.status as Student['status'],
+      admission_date: s.admission_date,
+      class_id: s.class_id,
+      class_name: s.class?.name ?? null,
+    }))
 }
 
 export async function getStudentById(id: string): Promise<Student | null> {

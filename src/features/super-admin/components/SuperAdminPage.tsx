@@ -111,7 +111,7 @@ export function SuperAdminPage() {
 
       {/* Summary stats */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-2 lg:w-96">
-        <div className="rounded-xl border border-border bg-white p-4 shadow-sm">
+        <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
               <School className="h-5 w-5 text-primary" />
@@ -122,7 +122,7 @@ export function SuperAdminPage() {
             </div>
           </div>
         </div>
-        <div className="rounded-xl border border-border bg-white p-4 shadow-sm">
+        <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/10">
               <Users className="h-5 w-5 text-emerald-600" />

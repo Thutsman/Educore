@@ -85,7 +85,7 @@ export function DataTable<T>({
   return (
     <div className={cn('space-y-3', className)}>
       {/* Table */}
-      <div className="overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-sm">
+      <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -105,8 +105,8 @@ export function DataTable<T>({
                       {col.sortable && (
                         sortKey === String(col.key) ? (
                           sortDir === 'asc'
-                            ? <ArrowUp className="h-3 w-3 text-emerald-600" />
-                            : <ArrowDown className="h-3 w-3 text-emerald-600" />
+                            ? <ArrowUp className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+                            : <ArrowDown className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
                         ) : (
                           <ArrowUpDown className="h-3 w-3 opacity-40" />
                         )

@@ -99,7 +99,7 @@ const NAV_GROUPS: NavGroup[] = [
         label: 'Academics',
         icon: BookOpen,
         href: '/academics',
-        allowedRoles: ['school_admin','headmaster','deputy_headmaster','hod','class_teacher','teacher'],
+        allowedRoles: ['school_admin','headmaster','deputy_headmaster','class_teacher','teacher'],
       },
       {
         label: 'Scheme Book',
@@ -117,7 +117,7 @@ const NAV_GROUPS: NavGroup[] = [
         label: 'Assignments',
         icon: FileQuestion,
         href: '/assignments',
-        allowedRoles: ['headmaster','deputy_headmaster','hod','teacher'],
+        allowedRoles: ['headmaster','deputy_headmaster','teacher'],
       },
       {
         label: 'Assessments',
@@ -129,7 +129,7 @@ const NAV_GROUPS: NavGroup[] = [
         label: 'Resources',
         icon: FolderOpen,
         href: '/resources',
-        allowedRoles: ['school_admin','headmaster','deputy_headmaster','hod','teacher'],
+        allowedRoles: ['school_admin','headmaster','deputy_headmaster','teacher'],
       },
       {
         label: 'Attendance',
@@ -141,7 +141,7 @@ const NAV_GROUPS: NavGroup[] = [
         label: 'Timetable',
         icon: Clock,
         href: '/timetable',
-        allowedRoles: ['school_admin','headmaster','deputy_headmaster','hod','class_teacher','teacher'],
+        allowedRoles: ['school_admin','headmaster','deputy_headmaster','class_teacher','teacher'],
       },
     ],
   },
@@ -176,7 +176,7 @@ const NAV_GROUPS: NavGroup[] = [
         label: 'Messages',
         icon: MessageSquare,
         href: '/communication',
-        allowedRoles: ['school_admin','headmaster','deputy_headmaster','bursar','hod','class_teacher','teacher','non_teaching_staff','parent','student'],
+        allowedRoles: ['school_admin','headmaster','deputy_headmaster','bursar','class_teacher','teacher','non_teaching_staff','parent','student'],
       },
       {
         label: 'Parent Messages',
@@ -293,9 +293,22 @@ function SidebarContent({
   const navigate = useNavigate()
   const { toggleCollapsed } = useSidebar()
 
+  const location = useLocation()
+  // When a user has multiple roles (e.g. HOD + class_teacher), the dashboard view toggle
+  // should control which modules are shown. We switch sidebar gating based on the
+  // currently selected dashboard view.
+  const activeRoleForSidebar = location.pathname.startsWith('/dashboard/hod')
+    ? 'hod'
+    : location.pathname.startsWith('/dashboard/teacher')
+      ? 'class_teacher'
+      : null
+
   const visibleGroups = NAV_GROUPS.map(group => ({
     ...group,
-    items: group.items.filter(item => roles.length > 0 && item.allowedRoles.some(r => roles.includes(r))),
+    items: group.items.filter(item => {
+      const sidebarRoles = activeRoleForSidebar ? [activeRoleForSidebar] : roles
+      return sidebarRoles.length > 0 && item.allowedRoles.some(r => sidebarRoles.includes(r))
+    }),
   })).filter(group => group.items.length > 0)
 
   const handleSignOut = async () => {

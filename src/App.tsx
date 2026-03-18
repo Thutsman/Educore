@@ -136,7 +136,7 @@ const ROLE_DASHBOARD: Record<AppRole, string> = {
 }
 
 function DashboardRedirect() {
-  const { role, isLoading } = useAuth()
+  const { role, roles, isLoading } = useAuth()
   if (isLoading) {
     return (
       <div className="flex h-64 items-center justify-center">
@@ -146,7 +146,10 @@ function DashboardRedirect() {
   }
   // Never send an authenticated user back to /login — fall back to the general
   // dashboard if the role is somehow null (e.g. missing profile row).
-  const path = role ? (ROLE_DASHBOARD[role] ?? '/dashboard/general') : '/dashboard/general'
+  const isDualRole = roles.includes('hod') && roles.includes('class_teacher')
+  const path = isDualRole
+    ? '/dashboard/teacher'
+    : role ? (ROLE_DASHBOARD[role] ?? '/dashboard/general') : '/dashboard/general'
   return <Navigate to={path} replace />
 }
 

@@ -269,6 +269,9 @@ export function TeacherFormModal({ open, onOpenChange, teacher, initialProfileId
                       No departments yet. Go to <strong>Academics → Departments</strong> to create them. You can save without one and update later.
                     </p>
                   )}
+                  <p className="text-xs text-muted-foreground">
+                    Required for HOD role — staff with HOD must have a department to access their HOD dashboard.
+                  </p>
                   <FormMessage />
                 </FormItem>
               )} />

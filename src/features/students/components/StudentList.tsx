@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { UserPlus, Users, UserCheck, UserX, Search } from 'lucide-react'
 import { PageHeader } from '@/components/common/PageHeader'
 import { StatCard } from '@/components/common/StatCard'
@@ -13,9 +13,10 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { useAuth } from '@/hooks/useAuth'
 import { getInitials, formatDate } from '@/utils/format'
 import { cn } from '@/utils/cn'
-import { useStudents, useClassesForSelect } from '../hooks/useStudents'
+import { useStudents, useClassesForSelect, useAtRiskStudents } from '../hooks/useStudents'
 import { StudentFormModal } from './StudentFormModal'
 import type { Student, StudentFilters } from '../types'
+import { useTeacherRecord } from '@/features/dashboard/hooks/useTeacherDashboard'
 
 const STATUS_STYLES: Record<string, string> = {
   active:      'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20',
@@ -27,8 +28,14 @@ const STATUS_STYLES: Record<string, string> = {
 
 export function StudentList() {
   const navigate = useNavigate()
-  const { role } = useAuth()
+  const { role, user } = useAuth()
   const canAdd = role === 'headmaster' || role === 'deputy_headmaster' || role === 'school_admin'
+
+  const location = useLocation()
+  const searchParams = new URLSearchParams(location.search)
+  const atRiskParam = searchParams.get('filter')
+  const deptParam = searchParams.get('dept')
+  const isAtRiskDeptMode = atRiskParam === 'at-risk' && (deptParam === 'true' || deptParam === '1')
 
   const [filters, setFilters] = useState<StudentFilters>({ search: '', classId: 'all', status: 'all' })
   const [showForm, setShowForm] = useState(false)
@@ -36,8 +43,15 @@ export function StudentList() {
   const { data: students = [], isLoading } = useStudents(filters)
   const { data: classes = [] } = useClassesForSelect()
 
-  const activeCount = students.filter(s => s.status === 'active').length
-  const inactiveCount = students.filter(s => s.status !== 'active').length
+  const { data: teacherRecord } = useTeacherRecord(isAtRiskDeptMode ? user?.id : undefined)
+  const atRiskDepartmentId = isAtRiskDeptMode ? teacherRecord?.department_id ?? null : null
+  const { data: atRiskStudents = [], isLoading: atRiskLoading } = useAtRiskStudents(atRiskDepartmentId)
+
+  const studentsToShow = isAtRiskDeptMode ? atRiskStudents : students
+  const loadingToShow = isAtRiskDeptMode ? atRiskLoading : isLoading
+
+  const activeCount = studentsToShow.filter(s => s.status === 'active').length
+  const inactiveCount = studentsToShow.filter(s => s.status !== 'active').length
 
   const columns: Column<Student>[] = [
     {
@@ -98,7 +112,11 @@ export function StudentList() {
     <div className="space-y-6">
       <PageHeader
         title="Students"
-        subtitle={`${students.length} student${students.length !== 1 ? 's' : ''} found`}
+        subtitle={
+          isAtRiskDeptMode
+            ? `${studentsToShow.length} at-risk learner${studentsToShow.length !== 1 ? 's' : ''} found`
+            : `${studentsToShow.length} student${studentsToShow.length !== 1 ? 's' : ''} found`
+        }
         actions={
           canAdd ? (
             <Button variant="emerald" onClick={() => setShowForm(true)}>
@@ -113,68 +131,70 @@ export function StudentList() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard
           title="Total Students"
-          value={students.length}
+          value={studentsToShow.length}
           icon={Users}
           iconClassName="bg-emerald-50 text-emerald-600"
-          loading={isLoading}
+          loading={loadingToShow}
         />
         <StatCard
           title="Active"
           value={activeCount}
           icon={UserCheck}
           iconClassName="bg-emerald-50 text-emerald-600"
-          loading={isLoading}
+          loading={loadingToShow}
         />
         <StatCard
           title="Other Status"
           value={inactiveCount}
           icon={UserX}
           iconClassName="bg-slate-100 text-slate-600"
-          loading={isLoading}
+          loading={loadingToShow}
         />
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search by name or admission number..."
-            className="pl-9"
-            value={filters.search}
-            onChange={e => setFilters(f => ({ ...f, search: e.target.value }))}
-          />
+      {!isAtRiskDeptMode && (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search by name or admission number..."
+              className="pl-9"
+              value={filters.search}
+              onChange={e => setFilters(f => ({ ...f, search: e.target.value }))}
+            />
+          </div>
+          <Select value={filters.classId} onValueChange={v => setFilters(f => ({ ...f, classId: v }))}>
+            <SelectTrigger className="w-full sm:w-44">
+              <SelectValue placeholder="All Classes" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Classes</SelectItem>
+              {classes.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={filters.status} onValueChange={v => setFilters(f => ({ ...f, status: v }))}>
+            <SelectTrigger className="w-full sm:w-40">
+              <SelectValue placeholder="All Statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="inactive">Inactive</SelectItem>
+              <SelectItem value="graduated">Graduated</SelectItem>
+              <SelectItem value="expelled">Expelled</SelectItem>
+              <SelectItem value="transferred">Transferred</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-        <Select value={filters.classId} onValueChange={v => setFilters(f => ({ ...f, classId: v }))}>
-          <SelectTrigger className="w-full sm:w-44">
-            <SelectValue placeholder="All Classes" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Classes</SelectItem>
-            {classes.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={filters.status} onValueChange={v => setFilters(f => ({ ...f, status: v }))}>
-          <SelectTrigger className="w-full sm:w-40">
-            <SelectValue placeholder="All Statuses" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="inactive">Inactive</SelectItem>
-            <SelectItem value="graduated">Graduated</SelectItem>
-            <SelectItem value="expelled">Expelled</SelectItem>
-            <SelectItem value="transferred">Transferred</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      )}
 
       {/* Table */}
       <DataTable<Student>
         columns={columns}
-        data={students}
+        data={studentsToShow}
         keyExtractor={r => r.id}
-        loading={isLoading}
+        loading={loadingToShow}
         onRowClick={row => navigate(`/students/${row.id}`)}
       />
 
