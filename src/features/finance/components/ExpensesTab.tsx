@@ -26,14 +26,16 @@ const CATEGORIES = [
   { value: 'utilities',   label: 'Utilities' },
   { value: 'maintenance', label: 'Maintenance' },
   { value: 'supplies',    label: 'Supplies' },
+  { value: 'equipment',   label: 'Equipment' },
   { value: 'transport',   label: 'Transport' },
+  { value: 'events',      label: 'Events' },
   { value: 'other',       label: 'Other' },
 ]
 
 const schema = z.object({
   description:      z.string().min(1, 'Required'),
   amount:           z.coerce.number().min(0.01, 'Must be > 0'),
-  category:         z.enum(['salaries', 'utilities', 'maintenance', 'supplies', 'transport', 'other']),
+  category:         z.enum(['salaries', 'utilities', 'maintenance', 'supplies', 'equipment', 'transport', 'events', 'other']),
   expense_date:     z.string().min(1, 'Required'),
   paid_to:          z.string().optional(),
   reference_number: z.string().optional(),

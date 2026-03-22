@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import {
   CheckCircle2, ChevronDown, ArrowRight, School,
-  GraduationCap, Users, BookOpen, ClipboardCheck,
+  GraduationCap, Users, BookOpen, BookMarked, ClipboardCheck,
   Banknote, MessageSquare, Package, BarChart3,
 } from 'lucide-react'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
@@ -378,7 +378,8 @@ export function HeadmasterHelp() {
     { icon: GraduationCap, title: 'Students',       description: 'Manage student records, enrolments, guardian links, and individual profiles.', color: 'bg-blue-500/10 text-blue-600',    to: '/students' },
     { icon: Users,         title: 'Staff',          description: 'Teacher and non-teaching staff records, departments, and subject allocations.', color: 'bg-violet-500/10 text-violet-600', to: '/staff' },
     { icon: BookOpen,      title: 'Academics',      description: 'Classes, subjects, academic years, terms, exams, grades, and scheme books.',    color: 'bg-emerald-500/10 text-emerald-600', to: '/academics' },
-    { icon: ClipboardCheck,title: 'Attendance',     description: 'Daily attendance marking, period-based tracking, and attendance reports.',      color: 'bg-orange-500/10 text-orange-600', to: '/attendance' },
+    { icon: ClipboardCheck,title: 'Attendance overview', description: 'School-wide attendance rates are on your dashboard. Registers are marked by class and subject teachers.', color: 'bg-orange-500/10 text-orange-600', to: '/dashboard/headmaster' },
+    { icon: BookMarked,    title: 'Scheme Book',    description: 'Review scheme book uploads, HOD approvals, and complete executive sign-off when needed.', color: 'bg-sky-500/10 text-sky-600', to: '/scheme-book' },
     { icon: Banknote,      title: 'Finance',        description: 'Fee structures, invoices, payments, expenses, and financial reporting.',         color: 'bg-amber-500/10 text-amber-600',   to: '/finance' },
     { icon: MessageSquare, title: 'Communication',  description: 'Announcements, messages to parents, and school circular letters.',              color: 'bg-pink-500/10 text-pink-600',     to: '/communication' },
     { icon: Package,       title: 'Assets',         description: 'School asset inventory, maintenance requests, and disposals.',                  color: 'bg-cyan-500/10 text-cyan-600',     to: '/assets' },

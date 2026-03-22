@@ -5,6 +5,31 @@ import type { Teacher, StaffMember, TeacherFormData, ProfileOption, DepartmentOp
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = supabase as any
 
+/** All `roles.name` values per user for this school (from `user_roles`). */
+async function fetchUserRoleNamesByUserIds(schoolId: string, userIds: string[]): Promise<Map<string, string[]>> {
+  const map = new Map<string, string[]>()
+  const unique = [...new Set(userIds)].filter(Boolean)
+  if (unique.length === 0) return map
+
+  const { data, error } = await supabase
+    .from('user_roles')
+    .select('user_id, roles(name)')
+    .eq('school_id', schoolId)
+    .in('user_id', unique)
+
+  if (error || !data) return map
+
+  for (const row of data as { user_id: string; roles: { name: string } | null }[]) {
+    const n = row.roles?.name
+    if (!n) continue
+    const list = map.get(row.user_id) ?? []
+    if (!list.includes(n)) list.push(n)
+    map.set(row.user_id, list)
+  }
+  for (const [uid, list] of map) map.set(uid, [...list].sort((a, b) => a.localeCompare(b)))
+  return map
+}
+
 function createOnboardingClient() {
   return createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_ANON_KEY, {
     auth: {
@@ -56,7 +81,7 @@ export async function getTeachers(schoolId: string): Promise<Teacher[]> {
     if (c.class_teacher_id) homeroomMap.set(c.class_teacher_id, c.name)
   })
 
-  return (teachersRes.data as unknown as Raw[]).map(r => ({
+  const teachers = (teachersRes.data as unknown as Raw[]).map(r => ({
     id: r.id,
     profile_id: r.profile_id,
     full_name: r.profile?.full_name ?? '—',
@@ -72,7 +97,14 @@ export async function getTeachers(schoolId: string): Promise<Teacher[]> {
     join_date: r.join_date,
     subjects_taught: [],
     homeroom_class_name: homeroomMap.get(r.id) ?? null,
+    roles: [] as string[],
   }))
+
+  const roleMap = await fetchUserRoleNamesByUserIds(
+    schoolId,
+    teachers.map(t => t.profile_id),
+  )
+  return teachers.map(t => ({ ...t, roles: roleMap.get(t.profile_id) ?? [] }))
 }
 
 /** Profiles not yet linked to any active teacher record in this school — for the Add Teacher dropdown. */
@@ -108,9 +140,19 @@ export async function getProfilesForTeacher(schoolId: string): Promise<ProfileOp
   )
 
   type RawProfile = { id: string; full_name: string }
-  return (profilesRes.data as unknown as RawProfile[])
+  const unlinked = (profilesRes.data as unknown as RawProfile[])
     .filter(p => !linked.has(p.id))
-    .map(p => ({ id: p.id, full_name: p.full_name, email: null }))
+
+  const roleMap = await fetchUserRoleNamesByUserIds(
+    schoolId,
+    unlinked.map(p => p.id),
+  )
+  return unlinked.map(p => ({
+    id: p.id,
+    full_name: p.full_name,
+    email: null,
+    roles: roleMap.get(p.id) ?? [],
+  }))
 }
 
 /** Returns the next available TCH-NNN employee number for this school. */
@@ -184,12 +226,13 @@ export async function getTeachersForSelect(schoolId: string): Promise<TeacherSel
     .filter(r => r.full_name !== '—')
 }
 
-/** Fetch role names assigned to a user (from user_roles + roles). */
-export async function getRolesForUser(userId: string): Promise<string[]> {
+/** Fetch role names assigned to a user in this school (`user_roles` + `roles`). */
+export async function getRolesForUser(userId: string, schoolId: string): Promise<string[]> {
   const { data, error } = await supabase
     .from('user_roles')
     .select('roles(name)')
     .eq('user_id', userId)
+    .eq('school_id', schoolId)
   if (error || !data) return []
   return (data as unknown as { roles: { name: string } | null }[])
     .map(r => r.roles?.name)
@@ -446,20 +489,35 @@ export async function removeTeacherAllocation(allocationId: string): Promise<boo
 export async function getStaffMembers(schoolId: string): Promise<StaffMember[]> {
   const { data, error } = await supabase
     .from('staff')
-    .select('id, profile_id, employee_no, status, profile:profiles(full_name, phone), role:roles(name)')
+    .select('id, profile_id, employee_no, status, role_title, profile:profiles(full_name, phone)')
     .eq('school_id', schoolId)
+    .is('deleted_at', null)
     .order('employee_no')
   if (error || !data) return []
 
-  type Raw = { id: string; profile_id: string; employee_no: string; status: string; profile: { full_name: string; phone: string | null } | null; role: { name: string } | null }
-  return (data as unknown as Raw[]).map(r => ({
+  type Raw = {
+    id: string
+    profile_id: string
+    employee_no: string
+    status: string
+    role_title: string | null
+    profile: { full_name: string; phone: string | null } | null
+  }
+  const rows = (data as unknown as Raw[]).map(r => ({
     id: r.id,
     profile_id: r.profile_id,
     full_name: r.profile?.full_name ?? '—',
     email: null,
     phone: r.profile?.phone ?? null,
     employee_no: r.employee_no,
-    role_name: r.role?.name ?? '—',
+    role_title: r.role_title ?? '—',
+    roles: [] as string[],
     status: r.status as StaffMember['status'],
   }))
+
+  const roleMap = await fetchUserRoleNamesByUserIds(
+    schoolId,
+    rows.map(x => x.profile_id),
+  )
+  return rows.map(r => ({ ...r, roles: roleMap.get(r.profile_id) ?? [] }))
 }

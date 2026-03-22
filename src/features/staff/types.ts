@@ -14,6 +14,8 @@ export interface Teacher {
   join_date: string | null
   subjects_taught: string[]
   homeroom_class_name: string | null
+  /** Login / access roles from `user_roles` for this school (e.g. teacher, hod). */
+  roles: string[]
 }
 
 export interface TeacherSelectOption {
@@ -37,6 +39,8 @@ export interface ProfileOption {
   id: string
   full_name: string
   email: string | null
+  /** Access roles from `user_roles` for this school. */
+  roles: string[]
 }
 
 export interface DepartmentOption {
@@ -51,7 +55,10 @@ export interface StaffMember {
   email: string | null
   phone: string | null
   employee_no: string
-  role_name: string
+  /** Job title from `staff.role_title`. */
+  role_title: string
+  /** Login / access roles from `user_roles` for this school. */
+  roles: string[]
   status: 'active' | 'inactive' | 'on_leave'
 }
 

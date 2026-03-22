@@ -141,7 +141,7 @@ const NAV_GROUPS: NavGroup[] = [
         label: 'Attendance',
         icon: ClipboardCheck,
         href: '/attendance',
-        allowedRoles: ['headmaster','deputy_headmaster','hod','class_teacher','teacher'],
+        allowedRoles: ['deputy_headmaster','hod','class_teacher','teacher'],
       },
       {
         label: 'Timetable',

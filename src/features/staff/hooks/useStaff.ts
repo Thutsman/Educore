@@ -231,10 +231,12 @@ export function useUpdateTeacher() {
 }
 
 export function useGetRolesForUser(userId: string | null, enabled: boolean) {
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
   return useQuery({
-    queryKey: ['staff', 'user-roles', userId],
-    queryFn: () => getRolesForUser(userId!),
-    enabled: Boolean(userId && enabled),
+    queryKey: ['staff', 'user-roles', userId, schoolId],
+    queryFn: () => getRolesForUser(userId!, schoolId),
+    enabled: Boolean(userId && enabled && schoolId),
   })
 }
 
@@ -249,6 +251,7 @@ export function useSetUserRoles() {
       qc.invalidateQueries({ queryKey: ['staff', 'user-roles', userId] })
       qc.invalidateQueries({ queryKey: ['staff', 'members'] })
       qc.invalidateQueries({ queryKey: ['staff', 'teachers'] })
+      qc.invalidateQueries({ queryKey: ['staff', 'profiles-unlinked'] })
     },
   })
 }

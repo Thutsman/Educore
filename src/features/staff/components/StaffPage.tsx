@@ -21,6 +21,22 @@ const STATUS_STYLES: Record<string, string> = {
   on_leave: 'bg-amber-500/10 text-amber-700 border-amber-500/20',
 }
 
+function AccessRolesCell({ roles }: { roles: string[] }) {
+  if (!roles.length) return <span className="text-xs text-muted-foreground">—</span>
+  return (
+    <div className="flex max-w-[240px] flex-wrap gap-1">
+      {roles.map(name => (
+        <span
+          key={name}
+          className="rounded-full border border-border bg-muted/50 px-2 py-0.5 text-xs font-medium capitalize"
+        >
+          {name.replace(/_/g, ' ')}
+        </span>
+      ))}
+    </div>
+  )
+}
+
 function TeachersTab() {
   const { data: teachers = [], isLoading } = useTeachers()
   const { data: unlinkedAccounts = [], isLoading: accountsLoading } = useProfilesForTeacher()
@@ -86,6 +102,11 @@ function TeachersTab() {
       ),
     },
     {
+      key: 'roles' as keyof Teacher,
+      header: 'Roles',
+      cell: r => <AccessRolesCell roles={r.roles} />,
+    },
+    {
       key: 'actions' as keyof Teacher,
       header: '',
       className: 'text-right',
@@ -126,13 +147,29 @@ function TeachersTab() {
     { key: 'full_name', header: 'Name', sortable: true, cell: r => <span className="font-medium">{r.full_name}</span> },
     { key: 'email', header: 'Email', cell: r => r.email ?? '—' },
     {
+      key: 'roles' as keyof ProfileOption,
+      header: 'Roles',
+      cell: r => <AccessRolesCell roles={r.roles} />,
+    },
+    {
       key: 'actions' as keyof ProfileOption,
       header: '',
       className: 'text-right',
       cell: r => (
-        <Button variant="outline" size="sm" onClick={e => { e.stopPropagation(); openCreate(r.id) }}>
-          Link as Teacher
-        </Button>
+        <div className="flex items-center justify-end gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 text-xs"
+            onClick={e => { e.stopPropagation(); setManageRolesUser({ id: r.id, name: r.full_name }) }}
+          >
+            <ShieldCheck className="h-3.5 w-3.5" />
+            Manage roles
+          </Button>
+          <Button variant="outline" size="sm" onClick={e => { e.stopPropagation(); openCreate(r.id) }}>
+            Link as Teacher
+          </Button>
+        </div>
       ),
     },
   ]
@@ -223,7 +260,16 @@ function StaffTab() {
       ),
     },
     { key: 'employee_no', header: 'Employee No.', className: 'font-mono text-xs text-muted-foreground' },
-    { key: 'role_name', header: 'Role', cell: r => <span className="capitalize">{r.role_name.replace(/_/g, ' ')}</span> },
+    {
+      key: 'role_title',
+      header: 'Job title',
+      cell: r => <span className="capitalize">{r.role_title.replace(/_/g, ' ')}</span>,
+    },
+    {
+      key: 'roles' as keyof StaffMember,
+      header: 'Roles',
+      cell: r => <AccessRolesCell roles={r.roles} />,
+    },
     { key: 'phone', header: 'Phone', cell: r => r.phone || '—' },
     {
       key: 'status', header: 'Status',

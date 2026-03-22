@@ -1,4 +1,15 @@
-import { format, subMonths, startOfWeek, endOfWeek, parseISO } from 'date-fns'
+import {
+  format,
+  subMonths,
+  subDays,
+  subWeeks,
+  startOfWeek,
+  endOfWeek,
+  parseISO,
+  startOfMonth,
+  eachMonthOfInterval,
+  eachWeekOfInterval,
+} from 'date-fns'
 import { supabase } from '@/lib/supabase'
 
 // ─── Date helpers ────────────────────────────────────────────────────────────
@@ -37,7 +48,33 @@ export interface SchoolStats {
 
 export interface EnrollmentPoint { month: string; students: number }
 export interface FinancePoint    { month: string; revenue: number; expenses: number }
+export interface MonthlyFinancialsResult {
+  points: FinancePoint[]
+  chartStart: string | null
+  monthCount: number
+}
 export interface ClassPerfPoint  { className: string; average: number; students: number }
+
+/** Headmaster: school-wide attendance using active students × days with any attendance recorded. */
+export interface HeadmasterAttendanceOverview {
+  rate: number
+  activeStudents: number
+  uniqueDaysRecorded: number
+  lookbackDays: number
+}
+
+export interface HeadmasterWeeklyAttendancePoint {
+  weekLabel: string
+  rate: number
+}
+
+/** Headmaster: scheme book counts by HOD / executive approval stage. */
+export interface SchemeBookApprovalStats {
+  total: number
+  awaitingHod: number
+  awaitingFinal: number
+  fullyApproved: number
+}
 export interface SubjectPerfPoint{ subject: string; average: number }
 export interface AttendancePoint { date: string; rate: number }
 
@@ -223,6 +260,110 @@ export async function getClassPerformance(schoolId: string): Promise<ClassPerfPo
     .slice(0, 10)
 }
 
+/**
+ * School-wide attendance rate for the headmaster overview.
+ * Formula: (present + late) / (activeStudents × uniqueDaysRecorded) × 100
+ */
+export async function getHeadmasterAttendanceOverview(
+  schoolId: string,
+  lookbackDays = 30,
+): Promise<HeadmasterAttendanceOverview> {
+  const end = new Date()
+  const start = subDays(end, lookbackDays)
+  const rangeStart = toISO(start)
+  const rangeEnd = toISO(end)
+
+  const [studentsRes, attRes] = await Promise.all([
+    supabase
+      .from('students')
+      .select('id')
+      .eq('school_id', schoolId)
+      .eq('status', 'active')
+      .is('deleted_at', null),
+    supabase
+      .from('attendance_records')
+      .select('date, status')
+      .eq('school_id', schoolId)
+      .gte('date', rangeStart)
+      .lte('date', rangeEnd),
+  ])
+
+  const activeStudents = studentsRes.data?.length ?? 0
+  const rows = (attRes.data ?? []) as { date: string; status: string }[]
+  const uniqueDaysRecorded = new Set(rows.map(r => r.date)).size
+  const presentOrLate = rows.filter(r => r.status === 'present' || r.status === 'late').length
+  const denom = activeStudents * uniqueDaysRecorded
+  const rate = denom > 0 ? Math.round((presentOrLate / denom) * 1000) / 10 : 0
+
+  return { rate, activeStudents, uniqueDaysRecorded, lookbackDays }
+}
+
+/** Weekly headmaster attendance series (same rate definition as overview, per ISO week). */
+export async function getHeadmasterAttendanceWeekly(
+  schoolId: string,
+  weeks = 8,
+): Promise<HeadmasterWeeklyAttendancePoint[]> {
+  const intervalEnd = endOfWeek(new Date(), { weekStartsOn: 1 })
+  const intervalStart = startOfWeek(subWeeks(intervalEnd, weeks - 1), { weekStartsOn: 1 })
+
+  const [studentsRes, attRes] = await Promise.all([
+    supabase
+      .from('students')
+      .select('id')
+      .eq('school_id', schoolId)
+      .eq('status', 'active')
+      .is('deleted_at', null),
+    supabase
+      .from('attendance_records')
+      .select('date, status')
+      .eq('school_id', schoolId)
+      .gte('date', toISO(intervalStart))
+      .lte('date', toISO(intervalEnd)),
+  ])
+
+  const activeStudents = studentsRes.data?.length ?? 0
+  const rows = (attRes.data ?? []) as { date: string; status: string }[]
+
+  const weekStarts = eachWeekOfInterval(
+    { start: intervalStart, end: intervalEnd },
+    { weekStartsOn: 1 },
+  )
+
+  return weekStarts.map((wStart) => {
+    const wEnd = endOfWeek(wStart, { weekStartsOn: 1 })
+    const a = toISO(wStart)
+    const b = toISO(wEnd)
+    const inWeek = rows.filter(r => r.date >= a && r.date <= b)
+    const uniqueDays = new Set(inWeek.map(r => r.date)).size
+    const present = inWeek.filter(r => r.status === 'present' || r.status === 'late').length
+    const denom = activeStudents * uniqueDays
+    const rate = denom > 0 ? Math.round((present / denom) * 1000) / 10 : 0
+    return { weekLabel: format(wStart, "d MMM ''yy"), rate }
+  })
+}
+
+export async function getSchemeBookApprovalStats(schoolId: string): Promise<SchemeBookApprovalStats> {
+  const { data, error } = await supabase
+    .from('scheme_books')
+    .select('hod_approved_at, approved_at')
+    .eq('school_id', schoolId)
+
+  if (error || !data) {
+    return { total: 0, awaitingHod: 0, awaitingFinal: 0, fullyApproved: 0 }
+  }
+
+  const rows = data as { hod_approved_at: string | null; approved_at: string | null }[]
+  let awaitingHod = 0
+  let awaitingFinal = 0
+  let fullyApproved = 0
+  for (const r of rows) {
+    if (r.approved_at) fullyApproved++
+    else if (r.hod_approved_at) awaitingFinal++
+    else awaitingHod++
+  }
+  return { total: rows.length, awaitingHod, awaitingFinal, fullyApproved }
+}
+
 // ════════════════════════════════════════════════════════════════════════════
 // DEPUTY QUERIES
 // ════════════════════════════════════════════════════════════════════════════
@@ -333,10 +474,64 @@ export async function getTeacherPerformance(schoolId: string): Promise<TeacherPe
 // ════════════════════════════════════════════════════════════════════════════
 
 /**
- * Monthly revenue (payments) and expenses for the past N months.
+ * Earliest payment or expense date for the school (non-rejected expenses only).
  */
-export async function getMonthlyFinancials(schoolId: string, months = 12): Promise<FinancePoint[]> {
-  const since = toISO(subMonths(new Date(), months))
+export async function getBursarChartStartDate(schoolId: string): Promise<string | null> {
+  const [payRes, expRes] = await Promise.all([
+    supabase
+      .from('payments')
+      .select('payment_date')
+      .eq('school_id', schoolId)
+      .order('payment_date', { ascending: true })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from('expenses')
+      .select('expense_date')
+      .eq('school_id', schoolId)
+      .neq('status', 'rejected')
+      .order('expense_date', { ascending: true })
+      .limit(1)
+      .maybeSingle(),
+  ])
+  type PayMin = { payment_date: string }
+  type ExpMin = { expense_date: string }
+  const p = (payRes.data as PayMin | null)?.payment_date
+  const e = (expRes.data as ExpMin | null)?.expense_date
+  if (!p && !e) return null
+  if (!p) return e ?? null
+  if (!e) return p
+  return p < e ? p : e
+}
+
+/**
+ * Monthly revenue (payments) and expenses from first data month through current month.
+ */
+export async function getMonthlyFinancials(schoolId: string): Promise<MonthlyFinancialsResult> {
+  const now = new Date()
+  const chartStartRaw = await getBursarChartStartDate(schoolId)
+
+  let rangeStart: Date
+  let chartStartOut: string | null = chartStartRaw
+
+  if (!chartStartRaw) {
+    rangeStart = startOfMonth(subMonths(now, 11))
+    chartStartOut = format(rangeStart, 'yyyy-MM-dd')
+  } else {
+    rangeStart = startOfMonth(parseISO(chartStartRaw))
+  }
+
+  const currentMonthStart = startOfMonth(now)
+  if (format(rangeStart, 'yyyy-MM') === format(currentMonthStart, 'yyyy-MM')) {
+    rangeStart = subMonths(rangeStart, 1)
+  }
+
+  let monthStarts = eachMonthOfInterval({ start: rangeStart, end: currentMonthStart })
+  if (monthStarts.length < 2) {
+    monthStarts = [subMonths(monthStarts[0] ?? currentMonthStart, 1), monthStarts[0] ?? currentMonthStart]
+  }
+
+  const since = toISO(rangeStart)
 
   const [paymentsRes, expensesRes] = await Promise.allSettled([
     supabase
@@ -349,6 +544,7 @@ export async function getMonthlyFinancials(schoolId: string, months = 12): Promi
       .from('expenses')
       .select('expense_date, amount')
       .eq('school_id', schoolId)
+      .neq('status', 'rejected')
       .gte('expense_date', since),
   ])
 
@@ -357,7 +553,7 @@ export async function getMonthlyFinancials(schoolId: string, months = 12): Promi
   const payments = (paymentsRes.status === 'fulfilled' ? (paymentsRes.value.data ?? []) : []) as RawPayment[]
   const expenses = (expensesRes.status === 'fulfilled' ? (expensesRes.value.data ?? []) : []) as RawExpense[]
 
-  const buckets = lastNMonths(months)
+  const buckets = monthStarts.map((d) => ({ key: monthKey(d), label: monthLabel(d) }))
   const rev: Record<string, number> = {}
   const exp: Record<string, number> = {}
 
@@ -373,11 +569,17 @@ export async function getMonthlyFinancials(schoolId: string, months = 12): Promi
     exp[k] = (exp[k] ?? 0) + n(e.amount)
   })
 
-  return buckets.map(({ key, label }) => ({
-    month:    label,
-    revenue:  Math.round(rev[key] ?? 0),
+  const points = buckets.map(({ key, label }) => ({
+    month: label,
+    revenue: Math.round(rev[key] ?? 0),
     expenses: Math.round(exp[key] ?? 0),
   }))
+
+  return {
+    points,
+    chartStart: chartStartOut,
+    monthCount: buckets.length,
+  }
 }
 
 /**
@@ -479,6 +681,7 @@ export async function getBursarStats(schoolId: string) {
       .from('expenses')
       .select('amount')
       .eq('school_id', schoolId)
+      .neq('status', 'rejected')
       .gte('expense_date', yearStart),
   ])
 

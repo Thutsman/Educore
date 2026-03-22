@@ -231,9 +231,9 @@ export default function App() {
                   <Route path="/timetable" element={<TimetablePage />} />
                 </Route>
 
-                {/* ── Attendance ── */}
+                {/* ── Attendance (headmaster: oversight on dashboard only; marking via teacher/class roles) ── */}
                 <Route
-                  element={<ProtectedRoute allowedRoles={['headmaster','deputy_headmaster','hod','class_teacher','teacher']} />}
+                  element={<ProtectedRoute allowedRoles={['deputy_headmaster','hod','class_teacher','teacher']} />}
                 >
                   <Route path="/attendance/*" element={<AttendancePage />} />
                 </Route>

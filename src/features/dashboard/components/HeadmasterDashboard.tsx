@@ -1,27 +1,28 @@
 import { useState, useEffect } from 'react'
-import { GraduationCap, Banknote, ClipboardCheck, UserCog, AlertTriangle, CheckCircle2, Clock, TrendingUp, HelpCircle } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import {
+  ClipboardCheck,
+  BookMarked,
+  Clock,
+  CheckCircle2,
+  HelpCircle,
+  ArrowRight,
+} from 'lucide-react'
 import { PageHeader } from '@/components/common/PageHeader'
 import { StatCard } from '@/components/common/StatCard'
 import { EmptyState } from '@/components/common/EmptyState'
-import { AppAreaChart } from '@/components/charts/AppAreaChart'
 import { AppBarChart } from '@/components/charts/AppBarChart'
-import { AppRadialChart } from '@/components/charts/AppRadialChart'
+import { AppPieChart } from '@/components/charts/AppPieChart'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/hooks/useAuth'
 import {
-  useSchoolStats,
-  useEnrollmentTrend,
-  useClassPerformance,
+  useHeadmasterAttendanceOverview,
+  useHeadmasterAttendanceWeekly,
+  useSchemeBookApprovalStats,
 } from '@/features/dashboard/hooks/useHeadmasterDashboard'
 import { HeadmasterHelp } from '@/features/dashboard/components/help/HeadmasterHelp'
-import { formatCurrency, formatPercent } from '@/utils/format'
-
-const ALERTS = [
-  { id: '1', type: 'warning', message: 'Fee collection below 80% for 3 classes', icon: AlertTriangle, color: 'text-amber-500 bg-amber-500/10' },
-  { id: '2', type: 'success', message: 'Term 1 report cards published to all parents', icon: CheckCircle2, color: 'text-emerald-500 bg-emerald-500/10' },
-  { id: '3', type: 'info',    message: '3 asset maintenance requests pending approval', icon: Clock, color: 'text-blue-500 bg-blue-500/10' },
-]
+import { formatPercent } from '@/utils/format'
 
 function CardSkeleton() {
   return (
@@ -47,11 +48,10 @@ function ChartSkeleton({ height = 220 }: { height?: number }) {
 export function HeadmasterDashboard() {
   const { profile, user } = useAuth()
 
-  const { data: stats,    isLoading: statsLoading    } = useSchoolStats()
-  const { data: enrolment, isLoading: enrolLoading   } = useEnrollmentTrend(12)
-  const { data: classPerf, isLoading: classPerfLoading } = useClassPerformance()
+  const { data: attOverview, isLoading: attOverviewLoading } = useHeadmasterAttendanceOverview(30)
+  const { data: attWeekly = [], isLoading: attWeeklyLoading } = useHeadmasterAttendanceWeekly(8)
+  const { data: schemeStats, isLoading: schemeLoading } = useSchemeBookApprovalStats()
 
-  // ── First-login help tab logic ────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState('overview')
   const [hasSeen, setHasSeen] = useState(true)
   const [tabInitialized, setTabInitialized] = useState(false)
@@ -83,11 +83,33 @@ export function HeadmasterDashboard() {
 
   const firstName = profile?.full_name?.split(' ')[0] ?? 'Headmaster'
 
+  const schemePieData = schemeStats
+    ? [
+        {
+          name: 'Awaiting HOD',
+          value: schemeStats.awaitingHod,
+          color: 'hsl(var(--chart-4))',
+        },
+        {
+          name: 'Awaiting executive approval',
+          value: schemeStats.awaitingFinal,
+          color: 'hsl(var(--chart-3))',
+        },
+        {
+          name: 'Fully approved',
+          value: schemeStats.fullyApproved,
+          color: 'hsl(var(--chart-2))',
+        },
+      ].filter(d => d.value > 0)
+    : []
+
+  const kpiLoading = attOverviewLoading || schemeLoading
+
   return (
     <div className="space-y-6">
       <PageHeader
         title={`${greeting()}, ${firstName}`}
-        subtitle="School-wide overview and executive metrics"
+        subtitle="School-wide attendance and scheme book oversight"
         actions={
           activeTab === 'overview' ? (
             <Button
@@ -117,165 +139,136 @@ export function HeadmasterDashboard() {
           </TabsTrigger>
         </TabsList>
 
-        {/* ── Overview tab ── */}
         <TabsContent value="overview" className="mt-6 space-y-8">
-
-          {/* KPI Cards */}
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {statsLoading ? (
+            {kpiLoading ? (
               Array.from({ length: 4 }).map((_, i) => <CardSkeleton key={i} />)
             ) : (
               <>
                 <StatCard
-                  title="Total Students"
-                  value={stats?.totalStudents.toLocaleString() ?? '—'}
-                  subtitle={`${stats?.activeStudents ?? 0} active`}
-                  icon={GraduationCap}
-                  iconClassName="bg-blue-500/10 text-blue-500"
-                  trend={{ value: 3.2, label: 'vs last year' }}
-                />
-                <StatCard
-                  title="Fee Collection"
-                  value={formatPercent(stats?.feeCollectionRate ?? 0)}
-                  subtitle={`${formatCurrency(stats?.totalOutstanding ?? 0)} outstanding`}
-                  icon={Banknote}
-                  iconClassName="bg-emerald-500/10 text-emerald-500"
-                  trend={{ value: stats?.feeCollectionRate ?? 0 >= 75 ? 2.1 : -1.4, label: 'vs last term' }}
-                />
-                <StatCard
-                  title="Attendance Rate"
-                  value={formatPercent(stats?.attendanceRate ?? 0)}
-                  subtitle="This week average"
+                  title="Overall attendance"
+                  value={formatPercent(attOverview?.rate ?? 0)}
+                  subtitle={
+                    attOverview?.uniqueDaysRecorded
+                      ? `${attOverview.uniqueDaysRecorded} school days with marks · last ${attOverview.lookbackDays} days`
+                      : 'No attendance marks in this period'
+                  }
                   icon={ClipboardCheck}
                   iconClassName="bg-violet-500/10 text-violet-500"
-                  trend={{ value: 0.8, label: 'vs last week' }}
                 />
                 <StatCard
-                  title="Active Staff"
-                  value={stats?.activeStaff.toLocaleString() ?? '—'}
-                  subtitle="Teaching + non-teaching"
-                  icon={UserCog}
-                  iconClassName="bg-orange-500/10 text-orange-500"
+                  title="Scheme books uploaded"
+                  value={schemeStats?.total.toLocaleString() ?? '—'}
+                  subtitle="Entries across all classes and subjects"
+                  icon={BookMarked}
+                  iconClassName="bg-blue-500/10 text-blue-500"
+                />
+                <StatCard
+                  title="Awaiting HOD review"
+                  value={schemeStats?.awaitingHod.toLocaleString() ?? '—'}
+                  subtitle="Uploaded, not yet approved by a HOD"
+                  icon={Clock}
+                  iconClassName="bg-amber-500/10 text-amber-600"
+                />
+                <StatCard
+                  title="Awaiting your approval"
+                  value={schemeStats?.awaitingFinal.toLocaleString() ?? '—'}
+                  subtitle="HOD approved — pending head / deputy sign-off"
+                  icon={CheckCircle2}
+                  iconClassName="bg-emerald-500/10 text-emerald-600"
                 />
               </>
             )}
           </div>
 
-          {/* Enrolment trend + Fee collection radial */}
           <div className="grid gap-6 lg:grid-cols-3">
             <div className="lg:col-span-2 rounded-xl border border-border bg-card p-6 shadow-sm">
-              <div className="mb-1 flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-semibold">Enrolment Trend</h3>
-                  <p className="text-xs text-muted-foreground">New students per month (last 12 months)</p>
-                </div>
-                <span className="flex items-center gap-1 rounded-full bg-blue-500/10 px-2.5 py-1 text-xs font-medium text-blue-500">
-                  <TrendingUp className="h-3 w-3" /> Live
-                </span>
+              <div className="mb-1">
+                <h3 className="text-sm font-semibold">Attendance trend</h3>
+                <p className="text-xs text-muted-foreground">
+                  Weekly rate: (present + late) ÷ (active students × days marked that week)
+                </p>
               </div>
               <div className="mt-4">
-                {enrolLoading ? (
-                  <ChartSkeleton height={220} />
-                ) : !enrolment?.length || enrolment.every(p => p.students === 0) ? (
+                {attWeeklyLoading ? (
+                  <ChartSkeleton height={240} />
+                ) : !attWeekly.length || attWeekly.every(p => p.rate === 0) ? (
                   <EmptyState
-                    title="No enrolment data"
-                    description="Student admissions will appear here once records are added."
-                    className="py-10 border-0"
+                    title="No attendance trend yet"
+                    description="Rates will appear once teachers record attendance."
+                    className="border-0 py-10"
                   />
                 ) : (
-                  <AppAreaChart
-                    data={enrolment}
-                    xKey="month"
-                    series={[{ key: 'students', label: 'New Students' }]}
-                    height={220}
-                    yTickFormatter={(v) => String(v)}
+                  <AppBarChart
+                    data={attWeekly}
+                    xKey="weekLabel"
+                    series={[{ key: 'rate', label: 'Attendance %', radius: 6 }]}
+                    height={240}
+                    yTickFormatter={(v) => `${v}%`}
+                    tooltipFormatter={(v) => `${v}%`}
+                    showLegend={false}
+                    maxBarSize={36}
                   />
                 )}
               </div>
             </div>
 
             <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-              <h3 className="mb-1 text-sm font-semibold">Fee Collection Rate</h3>
-              <p className="mb-4 text-xs text-muted-foreground">Current academic year</p>
-              <div className="flex flex-col items-center gap-4">
-                {statsLoading ? (
-                  <div className="h-44 w-44 animate-pulse rounded-full bg-muted" />
-                ) : (
-                  <AppRadialChart
-                    value={stats?.feeCollectionRate ?? 0}
-                    label="Collected"
-                    color={
-                      (stats?.feeCollectionRate ?? 0) >= 80
-                        ? 'hsl(var(--chart-2))'
-                        : (stats?.feeCollectionRate ?? 0) >= 60
-                        ? 'hsl(var(--chart-3))'
-                        : 'hsl(var(--destructive))'
-                    }
-                    size={160}
-                  />
-                )}
-                <div className="w-full space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Collected</span>
-                    <span className="font-medium tabular-nums">{formatCurrency(stats?.totalRevenue ?? 0)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Outstanding</span>
-                    <span className="font-medium text-amber-500 tabular-nums">{formatCurrency(stats?.totalOutstanding ?? 0)}</span>
-                  </div>
+              <div className="mb-1 flex items-start justify-between gap-2">
+                <div>
+                  <h3 className="text-sm font-semibold">Scheme book approvals</h3>
+                  <p className="text-xs text-muted-foreground">Pipeline by HOD and executive stages</p>
                 </div>
               </div>
-            </div>
-          </div>
-
-          {/* Class performance + Alerts */}
-          <div className="grid gap-6 lg:grid-cols-3">
-            <div className="lg:col-span-2 rounded-xl border border-border bg-card p-6 shadow-sm">
-              <div className="mb-4">
-                <h3 className="text-sm font-semibold">Academic Performance by Class</h3>
-                <p className="text-xs text-muted-foreground">Average grade percentage per class</p>
-              </div>
-              {classPerfLoading ? (
-                <ChartSkeleton height={240} />
-              ) : !classPerf?.length ? (
+              {schemeLoading ? (
+                <div className="mt-6 h-48 animate-pulse rounded-lg bg-muted" />
+              ) : !schemeStats?.total ? (
                 <EmptyState
-                  title="No grade data"
-                  description="Class performance data will appear once grades are entered."
-                  className="py-10 border-0"
+                  title="No scheme books yet"
+                  description="Teachers can upload scheme books from the Scheme Book module."
+                  className="border-0 py-8"
                 />
               ) : (
-                <AppBarChart
-                  data={classPerf.map(c => ({ ...c, className: c.className.length > 10 ? c.className.slice(0, 10) + '…' : c.className }))}
-                  xKey="className"
-                  series={[{ key: 'average', label: 'Average %', radius: 6 }]}
-                  height={240}
-                  yTickFormatter={(v) => `${v}%`}
-                  tooltipFormatter={(v) => `${v}%`}
-                  showLegend={false}
-                  maxBarSize={32}
-                />
-              )}
-            </div>
-
-            <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-              <h3 className="mb-4 text-sm font-semibold">Alerts</h3>
-              <div className="space-y-3">
-                {ALERTS.map(alert => (
-                  <div key={alert.id} className="flex items-start gap-3 rounded-lg bg-muted/40 p-3">
-                    <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${alert.color}`}>
-                      <alert.icon className="h-3.5 w-3.5" />
-                    </div>
-                    <p className="text-xs leading-relaxed text-foreground/80 pt-0.5">
-                      {alert.message}
-                    </p>
+                <>
+                  <div className="mt-2">
+                    <AppPieChart
+                      data={schemePieData}
+                      height={200}
+                      showLegend
+                      tooltipFormatter={(v) => `${v} entries`}
+                    />
                   </div>
-                ))}
-              </div>
+                  <ul className="mt-4 space-y-2 border-t border-border pt-4 text-xs text-muted-foreground">
+                    <li className="flex justify-between gap-2">
+                      <span>Fully approved</span>
+                      <span className="font-medium tabular-nums text-foreground">
+                        {schemeStats.fullyApproved.toLocaleString()}
+                      </span>
+                    </li>
+                    <li className="flex justify-between gap-2">
+                      <span>Awaiting executive approval</span>
+                      <span className="font-medium tabular-nums text-foreground">
+                        {schemeStats.awaitingFinal.toLocaleString()}
+                      </span>
+                    </li>
+                    <li className="flex justify-between gap-2">
+                      <span>Awaiting HOD</span>
+                      <span className="font-medium tabular-nums text-foreground">
+                        {schemeStats.awaitingHod.toLocaleString()}
+                      </span>
+                    </li>
+                  </ul>
+                  <Button variant="outline" size="sm" className="mt-4 w-full gap-2" asChild>
+                    <Link to="/scheme-book">
+                      Open Scheme Book <ArrowRight className="h-3.5 w-3.5" />
+                    </Link>
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </TabsContent>
 
-        {/* ── Help tab ── */}
         <TabsContent value="help" className="mt-6">
           <HeadmasterHelp />
         </TabsContent>

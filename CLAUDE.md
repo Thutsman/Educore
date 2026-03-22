@@ -54,9 +54,9 @@ Project-specific instructions for Claude Code. These override default behaviour.
 - Migrations live in `supabase/migrations/` — numbered sequentially
 - Always read the relevant migration before writing a service query to confirm column names, constraints, and defaults
 - Multi-school: most data is scoped by `school_id` (see migration 020). Include `school_id` when inserting/upserting on school-scoped tables (e.g. `attendance_records`, `invoices`, `students`).
-- Key tables: `schools`, `students`, `classes`, `teachers`, `staff`, `profiles`, `attendance_records`, `invoices`, `payments`, `expenses`, `grades`, `exams`, `subjects`, `scheme_books`, `scheme_book_attachments`, `learning_resources`, `term_reports`, `assignments`, `assessments`, `lesson_plans`
+- Key tables: `schools`, `students`, `classes`, `teachers`, `staff`, `profiles`, `attendance_records`, `invoices`, `payments`, `expenses`, `budgets`, `grades`, `exams`, `subjects`, `scheme_books`, `scheme_book_attachments`, `learning_resources`, `term_reports`, `assignments`, `assessments`, `lesson_plans`
 - `attendance_records` unique constraint: `(student_id, date, period)` — column is `reason` (not `remarks`), `marked_by` and `school_id` are NOT NULL
-- Soft deletes via `deleted_at` — always filter `.is('deleted_at', null)` on user-facing queries
+- Soft deletes via `deleted_at` — always filter `.is('deleted_at', null)` on user-facing queries (**expenses** and **payments** have no `deleted_at`; for expenses use `.neq('status', 'rejected')` instead of a soft-delete filter)
 - When debugging insert failures: check NOT NULL defaults first (e.g. `teachers.join_date` is `NOT NULL DEFAULT CURRENT_DATE` — omit the field to use the DB default; do not send `null`)
 
 ## School Admin Setup (key product decisions)
@@ -72,6 +72,18 @@ Project-specific instructions for Claude Code. These override default behaviour.
 - Teachers/staff linking:
   - If a single user can be staff in multiple schools, enforce uniqueness as `(school_id, profile_id)` (see migration `037_teacher_profile_per_school.sql`).
   - Employee numbers should be unique per school: `(school_id, employee_no)` (migration 020).
+
+## Finance & Bursar
+
+- **Services & UI:** `src/features/finance/services/finance.ts` (reads/writes), `src/features/finance/hooks/useFinance.ts`, `src/features/finance/components/` (`FinancePage`, `InvoicesTab`, `ExpensesTab`, `FinanceReportsPage`, `FinanceTermSelector`). Bursar-only chart queries live in `src/services/dashboard.ts` (`getBursarChartStartDate`, `getMonthlyFinancials` → `{ points, chartStart, monthCount }`).
+- **Invoices:** `balance` is a generated column — never recompute in app code. Filter `.is('deleted_at', null)`. Status enum includes `waived` (and `void`, etc. per migration).
+- **Payments:** Date column is `payment_date`; optional `payment_no`. No `deleted_at`.
+- **Expenses:** Use `expense_date`, `vendor`, `receipt_no` (not generic `date` / invoice-style names). No `deleted_at`. Status enum: `pending` | `approved` | `paid` | `rejected` — for reports and totals, exclude rejected with `.neq('status', 'rejected')`.
+- **Budgets:** `allocated_amount`; filter `.is('deleted_at', null)`. Category enum matches **expenses**.
+- **Students** on finance joins: `full_name` (single field).
+- **CSV (finance line-item exports):** use `exportToCsv` from `@/utils/exportToCsv.ts`. The older object-row helpers in `src/utils/csv.ts` remain for other callers.
+- **Finance routes:** `/finance` — controlled `tab` via query (`invoices` | `expenses`). Invoice list deep links: `?tab=invoices&filter=outstanding` (unpaid + partial + overdue) or `filter=overdue`. `getInvoices` maps `filter=outstanding` to `.in('status', [...])`.
+- **Expense status in the product:** `createExpense` currently inserts `status: 'paid'`. The Expenses tab form has **no** status field; bursars cannot set pending/approved/rejected from the UI until the form and `updateExpense` (map to `vendor` / `receipt_no` / `status` as needed) are extended.
 
 ## Role Hierarchy
 
@@ -109,7 +121,7 @@ src/
   services/         dashboard.ts, teacher-dashboard.ts, parent-dashboard.ts, hod-dashboard.ts
   components/ui/    shadcn components
   lib/              supabase.ts, validations/, query-client.ts
-  utils/            cn.ts, format.ts
+  utils/            cn.ts, format.ts, csv.ts, exportToCsv.ts
   context/          AuthContext.tsx
   pages/            route-level pages (LoginPage, SelectSchoolPage, etc.)
   layouts/         AppLayout.tsx, AuthLayout.tsx

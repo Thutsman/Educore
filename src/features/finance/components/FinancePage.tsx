@@ -1,13 +1,26 @@
+import { useSearchParams } from 'react-router-dom'
 import { PageHeader } from '@/components/common/PageHeader'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { InvoicesTab } from './InvoicesTab'
 import { ExpensesTab } from './ExpensesTab'
 
 export function FinancePage() {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const tabParam = searchParams.get('tab')
+  const tab = tabParam === 'expenses' ? 'expenses' : 'invoices'
+
+  const setTab = (value: string) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      next.set('tab', value)
+      return next
+    }, { replace: true })
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader title="Finance" subtitle="Invoices, payments and expenses" />
-      <Tabs defaultValue="invoices">
+      <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="grid w-full grid-cols-2 sm:inline-flex sm:w-auto">
           <TabsTrigger value="invoices" className="h-9 sm:h-10">Invoices & Payments</TabsTrigger>
           <TabsTrigger value="expenses" className="h-9 sm:h-10">Expenses</TabsTrigger>

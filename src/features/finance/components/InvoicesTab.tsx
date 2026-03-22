@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -35,6 +36,7 @@ const STATUS_STYLES: Record<string, string> = {
   partial: 'bg-amber-500/10 text-amber-700 border-amber-500/20',
   paid:    'bg-emerald-500/10 text-emerald-700 border-emerald-500/20',
   overdue: 'bg-red-500/10 text-red-700 border-red-500/20',
+  waived:  'bg-blue-500/10 text-blue-700 border-blue-500/20',
   void:    'bg-muted text-muted-foreground border-border',
 }
 
@@ -174,7 +176,7 @@ function CreateInvoiceModal({ open, onOpenChange }: { open: boolean; onOpenChang
 const paymentSchema = z.object({
   amount:           z.coerce.number().min(0.01, 'Must be > 0'),
   payment_date:     z.string().min(1, 'Required'),
-  payment_method:   z.enum(['cash', 'bank_transfer', 'mobile_money', 'cheque', 'other']),
+  payment_method:   z.enum(['cash', 'bank_transfer', 'mobile_money', 'cheque', 'card', 'other']),
   reference_number: z.string().optional(),
   notes:            z.string().optional(),
 })
@@ -237,6 +239,7 @@ function RecordPaymentModal({ invoiceId, studentId, maxAmount, open, onOpenChang
                     <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
                     <SelectItem value="mobile_money">Mobile Money</SelectItem>
                     <SelectItem value="cheque">Cheque</SelectItem>
+                    <SelectItem value="card">Card</SelectItem>
                     <SelectItem value="other">Other</SelectItem>
                   </SelectContent>
                 </Select>
@@ -475,7 +478,18 @@ export function InvoicesTab() {
   const { role } = useAuth()
   const canCreate = role === 'headmaster' || role === 'bursar'
 
-  const [statusFilter, setStatusFilter] = useState('all')
+  const [searchParams] = useSearchParams()
+  const filterParam = searchParams.get('filter')
+  const [statusFilter, setStatusFilter] = useState(() => {
+    if (filterParam === 'overdue') return 'overdue'
+    if (filterParam === 'outstanding') return 'outstanding'
+    return 'all'
+  })
+
+  useEffect(() => {
+    if (filterParam === 'overdue') setStatusFilter('overdue')
+    else if (filterParam === 'outstanding') setStatusFilter('outstanding')
+  }, [filterParam])
   const [search, setSearch] = useState('')
   const [showCreate, setShowCreate] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -519,6 +533,7 @@ export function InvoicesTab() {
             <SelectTrigger className="w-36 h-9 sm:h-10"><SelectValue placeholder="All Statuses" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="outstanding">Outstanding (unpaid + partial + overdue)</SelectItem>
               <SelectItem value="unpaid">Unpaid</SelectItem>
               <SelectItem value="partial">Partial</SelectItem>
               <SelectItem value="paid">Paid</SelectItem>

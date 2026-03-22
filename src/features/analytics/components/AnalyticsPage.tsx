@@ -21,7 +21,7 @@ export function AnalyticsPage() {
   const { data: classPerf = [] } = useClassPerformance()
   const { data: attendance = [] } = useAttendanceTrend(60)
   const { data: subjectPerf = [] } = useSubjectPerformance()
-  const { data: financials = [] } = useMonthlyFinancials(12)
+  const { data: financials } = useMonthlyFinancials()
   const { data: paymentMethods = [] } = usePaymentMethodBreakdown()
 
   return (
@@ -65,9 +65,9 @@ export function AnalyticsPage() {
       {/* Charts row 2 */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
-          <h3 className="mb-4 text-sm font-semibold">Revenue vs Expenses (12 months)</h3>
+          <h3 className="mb-4 text-sm font-semibold">Revenue vs Expenses</h3>
           <AppAreaChart
-            data={financials}
+            data={financials?.points ?? []}
             series={[
               { key: 'revenue',  label: 'Revenue',  color: 'hsl(var(--chart-1))' },
               { key: 'expenses', label: 'Expenses', color: 'hsl(var(--chart-4))' },

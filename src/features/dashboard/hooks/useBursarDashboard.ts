@@ -18,12 +18,12 @@ export function useBursarStats() {
   })
 }
 
-export function useMonthlyFinancials(months = 12) {
+export function useMonthlyFinancials() {
   const { currentSchool } = useSchool()
   const schoolId = currentSchool?.id ?? ''
   return useQuery({
-    queryKey: ['dashboard', 'monthly-financials', schoolId, months],
-    queryFn:  () => getMonthlyFinancials(schoolId, months),
+    queryKey: ['dashboard', 'monthly-financials', schoolId],
+    queryFn:  () => getMonthlyFinancials(schoolId),
     enabled:  !!schoolId,
     staleTime: 1000 * 60 * 10,
   })
