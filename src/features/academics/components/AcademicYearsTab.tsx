@@ -287,7 +287,7 @@ function YearRow({ year, canEdit }: { year: AcademicYear; canEdit: boolean }) {
 
 export function AcademicYearsTab() {
   const { role } = useAuth()
-  const canEdit = role === 'school_admin' || role === 'headmaster' || role === 'deputy_headmaster'
+  const canEdit = role === 'school_admin'
   const { data: years = [], isLoading } = useAcademicYears()
   const [showYearModal, setShowYearModal] = useState(false)
 

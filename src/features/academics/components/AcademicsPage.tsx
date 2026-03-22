@@ -8,11 +8,16 @@ import { SubjectsTab } from './SubjectsTab'
 import { DepartmentsTab } from './DepartmentsTab'
 import { ExamsTab } from './ExamsTab'
 import { GradeEntryTab } from './GradeEntryTab'
+import { ExecutiveAcademicsOverview } from './ExecutiveAcademicsOverview'
 
 export function AcademicsPage() {
   const { role } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
   const requestedTab = searchParams.get('tab') ?? 'classes'
+
+  if (role === 'headmaster' || role === 'deputy_headmaster') {
+    return <ExecutiveAcademicsOverview />
+  }
 
   const isSchoolAdmin = role === 'school_admin'
   const allowedTabs: string[] = isSchoolAdmin

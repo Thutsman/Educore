@@ -377,7 +377,7 @@ export function HeadmasterHelp() {
   const MODULES = [
     { icon: GraduationCap, title: 'Students',       description: 'Manage student records, enrolments, guardian links, and individual profiles.', color: 'bg-blue-500/10 text-blue-600',    to: '/students' },
     { icon: Users,         title: 'Staff',          description: 'Teacher and non-teaching staff records, departments, and subject allocations.', color: 'bg-violet-500/10 text-violet-600', to: '/staff' },
-    { icon: BookOpen,      title: 'Academics',      description: 'Classes, subjects, academic years, terms, exams, grades, and scheme books.',    color: 'bg-emerald-500/10 text-emerald-600', to: '/academics' },
+    { icon: BookOpen,      title: 'Academics',      description: 'Per-class performance: attendance, exam averages, pass rates, teacher allocations, scheme books, assignments, and assessments (read-only).', color: 'bg-emerald-500/10 text-emerald-600', to: '/academics' },
     { icon: ClipboardCheck,title: 'Attendance overview', description: 'School-wide attendance rates are on your dashboard. Registers are marked by class and subject teachers.', color: 'bg-orange-500/10 text-orange-600', to: '/dashboard/headmaster' },
     { icon: BookMarked,    title: 'Scheme Book',    description: 'Review scheme book uploads, HOD approvals, and complete executive sign-off when needed.', color: 'bg-sky-500/10 text-sky-600', to: '/scheme-book' },
     { icon: Banknote,      title: 'Finance',        description: 'Fee structures, invoices, payments, expenses, and financial reporting.',         color: 'bg-amber-500/10 text-amber-600',   to: '/finance' },

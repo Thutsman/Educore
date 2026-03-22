@@ -149,7 +149,7 @@ function ExamFormModal({
 
 export function ExamsTab() {
   const { role } = useAuth()
-  const canEdit = ['headmaster', 'deputy_headmaster', 'hod', 'class_teacher', 'teacher'].includes(role ?? '')
+  const canEdit = ['hod', 'class_teacher', 'teacher'].includes(role ?? '')
 
   const [classFilter, setClassFilter] = useState<string>('all')
   const [subjectFilter, setSubjectFilter] = useState<string>('all')

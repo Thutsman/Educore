@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { UserPlus, Users, UserCheck, UserX, Search } from 'lucide-react'
 import { PageHeader } from '@/components/common/PageHeader'
@@ -42,6 +42,13 @@ export function StudentList() {
 
   const { data: students = [], isLoading } = useStudents(filters)
   const { data: classes = [] } = useClassesForSelect()
+
+  const classIdFromUrl = searchParams.get('classId')
+  useEffect(() => {
+    if (!classIdFromUrl || !classes.length) return
+    if (!classes.some(c => c.id === classIdFromUrl)) return
+    setFilters(f => (f.classId === classIdFromUrl ? f : { ...f, classId: classIdFromUrl }))
+  }, [classIdFromUrl, classes])
 
   const { data: teacherRecord } = useTeacherRecord(isAtRiskDeptMode ? user?.id : undefined)
   const atRiskDepartmentId = isAtRiskDeptMode ? teacherRecord?.department_id ?? null : null

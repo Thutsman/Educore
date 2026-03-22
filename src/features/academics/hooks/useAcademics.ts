@@ -8,6 +8,8 @@ import {
   getExams, createExam, updateExam, deleteExam,
   getExamGrades, upsertGrade, getEnrolledStudents,
 } from '../services/academics'
+import { getExecutiveClassOverview } from '../services/executiveAcademics'
+import type { ExecutiveClassOverviewFilters } from '../services/executiveAcademics'
 import { useSchool } from '@/context/SchoolContext'
 
 const KEY = {
@@ -19,6 +21,8 @@ const KEY = {
   exams:     (schoolId: string, f?: object) => ['academics', 'exams', schoolId, f] as const,
   grades:    (examId: string) => ['academics', 'grades', examId] as const,
   enrolled:  (classId: string) => ['academics', 'enrolled', classId] as const,
+  executive: (schoolId: string, f: ExecutiveClassOverviewFilters) =>
+    ['academics', 'executive-overview', schoolId, f] as const,
 }
 
 export function useDepartments() {
@@ -100,6 +104,19 @@ export function useAcademicYears() {
 
 export function useTerms(academicYearId?: string) {
   return useQuery({ queryKey: KEY.terms(academicYearId), queryFn: () => getTerms(academicYearId) })
+}
+
+export function useExecutiveClassOverview(filters: ExecutiveClassOverviewFilters | null) {
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
+  return useQuery({
+    queryKey: filters
+      ? KEY.executive(schoolId, filters)
+      : (['academics', 'executive-overview', schoolId, 'idle'] as const),
+    queryFn: () => getExecutiveClassOverview(schoolId, filters!),
+    enabled: !!schoolId && !!filters?.academicYearId,
+    staleTime: 5 * 60 * 1000,
+  })
 }
 
 export function useExams(filters?: { classId?: string; subjectId?: string; termId?: string }) {

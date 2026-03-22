@@ -275,7 +275,7 @@ function ClassFormModal({ open, onOpenChange, cls }: {
 
 export function ClassesTab() {
   const { role } = useAuth()
-  const canEdit = role === 'school_admin' || role === 'headmaster' || role === 'deputy_headmaster'
+  const canEdit = role === 'school_admin'
   const { data: classes = [], isLoading } = useClasses()
   const deleteClass = useDeleteClass()
   const [editTarget, setEditTarget] = useState<AcademicClass | null>(null)

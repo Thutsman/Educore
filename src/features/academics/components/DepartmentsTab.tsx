@@ -90,7 +90,7 @@ function DepartmentFormModal({ open, onOpenChange, dept }: { open: boolean; onOp
 
 export function DepartmentsTab() {
   const { role } = useAuth()
-  const canEdit = role === 'school_admin' || role === 'headmaster' || role === 'deputy_headmaster'
+  const canEdit = role === 'school_admin'
   const { data: departments = [], isLoading } = useDepartments()
   const deleteDept = useDeleteDepartment()
   const [editTarget, setEditTarget] = useState<Department | null>(null)
