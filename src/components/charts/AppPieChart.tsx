@@ -33,12 +33,13 @@ export function AppPieChart({
   showLegend = true,
   className,
 }: AppPieChartProps) {
-  const outerRadius = height * 0.32
+  const h = Math.max(height, 120)
+  const outerRadius = h * 0.32
   const innerRadius = donut ? outerRadius * 0.6 : 0
 
   return (
-    <div className={cn('w-full', className)} style={{ height }}>
-      <ResponsiveContainer width="100%" height="100%">
+    <div className={cn('w-full min-w-0', className)} style={{ height: h }}>
+      <ResponsiveContainer width="100%" height={h}>
         <PieChart>
           <Pie
             data={data}

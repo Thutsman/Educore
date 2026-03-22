@@ -349,8 +349,8 @@ export function ParentDashboard() {
                     className="border-0 py-12"
                   />
                 ) : (
-                  <div className="h-64">
-                    <ResponsiveContainer width="100%" height="100%">
+                  <div className="h-64 min-h-64 w-full min-w-0">
+                    <ResponsiveContainer width="100%" height={256}>
                       <BarChart data={subjectPerformance} layout="vertical" margin={{ left: 24, right: 8, top: 4, bottom: 4 }}>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis type="number" domain={[0, 100]} tickFormatter={(tick) => `${tick}%`} />

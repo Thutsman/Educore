@@ -458,8 +458,8 @@ export function HodDashboard() {
                   className="py-8 border-0"
                 />
               ) : (
-                <div className="w-full" style={{ height: 220 }}>
-                  <ResponsiveContainer width="100%" height="100%">
+                <div className="w-full min-w-0" style={{ height: 220 }}>
+                  <ResponsiveContainer width="100%" height={220}>
                     <BarChart
                       layout="vertical"
                       data={subjectPerformanceQuery.data}

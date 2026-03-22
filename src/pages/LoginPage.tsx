@@ -49,6 +49,12 @@ export function LoginPage() {
 
   return (
     <div className="space-y-6">
+      <Link
+        to="/"
+        className="inline-flex text-sm font-medium text-emerald-600 hover:text-emerald-700 hover:underline dark:text-emerald-400 dark:hover:text-emerald-300"
+      >
+        ← Back to website
+      </Link>
       <div>
         <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">
           Welcome back

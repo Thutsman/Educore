@@ -11,6 +11,7 @@ import { ProtectedRoute } from '@/features/auth/components/ProtectedRoute'
 import { AppLayout } from '@/layouts/AppLayout'
 import { AuthLayout } from '@/layouts/AuthLayout'
 import { LoginPage } from '@/pages/LoginPage'
+import LandingPage from '@/pages/LandingPage'
 import { UnauthorizedPage } from '@/pages/UnauthorizedPage'
 import { SelectSchoolPage } from '@/pages/SelectSchoolPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
@@ -174,6 +175,7 @@ export default function App() {
           <Routes>
 
             {/* ── Public routes ── */}
+            <Route path="/" element={<LandingPage />} />
             <Route element={<AuthLayout />}>
               <Route path="/login" element={<LoginPage />} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
@@ -317,8 +319,7 @@ export default function App() {
             </Route>
 
             {/* Fallbacks */}
-            <Route path="/"  element={<Navigate to="/dashboard" replace />} />
-            <Route path="*"  element={<NotFoundPage />} />
+            <Route path="*" element={<NotFoundPage />} />
 
           </Routes>
         </Suspense>

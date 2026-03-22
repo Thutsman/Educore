@@ -52,9 +52,10 @@ export function AppAreaChart({
   className,
   gradient = true,
 }: AppAreaChartProps) {
+  const h = Math.max(height, 120)
   return (
-    <div className={cn('w-full', className)} style={{ height }}>
-      <ResponsiveContainer width="100%" height="100%">
+    <div className={cn('w-full min-w-0', className)} style={{ height: h }}>
+      <ResponsiveContainer width="100%" height={h}>
         <AreaChart data={data} margin={{ top: 5, right: 5, left: -10, bottom: 0 }}>
           <defs>
             {series.map((s, i) => {

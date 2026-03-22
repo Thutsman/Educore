@@ -49,9 +49,10 @@ export function AppBarChart({
   maxBarSize = 40,
   className,
 }: AppBarChartProps) {
+  const h = Math.max(height, 120)
   return (
-    <div className={cn('w-full', className)} style={{ height }}>
-      <ResponsiveContainer width="100%" height="100%">
+    <div className={cn('w-full min-w-0', className)} style={{ height: h }}>
+      <ResponsiveContainer width="100%" height={h}>
         <BarChart
           data={data}
           layout={horizontal ? 'vertical' : 'horizontal'}

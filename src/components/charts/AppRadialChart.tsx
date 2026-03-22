@@ -24,6 +24,7 @@ export function AppRadialChart({
   className,
 }: AppRadialChartProps) {
   const clamped = Math.min(100, Math.max(0, value))
+  const s = Math.max(size, 80)
 
   const chartData = [
     { value: clamped, fill: color },
@@ -31,10 +32,10 @@ export function AppRadialChart({
 
   return (
     <div
-      className={cn('relative flex items-center justify-center', className)}
-      style={{ width: size, height: size }}
+      className={cn('relative flex min-h-0 min-w-0 items-center justify-center', className)}
+      style={{ width: s, height: s }}
     >
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer width="100%" height={s}>
         <RadialBarChart
           cx="50%"
           cy="50%"
