@@ -1,9 +1,13 @@
 import { Link } from 'react-router-dom'
 import {
+  AlertCircle,
+  ArrowDownRight,
   ArrowRight,
   BarChart3,
   Check,
+  CheckCircle2,
   LayoutDashboard,
+  Percent,
   Shield,
   TrendingUp,
   Wallet,
@@ -24,8 +28,9 @@ import { DashboardPreview } from '@/pages/landing/DashboardPreview'
 const DEMO_WHATSAPP = `https://wa.me/263779035404?text=${encodeURIComponent(
   "Hi, I'd like to request a demo of Educore."
 )}`
-const SALES_MAIL =
-  'mailto:sales@educore.com?subject=Educore%20%E2%80%94%20Sales%20inquiry'
+const SALES_WHATSAPP = `https://wa.me/263779035404?text=${encodeURIComponent(
+  "Hi, I'd like to contact sales about Educore."
+)}`
 
 const darkSectionShell =
   'relative overflow-hidden border-y border-primary/25 py-24 sm:py-28'
@@ -48,6 +53,191 @@ const darkGradientBg = (
 
 const darkCardClass =
   'border border-white/15 bg-black/25 shadow-lg shadow-black/20 backdrop-blur-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-white/30 hover:bg-black/35 hover:shadow-xl hover:shadow-black/25'
+
+const heroMotionStyles = `
+@keyframes educore-hero-float {
+  0%, 100% { transform: perspective(1000px) rotateY(-8deg) rotateX(2deg) translateY(0px); }
+  50% { transform: perspective(1000px) rotateY(-8deg) rotateX(2deg) translateY(-8px); }
+}
+.educore-hero-mockup-3d {
+  transform-style: preserve-3d;
+  animation: educore-hero-float 4s ease-in-out infinite;
+  transition: transform 0.5s ease;
+}
+.educore-hero-mockup-3d:hover {
+  animation-play-state: paused;
+  transform: perspective(1000px) rotateY(-4deg) rotateX(2deg) translateY(0px);
+}
+@media (max-width: 639px) {
+  .educore-hero-mockup-3d {
+    animation: none;
+    transform: none;
+  }
+  .educore-hero-mockup-3d:hover {
+    transform: none;
+  }
+}
+@keyframes educore-hero-enter-left {
+  from { opacity: 0; transform: translateX(-20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes educore-hero-enter-right {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes educore-hero-enter-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.educore-hero-enter-left {
+  animation: educore-hero-enter-left 0.7s ease-out forwards;
+}
+.educore-hero-enter-right {
+  opacity: 0;
+  animation: educore-hero-enter-right 0.7s ease-out 0.15s forwards;
+}
+.educore-hero-enter-trust {
+  opacity: 0;
+  animation: educore-hero-enter-fade 0.6s ease-out 0.3s forwards;
+}
+`
+
+export function DashboardMockup() {
+  const barPairs: { rev: number; exp: number }[] = [
+    { rev: 36, exp: 26 },
+    { rev: 48, exp: 32 },
+    { rev: 30, exp: 42 },
+    { rev: 54, exp: 28 },
+    { rev: 40, exp: 36 },
+    { rev: 58, exp: 32 },
+  ]
+
+  return (
+    <div
+      className="educore-hero-mockup-3d w-full max-w-[560px] max-lg:mx-auto max-lg:max-w-full"
+      style={{ perspective: '1000px' }}
+    >
+      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-2xl dark:border-gray-700 dark:bg-slate-900">
+        <div className="flex items-center gap-2 border-b border-gray-200 bg-gray-100 px-3 py-2.5 dark:border-gray-700 dark:bg-gray-800">
+          <div className="flex gap-1.5">
+            <span className="size-2.5 rounded-full bg-red-400" />
+            <span className="size-2.5 rounded-full bg-amber-400" />
+            <span className="size-2.5 rounded-full bg-emerald-400" />
+          </div>
+          <div className="mx-2 min-w-0 flex-1 truncate rounded-md bg-white/90 px-2 py-1 text-center text-[10px] text-gray-500 dark:bg-gray-700/80 dark:text-gray-300">
+            educore.app/dashboard
+          </div>
+        </div>
+
+        <div className="space-y-3 bg-gray-50 p-3 dark:bg-slate-950">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[11px] font-semibold text-gray-800 dark:text-gray-100">
+              Finance Overview
+            </span>
+            <div className="flex items-center gap-1.5">
+              <div
+                className="size-6 shrink-0 rounded-full bg-linear-to-br from-teal-400 to-teal-700"
+                aria-hidden
+              />
+              <span className="text-[10px] font-medium text-gray-600 dark:text-gray-300">
+                Bursar
+              </span>
+            </div>
+          </div>
+
+          <div className="rounded-md bg-amber-100 px-2 py-1.5 text-[10px] font-medium text-amber-900 dark:bg-amber-950/50 dark:text-amber-100">
+            ⚠ Financial health: Monitor — Collection rate at 64%
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div className="rounded-lg border border-gray-100 bg-white p-2.5 shadow-sm dark:border-gray-700 dark:bg-slate-800">
+              <TrendingUp className="size-3.5 text-emerald-600" aria-hidden />
+              <p className="mt-1 text-sm font-bold tabular-nums text-gray-900 dark:text-white">
+                $24,800
+              </p>
+              <p className="text-[10px] text-gray-500 dark:text-gray-400">
+                Revenue (YTD)
+              </p>
+            </div>
+            <div className="rounded-lg border border-gray-100 bg-white p-2.5 shadow-sm dark:border-gray-700 dark:bg-slate-800">
+              <AlertCircle className="size-3.5 text-amber-500" aria-hidden />
+              <p className="mt-1 text-sm font-bold tabular-nums text-gray-900 dark:text-white">
+                $8,200
+              </p>
+              <p className="text-[10px] text-gray-500 dark:text-gray-400">
+                Outstanding
+              </p>
+            </div>
+            <div className="rounded-lg border border-gray-100 bg-white p-2.5 shadow-sm dark:border-gray-700 dark:bg-slate-800">
+              <ArrowDownRight className="size-3.5 text-rose-600" aria-hidden />
+              <p className="mt-1 text-sm font-bold tabular-nums text-gray-900 dark:text-white">
+                $12,400
+              </p>
+              <p className="text-[10px] text-gray-500 dark:text-gray-400">
+                Total Expenses
+              </p>
+            </div>
+            <div className="rounded-lg border border-gray-100 bg-white p-2.5 shadow-sm dark:border-gray-700 dark:bg-slate-800">
+              <Percent className="size-3.5 text-blue-600" aria-hidden />
+              <p className="mt-1 text-sm font-bold tabular-nums text-gray-900 dark:text-white">
+                64.3%
+              </p>
+              <p className="text-[10px] text-gray-500 dark:text-gray-400">
+                Collection Rate
+              </p>
+            </div>
+          </div>
+
+          <div>
+            <p className="mb-2 text-[10px] font-medium text-gray-500 dark:text-gray-400">
+              Revenue vs Expenses · Last 6 months
+            </p>
+            <div className="flex items-end justify-between gap-1 border-t border-gray-200 pt-2 dark:border-gray-700">
+              {barPairs.map((pair, i) => (
+                <div
+                  key={i}
+                  className="flex flex-1 flex-col items-center gap-1"
+                >
+                  <div className="flex h-[5.5rem] w-full items-end justify-center gap-0.5">
+                    <div
+                      className="w-2 max-w-[10px] rounded-t-sm bg-emerald-500"
+                      style={{ height: `${pair.rev}px` }}
+                    />
+                    <div
+                      className="w-2 max-w-[10px] rounded-t-sm bg-rose-400"
+                      style={{ height: `${pair.exp}px` }}
+                    />
+                  </div>
+                  <span className="text-[8px] text-gray-400">M{i + 1}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="border-t border-gray-200 pt-2 dark:border-gray-700">
+            <p className="mb-1.5 text-[10px] font-semibold text-gray-700 dark:text-gray-200">
+              Outstanding by Class
+            </p>
+            <div className="space-y-1 text-[10px]">
+              <div className="flex items-center justify-between gap-2 text-gray-600 dark:text-gray-300">
+                <span>Grade 5 Blue · 3 students</span>
+                <span className="font-medium tabular-nums text-rose-600 dark:text-rose-400">
+                  $4,100
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-2 text-gray-600 dark:text-gray-300">
+                <span>Grade 6 Red · 2 students</span>
+                <span className="font-medium tabular-nums text-rose-600 dark:text-rose-400">
+                  $2,800
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 function LandingNavbar() {
   return (
@@ -109,48 +299,74 @@ function LandingNavbar() {
 
 function HeroSection() {
   return (
-    <section className="relative overflow-hidden border-b border-slate-200/80 bg-white dark:border-slate-800 dark:bg-slate-950">
+    <section className="relative overflow-hidden border-b border-slate-200/80 bg-linear-to-br from-teal-50 via-white to-emerald-50 dark:border-slate-800 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900">
+      <style>{heroMotionStyles}</style>
       <div
-        className="pointer-events-none absolute inset-0 bg-linear-to-br from-teal-500/7 via-white to-slate-50 dark:from-teal-500/10 dark:via-slate-950 dark:to-slate-900"
+        className="pointer-events-none absolute inset-0 bg-linear-to-br from-teal-500/7 via-transparent to-emerald-500/5 dark:from-teal-500/10 dark:to-emerald-500/5"
         aria-hidden
       />
       <div className="pointer-events-none absolute -right-32 -top-24 size-[480px] rounded-full bg-teal-500/6 blur-3xl dark:bg-teal-500/10" />
-      <div className="pointer-events-none absolute -bottom-32 -left-24 size-[400px] rounded-full bg-sky-500/5 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-32 -left-24 size-[400px] rounded-full bg-emerald-500/5 blur-3xl" />
 
-      <div className="relative mx-auto max-w-6xl px-4 py-20 sm:px-6 sm:py-28 lg:px-8">
-        <p className="mb-4 inline-flex items-center rounded-full border border-slate-200 bg-white/90 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-teal-700 shadow-sm dark:border-slate-700 dark:bg-slate-900/80 dark:text-teal-400">
-          School performance control center
-        </p>
-        <h1 className="max-w-3xl text-4xl font-extrabold tracking-tight text-slate-900 sm:text-5xl lg:text-6xl lg:leading-[1.08] dark:text-white">
-          Stop guessing.{' '}
-          <span className="text-teal-600 dark:text-teal-400">
-            Run your school on live data.
-          </span>
-        </h1>
-        <p className="mt-6 max-w-2xl text-lg leading-relaxed text-slate-600 sm:text-xl dark:text-slate-300">
-          Educore gives heads, bursars, and owners one place to see fees,
-          expenses, category budgets, financial reports, class performance, and
-          staff accountability — before small issues become expensive surprises.
-        </p>
-        <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center">
-          <Button size="lg" className="h-12 px-8 text-base" asChild>
-            <a
-              href={DEMO_WHATSAPP}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Request Demo
-              <ArrowRight className="size-4" />
-            </a>
-          </Button>
-          <Button
-            size="lg"
-            variant="outline"
-            className="h-12 border-slate-300 bg-white px-8 text-base dark:border-slate-600 dark:bg-transparent"
-            asChild
-          >
-            <Link to="/login">Login</Link>
-          </Button>
+      <div className="relative mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8 lg:py-28">
+        <div className="grid items-center gap-12 md:grid-cols-2 md:gap-10 lg:gap-12">
+          <div className="educore-hero-enter-left min-w-0">
+            <p className="mb-4 inline-flex items-center rounded-full border border-teal-200 bg-teal-50 px-3 py-1 text-xs font-semibold tracking-wider text-teal-700 dark:border-teal-800 dark:bg-teal-950/50 dark:text-teal-300">
+              SCHOOL PERFORMANCE CONTROL CENTER
+            </p>
+            <h1 className="max-w-xl text-3xl font-extrabold tracking-tight text-gray-900 md:text-4xl lg:text-5xl lg:leading-[1.1] dark:text-white">
+              Stop guessing.{' '}
+              <span className="text-teal-600 dark:text-teal-400">
+                Run your school on live data.
+              </span>
+            </h1>
+            <p className="mt-6 max-w-md text-lg leading-relaxed text-gray-500 dark:text-gray-400">
+              Educore gives heads, bursars, and owners one place to see fees,
+              expenses, category budgets, financial reports, class performance, and
+              staff accountability — before small issues become expensive surprises.
+            </p>
+            <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center">
+              <a
+                href={DEMO_WHATSAPP}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-teal-700 px-6 py-3 text-base font-semibold text-white transition-colors hover:bg-teal-800"
+              >
+                Request Demo
+                <ArrowRight className="size-4" />
+              </a>
+              <Link
+                to="/login"
+                className="inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-6 py-3 text-base font-semibold text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-600 dark:bg-slate-900 dark:text-gray-100 dark:hover:bg-slate-800"
+              >
+                Login
+              </Link>
+            </div>
+            <div className="educore-hero-enter-trust mt-6 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-400 dark:text-gray-500">
+              <span className="inline-flex items-center gap-1">
+                <CheckCircle2 className="size-3.5 shrink-0 text-teal-600 opacity-80" />
+                No setup fee
+              </span>
+              <span className="text-gray-300 dark:text-gray-600" aria-hidden>
+                ·
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <CheckCircle2 className="size-3.5 shrink-0 text-teal-600 opacity-80" />
+                Free 30-day trial
+              </span>
+              <span className="text-gray-300 dark:text-gray-600" aria-hidden>
+                ·
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <CheckCircle2 className="size-3.5 shrink-0 text-teal-600 opacity-80" />
+                Cancel anytime
+              </span>
+            </div>
+          </div>
+
+          <div className="educore-hero-enter-right flex justify-center md:justify-end md:origin-right md:scale-[0.8] lg:scale-100">
+            <DashboardMockup />
+          </div>
         </div>
       </div>
     </section>
@@ -440,7 +656,11 @@ function PricingSection() {
               </p>
             </div>
             <Button size="lg" asChild>
-              <a href={SALES_MAIL}>
+              <a
+                href={SALES_WHATSAPP}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
                 Contact sales
                 <ArrowRight className="size-4" />
               </a>
@@ -485,7 +705,13 @@ function CTASection() {
             className="h-12 min-w-[200px] border-white/40 bg-transparent px-8 text-base text-white hover:bg-black/25 hover:text-white"
             asChild
           >
-            <a href={SALES_MAIL}>Contact Sales</a>
+            <a
+              href={SALES_WHATSAPP}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Contact Sales
+            </a>
           </Button>
         </div>
       </div>
@@ -524,7 +750,12 @@ function LandingFooter() {
           <Link to="/login" className="transition-colors hover:text-white">
             Login
           </Link>
-          <a href={SALES_MAIL} className="transition-colors hover:text-white">
+          <a
+            href={SALES_WHATSAPP}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="transition-colors hover:text-white"
+          >
             Contact
           </a>
         </div>
