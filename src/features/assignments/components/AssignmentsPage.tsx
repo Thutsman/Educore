@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Plus, Pencil, Trash2, FileText, ExternalLink } from 'lucide-react'
 import { PageHeader } from '@/components/common/PageHeader'
+import { EmptyState } from '@/components/common/EmptyState'
 import { DataTable, type Column } from '@/components/common/DataTable'
 import { Button } from '@/components/ui/button'
 import {
@@ -191,7 +192,7 @@ function AssignmentFormModal({
 
 export function AssignmentsPage() {
   const { user } = useAuth()
-  const { data: teacher } = useTeacherRecord(user?.id)
+  const { data: teacher, isLoading: teacherLoading } = useTeacherRecord(user?.id)
   const [classFilter, setClassFilter] = useState<string>('all')
   const [subjectFilter, setSubjectFilter] = useState<string>('all')
   const [showForm, setShowForm] = useState(false)
@@ -243,6 +244,21 @@ export function AssignmentsPage() {
   const handleUploadAttachment = async (file: File): Promise<string | null> => {
     const url = await uploadAttachment.mutateAsync(file)
     return url ?? null
+  }
+
+  if (!teacherLoading && !teacher) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title="Assignments"
+          subtitle="Create and manage homework assignments"
+        />
+        <EmptyState
+          title="Teacher profile required"
+          description="Your account must be linked to a teacher (staff) record to post assignments. Ask your school administrator to link your profile."
+        />
+      </div>
+    )
   }
 
   const submissionByStudent = new Map(submissions.map((s) => [s.student_id, s]))

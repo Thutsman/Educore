@@ -59,6 +59,37 @@ export async function getAssignmentSubmissions(assignmentId: string): Promise<As
   }))
 }
 
+export async function getStudentRowForProfile(
+  schoolId: string,
+  profileId: string
+): Promise<{ id: string; class_id: string | null } | null> {
+  const { data, error } = await supabase
+    .from('students')
+    .select('id, class_id')
+    .eq('school_id', schoolId)
+    .eq('profile_id', profileId)
+    .is('deleted_at', null)
+    .maybeSingle()
+  if (error || !data) return null
+  return data as unknown as { id: string; class_id: string | null }
+}
+
+export async function getMyAssignmentSubmissions(studentId: string): Promise<
+  { assignment_id: string; submitted_at: string | null; submission_url: string | null; grade: number | null }[]
+> {
+  const { data, error } = await supabase
+    .from('assignment_submissions')
+    .select('assignment_id, submitted_at, submission_url, grade')
+    .eq('student_id', studentId)
+  if (error || !data) return []
+  return data as unknown as {
+    assignment_id: string
+    submitted_at: string | null
+    submission_url: string | null
+    grade: number | null
+  }[]
+}
+
 export async function getEnrolledStudentsForAssignment(schoolId: string, classId: string): Promise<{ id: string; full_name: string; admission_no: string }[]> {
   const { data, error } = await supabase
     .from('students')

@@ -4,6 +4,8 @@ import {
   getAssignments,
   getAssignmentSubmissions,
   getEnrolledStudentsForAssignment,
+  getStudentRowForProfile,
+  getMyAssignmentSubmissions,
   createAssignment,
   updateAssignment,
   deleteAssignment,
@@ -28,6 +30,37 @@ export function useAssignments(filters?: AssignmentFilters) {
     queryKey: KEY.list(schoolId, filters),
     queryFn: () => getAssignments(schoolId, filters),
     enabled: !!schoolId,
+  })
+}
+
+export function useAssignmentsForClass(classId: string | undefined) {
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
+  const filters: AssignmentFilters | undefined = classId ? { classId } : undefined
+  return useQuery({
+    queryKey: KEY.list(schoolId, filters),
+    queryFn: () => getAssignments(schoolId, filters),
+    enabled: !!schoolId && !!classId,
+  })
+}
+
+export function useCurrentStudentRow(profileId: string | undefined) {
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
+  return useQuery({
+    queryKey: ['assignments', 'student-row', schoolId, profileId],
+    queryFn: () => getStudentRowForProfile(schoolId, profileId!),
+    enabled: !!schoolId && !!profileId,
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
+export function useMyAssignmentSubmissions(studentId: string | undefined) {
+  return useQuery({
+    queryKey: ['assignments', 'my-submissions', studentId],
+    queryFn: () => getMyAssignmentSubmissions(studentId!),
+    enabled: !!studentId,
+    staleTime: 60 * 1000,
   })
 }
 

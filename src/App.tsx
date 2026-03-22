@@ -95,6 +95,9 @@ const LessonPlansPage = lazy(() =>
 const AssignmentsPage = lazy(() =>
   import('@/features/assignments').then(m => ({ default: m.AssignmentsPage }))
 )
+const StudentAssignmentsPage = lazy(() =>
+  import('@/features/assignments').then(m => ({ default: m.StudentAssignmentsPage }))
+)
 const ResourcesPage = lazy(() =>
   import('@/features/resources').then(m => ({ default: m.ResourcesPage }))
 )
@@ -235,15 +238,24 @@ export default function App() {
                   <Route path="/attendance/*" element={<AttendancePage />} />
                 </Route>
 
-                {/* ── Subject Teacher modules ── */}
+                {/* ── Subject Teacher modules (assignments also for class teachers) ── */}
                 <Route
                   element={<ProtectedRoute allowedRoles={['headmaster','deputy_headmaster','hod','teacher']} />}
                 >
                   <Route path="/scheme-book" element={<SchemeBookPage />} />
                   <Route path="/lesson-plans" element={<LessonPlansPage />} />
-                  <Route path="/assignments" element={<AssignmentsPage />} />
                   <Route path="/assessments" element={<AssessmentsPage />} />
                   <Route path="/resources" element={<ResourcesPage />} />
+                </Route>
+
+                <Route
+                  element={<ProtectedRoute allowedRoles={['headmaster','deputy_headmaster','hod','class_teacher','teacher']} />}
+                >
+                  <Route path="/assignments" element={<AssignmentsPage />} />
+                </Route>
+
+                <Route element={<ProtectedRoute allowedRoles={['student']} />}>
+                  <Route path="/my-assignments" element={<StudentAssignmentsPage />} />
                 </Route>
 
                 {/* ── Class Teacher modules ── */}

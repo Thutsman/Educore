@@ -27,8 +27,8 @@ export function AuthLayout() {
         </div>
 
         <div className="relative flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-600">
-            <span className="text-sm font-bold text-white">E</span>
+          <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg bg-white/10 ring-1 ring-white/20">
+            <img src="/logo.png" alt="Educore" width={36} height={36} className="h-full w-full object-contain p-0.5" />
           </div>
           <span className="text-xl font-bold tracking-tight text-white">
             Educore
@@ -56,8 +56,8 @@ export function AuthLayout() {
         <div className="w-full max-w-sm">
           {/* Mobile logo */}
           <div className="mb-8 flex items-center gap-3 lg:hidden">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-600">
-              <span className="text-sm font-bold text-white">E</span>
+            <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg bg-muted ring-1 ring-border">
+              <img src="/logo.png" alt="Educore" width={36} height={36} className="h-full w-full object-contain p-0.5" />
             </div>
             <span className="text-xl font-bold tracking-tight text-slate-900">Educore</span>
           </div>

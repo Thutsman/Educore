@@ -84,6 +84,12 @@ const NAV_GROUPS: NavGroup[] = [
         href: '/dashboard',
         allowedRoles: ['headmaster','deputy_headmaster','bursar','hod','class_teacher','teacher','non_teaching_staff','parent','student'],
       },
+      {
+        label: 'My Assignments',
+        icon: FileQuestion,
+        href: '/my-assignments',
+        allowedRoles: ['student'],
+      },
     ],
   },
   {
@@ -117,7 +123,7 @@ const NAV_GROUPS: NavGroup[] = [
         label: 'Assignments',
         icon: FileQuestion,
         href: '/assignments',
-        allowedRoles: ['headmaster','deputy_headmaster','teacher'],
+        allowedRoles: ['headmaster','deputy_headmaster','hod','class_teacher','teacher'],
       },
       {
         label: 'Assessments',
@@ -327,8 +333,8 @@ function SidebarContent({
             collapsed ? 'justify-center px-2' : 'gap-3'
           )}
         >
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-600 shadow-sm">
-            <span className="text-sm font-bold text-white">E</span>
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-sidebar shadow-sm ring-1 ring-sidebar-border">
+            <img src="/logo.png" alt="Educore" width={32} height={32} className="h-full w-full object-contain p-0.5" />
           </div>
           {!collapsed && (
             <div className="flex flex-col">

@@ -46,8 +46,8 @@ export function SelectSchoolPage() {
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background p-6">
       <div className="mb-8 text-center">
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-600 shadow-sm">
-          <span className="text-lg font-bold text-white">E</span>
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl bg-muted shadow-sm ring-1 ring-border">
+          <img src="/logo.png" alt="Educore" width={48} height={48} className="h-full w-full object-contain p-1" />
         </div>
         <h1 className="text-2xl font-semibold tracking-tight">Select a School</h1>
         <p className="mt-1 text-sm text-muted-foreground">
