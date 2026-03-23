@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
 import {
   AlertCircle,
   ArrowDownRight,
@@ -103,6 +104,8 @@ const heroMotionStyles = `
 `
 
 export function DashboardMockup() {
+  const [activeSlide, setActiveSlide] = useState(0)
+
   const barPairs: { rev: number; exp: number }[] = [
     { rev: 36, exp: 26 },
     { rev: 48, exp: 32 },
@@ -111,6 +114,25 @@ export function DashboardMockup() {
     { rev: 40, exp: 36 },
     { rev: 58, exp: 32 },
   ]
+  const attendanceBars = [82, 88, 80, 91, 86]
+  const classPerformance = [
+    { cls: 'Grade 4', pass: '78%' },
+    { cls: 'Grade 5', pass: '84%' },
+    { cls: 'Grade 6', pass: '81%' },
+  ]
+  const teachingTasks = [
+    { label: 'Attendance marked', value: '96%' },
+    { label: 'Schemes submitted', value: '14/16' },
+    { label: 'Assessments due', value: '3' },
+  ]
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      setActiveSlide((prev) => (prev + 1) % 3)
+    }, 6000)
+
+    return () => window.clearInterval(interval)
+  }, [])
 
   return (
     <div
@@ -130,108 +152,245 @@ export function DashboardMockup() {
         </div>
 
         <div className="space-y-3 bg-gray-50 p-3 dark:bg-slate-950">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-[11px] font-semibold text-gray-800 dark:text-gray-100">
-              Finance Overview
-            </span>
-            <div className="flex items-center gap-1.5">
-              <div
-                className="size-6 shrink-0 rounded-full bg-linear-to-br from-teal-400 to-teal-700"
-                aria-hidden
-              />
-              <span className="text-[10px] font-medium text-gray-600 dark:text-gray-300">
-                Bursar
-              </span>
-            </div>
-          </div>
-
-          <div className="rounded-md bg-amber-100 px-2 py-1.5 text-[10px] font-medium text-amber-900 dark:bg-amber-950/50 dark:text-amber-100">
-            ⚠ Financial health: Monitor — Collection rate at 64%
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            <div className="rounded-lg border border-gray-100 bg-white p-2.5 shadow-sm dark:border-gray-700 dark:bg-slate-800">
-              <TrendingUp className="size-3.5 text-emerald-600" aria-hidden />
-              <p className="mt-1 text-sm font-bold tabular-nums text-gray-900 dark:text-white">
-                $24,800
-              </p>
-              <p className="text-[10px] text-gray-500 dark:text-gray-400">
-                Revenue (YTD)
-              </p>
-            </div>
-            <div className="rounded-lg border border-gray-100 bg-white p-2.5 shadow-sm dark:border-gray-700 dark:bg-slate-800">
-              <AlertCircle className="size-3.5 text-amber-500" aria-hidden />
-              <p className="mt-1 text-sm font-bold tabular-nums text-gray-900 dark:text-white">
-                $8,200
-              </p>
-              <p className="text-[10px] text-gray-500 dark:text-gray-400">
-                Outstanding
-              </p>
-            </div>
-            <div className="rounded-lg border border-gray-100 bg-white p-2.5 shadow-sm dark:border-gray-700 dark:bg-slate-800">
-              <ArrowDownRight className="size-3.5 text-rose-600" aria-hidden />
-              <p className="mt-1 text-sm font-bold tabular-nums text-gray-900 dark:text-white">
-                $12,400
-              </p>
-              <p className="text-[10px] text-gray-500 dark:text-gray-400">
-                Total Expenses
-              </p>
-            </div>
-            <div className="rounded-lg border border-gray-100 bg-white p-2.5 shadow-sm dark:border-gray-700 dark:bg-slate-800">
-              <Percent className="size-3.5 text-blue-600" aria-hidden />
-              <p className="mt-1 text-sm font-bold tabular-nums text-gray-900 dark:text-white">
-                64.3%
-              </p>
-              <p className="text-[10px] text-gray-500 dark:text-gray-400">
-                Collection Rate
-              </p>
-            </div>
-          </div>
-
-          <div>
-            <p className="mb-2 text-[10px] font-medium text-gray-500 dark:text-gray-400">
-              Revenue vs Expenses · Last 6 months
-            </p>
-            <div className="flex items-end justify-between gap-1 border-t border-gray-200 pt-2 dark:border-gray-700">
-              {barPairs.map((pair, i) => (
-                <div
-                  key={i}
-                  className="flex flex-1 flex-col items-center gap-1"
-                >
-                  <div className="flex h-[5.5rem] w-full items-end justify-center gap-0.5">
-                    <div
-                      className="w-2 max-w-[10px] rounded-t-sm bg-emerald-500"
-                      style={{ height: `${pair.rev}px` }}
-                    />
-                    <div
-                      className="w-2 max-w-[10px] rounded-t-sm bg-rose-400"
-                      style={{ height: `${pair.exp}px` }}
-                    />
-                  </div>
-                  <span className="text-[8px] text-gray-400">M{i + 1}</span>
+          {activeSlide === 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[11px] font-semibold text-gray-800 dark:text-gray-100">
+                  Finance Overview
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <div
+                    className="size-6 shrink-0 rounded-full bg-linear-to-br from-teal-400 to-teal-700"
+                    aria-hidden
+                  />
+                  <span className="text-[10px] font-medium text-gray-600 dark:text-gray-300">
+                    Bursar
+                  </span>
                 </div>
-              ))}
-            </div>
-          </div>
+              </div>
 
-          <div className="border-t border-gray-200 pt-2 dark:border-gray-700">
-            <p className="mb-1.5 text-[10px] font-semibold text-gray-700 dark:text-gray-200">
-              Outstanding by Class
-            </p>
-            <div className="space-y-1 text-[10px]">
-              <div className="flex items-center justify-between gap-2 text-gray-600 dark:text-gray-300">
-                <span>Grade 5 Blue · 3 students</span>
-                <span className="font-medium tabular-nums text-rose-600 dark:text-rose-400">
-                  $4,100
-                </span>
+              <div className="rounded-md bg-amber-100 px-2 py-1.5 text-[10px] font-medium text-amber-900 dark:bg-amber-950/50 dark:text-amber-100">
+                Financial health: Monitor - Collection rate at 64%
               </div>
-              <div className="flex items-center justify-between gap-2 text-gray-600 dark:text-gray-300">
-                <span>Grade 6 Red · 2 students</span>
-                <span className="font-medium tabular-nums text-rose-600 dark:text-rose-400">
-                  $2,800
-                </span>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="rounded-lg border border-gray-100 bg-white p-2.5 shadow-sm dark:border-gray-700 dark:bg-slate-800">
+                  <TrendingUp className="size-3.5 text-emerald-600" aria-hidden />
+                  <p className="mt-1 text-sm font-bold tabular-nums text-gray-900 dark:text-white">
+                    $24,800
+                  </p>
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400">
+                    Revenue (YTD)
+                  </p>
+                </div>
+                <div className="rounded-lg border border-gray-100 bg-white p-2.5 shadow-sm dark:border-gray-700 dark:bg-slate-800">
+                  <AlertCircle className="size-3.5 text-amber-500" aria-hidden />
+                  <p className="mt-1 text-sm font-bold tabular-nums text-gray-900 dark:text-white">
+                    $8,200
+                  </p>
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400">
+                    Outstanding
+                  </p>
+                </div>
+                <div className="rounded-lg border border-gray-100 bg-white p-2.5 shadow-sm dark:border-gray-700 dark:bg-slate-800">
+                  <ArrowDownRight className="size-3.5 text-rose-600" aria-hidden />
+                  <p className="mt-1 text-sm font-bold tabular-nums text-gray-900 dark:text-white">
+                    $12,400
+                  </p>
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400">
+                    Total Expenses
+                  </p>
+                </div>
+                <div className="rounded-lg border border-gray-100 bg-white p-2.5 shadow-sm dark:border-gray-700 dark:bg-slate-800">
+                  <Percent className="size-3.5 text-blue-600" aria-hidden />
+                  <p className="mt-1 text-sm font-bold tabular-nums text-gray-900 dark:text-white">
+                    64.3%
+                  </p>
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400">
+                    Collection Rate
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <p className="mb-2 text-[10px] font-medium text-gray-500 dark:text-gray-400">
+                  Revenue vs Expenses - Last 6 months
+                </p>
+                <div className="flex items-end justify-between gap-1 border-t border-gray-200 pt-2 dark:border-gray-700">
+                  {barPairs.map((pair, i) => (
+                    <div
+                      key={i}
+                      className="flex flex-1 flex-col items-center gap-1"
+                    >
+                      <div className="flex h-22 w-full items-end justify-center gap-0.5">
+                        <div
+                          className="w-2 max-w-[10px] rounded-t-sm bg-emerald-500"
+                          style={{ height: `${pair.rev}px` }}
+                        />
+                        <div
+                          className="w-2 max-w-[10px] rounded-t-sm bg-rose-400"
+                          style={{ height: `${pair.exp}px` }}
+                        />
+                      </div>
+                      <span className="text-[8px] text-gray-400">M{i + 1}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
+          )}
+
+          {activeSlide === 1 && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[11px] font-semibold text-gray-800 dark:text-gray-100">
+                  Teacher Classroom Dashboard
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <div
+                    className="size-6 shrink-0 rounded-full bg-linear-to-br from-indigo-400 to-indigo-700"
+                    aria-hidden
+                  />
+                  <span className="text-[10px] font-medium text-gray-600 dark:text-gray-300">
+                    Teacher
+                  </span>
+                </div>
+              </div>
+
+              <div className="rounded-md bg-indigo-100 px-2 py-1.5 text-[10px] font-medium text-indigo-900 dark:bg-indigo-950/50 dark:text-indigo-100">
+                Class 6A attendance complete - 2 assessments due this week
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                {teachingTasks.map((task) => (
+                  <div
+                    key={task.label}
+                    className="rounded-lg border border-gray-100 bg-white p-2 shadow-sm dark:border-gray-700 dark:bg-slate-800"
+                  >
+                    <p className="text-xs font-bold text-gray-900 dark:text-white">
+                      {task.value}
+                    </p>
+                    <p className="text-[9px] text-gray-500 dark:text-gray-400">
+                      {task.label}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="rounded-lg border border-gray-100 bg-white p-2.5 shadow-sm dark:border-gray-700 dark:bg-slate-800">
+                <p className="mb-2 text-[10px] font-medium text-gray-500 dark:text-gray-400">
+                  Class attendance trend - Mon-Fri
+                </p>
+                <div className="flex h-24 items-end justify-between gap-1 border-t border-gray-200 pt-2 dark:border-gray-700">
+                  {attendanceBars.map((height, i) => (
+                    <div
+                      key={`teacher-${i}`}
+                      className="flex flex-1 flex-col items-center gap-1"
+                    >
+                      <div
+                        className="w-3 rounded-t-sm bg-indigo-500"
+                        style={{ height: `${height * 0.65}px` }}
+                      />
+                      <span className="text-[8px] text-gray-400">D{i + 1}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-gray-100 bg-white p-2.5 text-[10px] shadow-sm dark:border-gray-700 dark:bg-slate-800">
+                <p className="mb-1.5 font-semibold text-gray-700 dark:text-gray-200">
+                  Needing intervention
+                </p>
+                <div className="space-y-1 text-gray-600 dark:text-gray-300">
+                  <div className="flex items-center justify-between gap-2">
+                    <span>Mathematics - Unit test prep</span>
+                    <span className="font-medium text-amber-600">11 learners</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span>English - Reading fluency</span>
+                    <span className="font-medium text-rose-600">8 learners</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeSlide === 2 && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[11px] font-semibold text-gray-800 dark:text-gray-100">
+                  Headmaster Oversight
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <div
+                    className="size-6 shrink-0 rounded-full bg-linear-to-br from-emerald-400 to-emerald-700"
+                    aria-hidden
+                  />
+                  <span className="text-[10px] font-medium text-gray-600 dark:text-gray-300">
+                    Headmaster
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="rounded-lg border border-gray-100 bg-white p-2.5 shadow-sm dark:border-gray-700 dark:bg-slate-800">
+                  <p className="text-sm font-bold tabular-nums text-gray-900 dark:text-white">
+                    93.4%
+                  </p>
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400">
+                    School attendance rate
+                  </p>
+                </div>
+                <div className="rounded-lg border border-gray-100 bg-white p-2.5 shadow-sm dark:border-gray-700 dark:bg-slate-800">
+                  <p className="text-sm font-bold tabular-nums text-gray-900 dark:text-white">
+                    18
+                  </p>
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400">
+                    Pending executive approvals
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-md bg-emerald-100 px-2 py-1.5 text-[10px] font-medium text-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-100">
+                Weekly alert: Grade 4 pass rate dropped 5% in Maths
+              </div>
+
+              <div className="rounded-lg border border-gray-100 bg-white p-2.5 shadow-sm dark:border-gray-700 dark:bg-slate-800">
+                <p className="mb-2 text-[10px] font-medium text-gray-500 dark:text-gray-400">
+                  Class pass-rate snapshot
+                </p>
+                <div className="space-y-1 text-[10px]">
+                  {classPerformance.map((item) => (
+                    <div
+                      key={item.cls}
+                      className="flex items-center justify-between text-gray-700 dark:text-gray-300"
+                    >
+                      <span>{item.cls}</span>
+                      <span className="font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
+                        {item.pass}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="flex items-center justify-center gap-1.5 border-t border-gray-200 pt-2 dark:border-gray-700">
+            {[0, 1, 2].map((idx) => (
+              <button
+                key={idx}
+                type="button"
+                aria-label={`Show dashboard slide ${idx + 1}`}
+                onClick={() => setActiveSlide(idx)}
+                className={cn(
+                  'h-1.5 rounded-full transition-all',
+                  activeSlide === idx
+                    ? 'w-6 bg-teal-600 dark:bg-teal-400'
+                    : 'w-2.5 bg-gray-300 hover:bg-gray-400 dark:bg-gray-600 dark:hover:bg-gray-500'
+                )}
+              />
+            ))}
           </div>
         </div>
       </div>
@@ -321,9 +480,11 @@ function HeroSection() {
               </span>
             </h1>
             <p className="mt-6 max-w-md text-lg leading-relaxed text-gray-500 dark:text-gray-400">
-              Educore gives heads, bursars, and owners one place to see fees,
-              expenses, category budgets, financial reports, class performance, and
-              staff accountability — before small issues become expensive surprises.
+              Educore gives heads, bursars, teachers, and parents one place to see
+              fees, expenses, budgets, class performance, and staff accountability.
+              Parents stay up to date on their child&apos;s progress, while teachers
+              run attendance, assessments, and follow-up tasks with less daily
+              friction.
             </p>
             <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center">
               <a
