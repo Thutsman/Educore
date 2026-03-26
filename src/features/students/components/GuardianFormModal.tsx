@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
-import { useUpdateGuardian } from '../hooks/useStudents'
+import { useInviteGuardianAsParent, useUpdateGuardian } from '../hooks/useStudents'
 import type { Guardian } from '../types'
 
 const schema = z.object({
@@ -38,6 +38,8 @@ interface Props {
 export function GuardianFormModal({ open, onOpenChange, guardian, studentId }: Props) {
   const update = useUpdateGuardian(studentId)
   const isPending = update.isPending
+  const inviteGuardian = useInviteGuardianAsParent(studentId)
+  const isInviting = inviteGuardian.isPending
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -56,8 +58,8 @@ export function GuardianFormModal({ open, onOpenChange, guardian, studentId }: P
     })
   }, [open, guardian, form])
 
-  const onSubmit = async (values: FormValues) => {
-    if (!guardian) return
+  const saveGuardian = async (values: FormValues) => {
+    if (!guardian) return false
     const ok = await update.mutateAsync({
       id: guardian.id,
       data: {
@@ -69,11 +71,47 @@ export function GuardianFormModal({ open, onOpenChange, guardian, studentId }: P
       },
     })
 
-    if (ok) {
-      toast.success('Guardian updated successfully')
+    if (ok) toast.success('Guardian updated successfully')
+    else toast.error('Failed to update guardian')
+    return ok
+  }
+
+  const onSave = async (values: FormValues) => {
+    const ok = await saveGuardian(values)
+    if (!ok) return
+    onOpenChange(false)
+  }
+
+  const onSaveAndInvite = async (values: FormValues) => {
+    if (!guardian) return
+    if (guardian.has_portal_access) {
+      toast.success('This guardian already has portal access.')
+      onOpenChange(false)
+      return
+    }
+
+    const email = (values.email ?? '').trim()
+    if (!email) {
+      toast.error('Add an email to invite this guardian.')
+      return
+    }
+
+    const ok = await saveGuardian(values)
+    if (!ok) return
+
+    const result = await inviteGuardian.mutateAsync({ guardianId: guardian.id })
+    if (result === 'created') {
+      toast.success(
+        `Portal access created for ${guardian.full_name}. The parent will receive an email to set their password.`,
+      )
+      onOpenChange(false)
+    } else if (result === 'missing_email') {
+      toast.error('Cannot invite this guardian because no email address is recorded.')
+    } else if (result === 'already_linked') {
+      toast.success('This guardian already has portal access.')
       onOpenChange(false)
     } else {
-      toast.error('Failed to update guardian')
+      toast.error('Failed to invite guardian. Please try again or check the email address.')
     }
   }
 
@@ -85,7 +123,7 @@ export function GuardianFormModal({ open, onOpenChange, guardian, studentId }: P
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSave)} className="space-y-4">
             <FormField control={form.control} name="full_name" render={({ field }) => (
               <FormItem>
                 <FormLabel>Full Name *</FormLabel>
@@ -138,12 +176,27 @@ export function GuardianFormModal({ open, onOpenChange, guardian, studentId }: P
             )} />
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isPending}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={isPending || isInviting}
+              >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isPending}>
-                {isPending ? 'Saving...' : 'Save Changes'}
-              </Button>
+              {guardian && !guardian.has_portal_access ? (
+                <Button
+                  type="button"
+                  disabled={isPending || isInviting}
+                  onClick={() => void form.handleSubmit(onSaveAndInvite)()}
+                >
+                  {isPending || isInviting ? 'Saving & inviting...' : 'Save & Invite to portal'}
+                </Button>
+              ) : (
+                <Button type="submit" disabled={isPending}>
+                  {isPending ? 'Saving...' : 'Save Changes'}
+                </Button>
+              )}
             </DialogFooter>
           </form>
         </Form>

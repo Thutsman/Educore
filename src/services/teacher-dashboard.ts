@@ -1,4 +1,4 @@
-import { format, subDays, parseISO } from 'date-fns'
+import { addDays, format, parseISO, subDays } from 'date-fns'
 import { supabase } from '@/lib/supabase'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -41,7 +41,10 @@ export interface AttendanceSummary {
 
 export interface AttendanceTrendPoint {
   date: string
-  rate: number
+  isoDate: string
+  marked: boolean
+  dayType: 'weekday' | 'weekend'
+  rate: number | null
   present: number
   total: number
 }
@@ -189,14 +192,43 @@ export async function getClassAttendanceTrend(
     if (r.status === 'present' || r.status === 'late') byDate[r.date].present++
   })
 
-  return Object.entries(byDate)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([date, { present, total }]) => ({
-      date:    format(parseISO(date), 'dd MMM'),
-      rate:    total > 0 ? Math.round((present / total) * 100) : 0,
-      present,
-      total,
-    }))
+  const startDate = parseISO(since)
+  const trend: AttendanceTrendPoint[] = []
+
+  // Build a continuous date range so the chart does not "connect the dots"
+  // across days where attendance was not marked yet.
+  for (let d = startDate, i = 0; i <= days; i++, d = addDays(d, 1)) {
+    const isoKey = format(d, 'yyyy-MM-dd')
+    const label = format(d, 'dd MMM')
+    const row = byDate[isoKey]
+    const dow = d.getDay()
+    const dayType: 'weekday' | 'weekend' = dow === 0 || dow === 6 ? 'weekend' : 'weekday'
+
+    if (!row) {
+      trend.push({
+        date: label,
+        isoDate: isoKey,
+        marked: false,
+        dayType,
+        rate: null,
+        present: 0,
+        total: 0,
+      })
+      continue
+    }
+
+    trend.push({
+      date: label,
+      isoDate: isoKey,
+      marked: true,
+      dayType,
+      rate: row.total > 0 ? Math.round((row.present / row.total) * 100) : null,
+      present: row.present,
+      total: row.total,
+    })
+  }
+
+  return trend
 }
 
 /** Recent exams for any class this teacher teaches. */

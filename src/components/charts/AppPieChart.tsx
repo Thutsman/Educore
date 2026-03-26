@@ -20,7 +20,7 @@ interface AppPieChartProps {
   data: PieDataItem[]
   height?: number
   donut?: boolean             // inner radius for donut effect
-  tooltipFormatter?: (v: number | string, name: string) => string
+  tooltipFormatter?: (v: number | string | null, name: string) => string
   showLegend?: boolean
   className?: string
 }

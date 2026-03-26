@@ -56,7 +56,30 @@ async function fetchProfile(userId: string): Promise<UserProfile | null> {
   const roles = (roleRows ?? [])
     .map((r: RoleRow) => r?.roles?.name as AppRole | undefined)
     .filter((name): name is AppRole => typeof name === 'string')
-  const primaryRole = roles[0] ?? 'student'
+
+  // Ensure deterministic role selection when a user has multiple roles.
+  // Without this, the "primary role" is effectively the first DB row returned,
+  // which can flip between login attempts.
+  const ROLE_PRIORITY: Record<AppRole, number> = {
+    super_admin: 0,
+    headmaster: 1,
+    deputy_headmaster: 2,
+    school_admin: 3,
+    bursar: 4,
+    hod: 5,
+    class_teacher: 6,
+    teacher: 7,
+    non_teaching_staff: 8,
+    parent: 9,
+    student: 10,
+  }
+
+  const uniqueRoles = Array.from(new Set(roles))
+  const primaryRole =
+    uniqueRoles
+      .slice()
+      .sort((a, b) => (ROLE_PRIORITY[a] ?? 999) - (ROLE_PRIORITY[b] ?? 999))[0] ??
+    'student'
 
   return {
     id: raw.id,
@@ -65,7 +88,7 @@ async function fetchProfile(userId: string): Promise<UserProfile | null> {
     phone: raw.phone,
     status: raw.status,
     role: primaryRole,
-    roles: roles.length > 0 ? roles : [primaryRole],
+    roles: uniqueRoles.length > 0 ? uniqueRoles : [primaryRole],
   }
 }
 

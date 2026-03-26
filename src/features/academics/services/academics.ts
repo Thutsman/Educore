@@ -206,7 +206,7 @@ export async function getTerms(academicYearId?: string): Promise<Term[]> {
 export async function getExams(schoolId: string, filters?: { classId?: string; subjectId?: string; termId?: string }): Promise<Exam[]> {
   let q = supabase
     .from('exams')
-    .select('id, name, subject_id, class_id, term_id, exam_date, total_marks, description, subject:subjects(name), class:classes(name), term:terms(name)')
+    .select('id, name, subject_id, class_id, term_id, exam_date, total_marks, subject:subjects(name), class:classes(name), term:terms(name)')
     .eq('school_id', schoolId)
     .order('exam_date', { ascending: false })
 
@@ -219,7 +219,7 @@ export async function getExams(schoolId: string, filters?: { classId?: string; s
 
   type Raw = {
     id: string; name: string; subject_id: string; class_id: string; term_id: string | null
-    exam_date: string | null; total_marks: number; description: string | null
+    exam_date: string | null; total_marks: number
     subject: { name: string } | null; class: { name: string } | null; term: { name: string } | null
   }
   return (data as unknown as Raw[]).map(r => ({
@@ -228,22 +228,100 @@ export async function getExams(schoolId: string, filters?: { classId?: string; s
     class_id: r.class_id, class_name: r.class?.name ?? '—',
     term_id: r.term_id, term_name: r.term?.name ?? null,
     exam_date: r.exam_date, total_marks: r.total_marks,
-    description: r.description,
+    description: null,
   }))
 }
 
 export async function createExam(schoolId: string, d: { name: string; subject_id: string; class_id: string; term_id?: string; exam_date?: string; total_marks: number; description?: string }): Promise<boolean> {
-  const { error } = await db.from('exams').insert({
-    name: d.name, subject_id: d.subject_id, class_id: d.class_id,
-    term_id: d.term_id || null, exam_date: d.exam_date || null,
-    total_marks: d.total_marks, description: d.description || null,
+  const nameLower = d.name.trim().toLowerCase()
+  const examType =
+    nameLower.includes('mid') ? 'mid_term'
+      : nameLower.includes('end') ? 'end_of_term'
+        : nameLower.includes('mock') ? 'mock'
+          : nameLower.includes('practical') ? 'practical'
+            : nameLower.includes('assignment') ? 'assignment'
+              : nameLower.includes('quiz') ? 'quiz'
+                : 'test'
+
+  const { data: userData } = await supabase.auth.getUser()
+  const createdBy = userData.user?.id
+  if (!createdBy) return false
+
+  const selectedTermId = d.term_id || null
+
+  let academicYearId: string | null = null
+  if (selectedTermId) {
+    const { data: termRow, error: termError } = await db
+      .from('terms')
+      .select('academic_year_id')
+      .eq('id', selectedTermId)
+      .maybeSingle()
+    if (termError || !termRow?.academic_year_id) return false
+    academicYearId = termRow.academic_year_id as string
+  }
+
+  // Fallback academic year (from class, or current school academic year)
+  if (!academicYearId) {
+    const { data: classRow, error: classError } = await db
+      .from('classes')
+      .select('academic_year_id')
+      .eq('id', d.class_id)
+      .maybeSingle()
+    if (classError) return false
+    academicYearId = classRow?.academic_year_id ?? null
+  }
+
+  if (!academicYearId) {
+    const { data: currentYearRow, error: yearError } = await db
+      .from('academic_years')
+      .select('id')
+      .eq('school_id', schoolId)
+      .eq('is_current', true)
+      .maybeSingle()
+    if (yearError || !currentYearRow?.id) return false
+    academicYearId = currentYearRow.id as string
+  }
+
+  // Ensure we always have a term_id (DB requires it)
+  let termId = selectedTermId
+  if (!termId) {
+    const { data: currentTermRow, error: termError } = await db
+      .from('terms')
+      .select('id')
+      .eq('academic_year_id', academicYearId)
+      .eq('is_current', true)
+      .maybeSingle()
+    if (termError || !currentTermRow?.id) return false
+    termId = currentTermRow.id as string
+  }
+
+  const payload = {
+    name: d.name,
+    exam_type: examType,
+    subject_id: d.subject_id,
+    class_id: d.class_id,
+    term_id: termId,
+    academic_year_id: academicYearId,
+    exam_date: d.exam_date || null,
+    total_marks: d.total_marks,
+    created_by: createdBy,
     school_id: schoolId,
-  })
+  }
+
+  const { error } = await db.from('exams').insert(payload)
   return !error
 }
 
 export async function updateExam(id: string, d: Partial<{ name: string; subject_id: string; class_id: string; term_id: string; exam_date: string; total_marks: number; description: string }>): Promise<boolean> {
-  const { error } = await db.from('exams').update(d).eq('id', id)
+  const patch = {
+    ...(d.name !== undefined && { name: d.name }),
+    ...(d.subject_id !== undefined && { subject_id: d.subject_id }),
+    ...(d.class_id !== undefined && { class_id: d.class_id }),
+    ...(d.term_id !== undefined && { term_id: d.term_id }),
+    ...(d.exam_date !== undefined && { exam_date: d.exam_date }),
+    ...(d.total_marks !== undefined && { total_marks: d.total_marks }),
+  }
+  const { error } = await db.from('exams').update(patch).eq('id', id)
   return !error
 }
 

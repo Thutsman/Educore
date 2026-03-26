@@ -31,8 +31,10 @@ interface AppAreaChartProps {
   xKey: string
   series: AreaSeries[]
   height?: number
+  xTickFormatter?: (v: string) => string
   yTickFormatter?: (v: number) => string
-  tooltipFormatter?: (v: number | string, name: string) => string
+  tooltipFormatter?: (v: number | string | null, name: string) => string
+  tooltipLabelFormatter?: (label: string) => string
   showLegend?: boolean
   className?: string
   gradient?: boolean
@@ -46,8 +48,10 @@ export function AppAreaChart({
   xKey,
   series,
   height = 220,
+  xTickFormatter,
   yTickFormatter,
   tooltipFormatter,
+  tooltipLabelFormatter,
   showLegend = true,
   className,
   gradient = true,
@@ -81,6 +85,7 @@ export function AppAreaChart({
 
           <XAxis
             dataKey={xKey}
+            tickFormatter={xTickFormatter}
             tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }}
             axisLine={false}
             tickLine={false}
@@ -96,7 +101,10 @@ export function AppAreaChart({
 
           <Tooltip
             content={
-              <ChartTooltip formatter={tooltipFormatter} />
+              <ChartTooltip
+                formatter={tooltipFormatter}
+                labelFormatter={tooltipLabelFormatter}
+              />
             }
             cursor={{ stroke: 'hsl(var(--border))', strokeWidth: 1 }}
           />

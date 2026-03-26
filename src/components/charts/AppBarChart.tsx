@@ -28,7 +28,7 @@ interface AppBarChartProps {
   horizontal?: boolean
   stacked?: boolean
   yTickFormatter?: (v: number) => string
-  tooltipFormatter?: (v: number | string, name: string) => string
+  tooltipFormatter?: (v: number | string | null, name: string) => string
   showLegend?: boolean
   colorByBar?: boolean        // each bar gets its own chart color
   maxBarSize?: number

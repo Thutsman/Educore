@@ -324,11 +324,13 @@ export function TeacherDashboard() {
                 ) : (
                   <AppAreaChart
                     data={attTrend}
-                    xKey="date"
+                    xKey="isoDate"
                     series={[{ key: 'rate', label: 'Attendance %' }]}
                     height={220}
+                    xTickFormatter={(v) => formatDate(v, 'dd MMM')}
                     yTickFormatter={v => `${v}%`}
-                    tooltipFormatter={v => `${v}%`}
+                    tooltipFormatter={v => (v == null ? '—' : `${v}%`)}
+                    tooltipLabelFormatter={(v) => formatDate(v, 'dd MMM')}
                     showLegend={false}
                   />
                 )}

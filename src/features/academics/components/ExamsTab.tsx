@@ -18,6 +18,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useAuth } from '@/hooks/useAuth'
 import { formatDate } from '@/utils/format'
+import { toast } from 'sonner'
 import {
   useExams, useClasses, useSubjects, useTerms,
   useCreateExam, useUpdateExam, useDeleteExam,
@@ -59,11 +60,27 @@ function ExamFormModal({
   })
 
   const onSubmit = async (v: FormValues) => {
-    const payload = { ...v, term_id: v.term_id || undefined, exam_date: v.exam_date || undefined, description: v.description || undefined }
-    const ok = isEdit && exam
-      ? await update.mutateAsync({ id: exam.id, data: payload })
-      : await create.mutateAsync(payload)
-    if (ok) { form.reset(); onOpenChange(false) }
+    const payload = {
+      ...v,
+      term_id: v.term_id || undefined,
+      exam_date: v.exam_date || undefined,
+      description: v.description || undefined,
+    }
+
+    try {
+      const ok = isEdit && exam
+        ? await update.mutateAsync({ id: exam.id, data: payload })
+        : await create.mutateAsync(payload)
+      if (ok) {
+        form.reset()
+        onOpenChange(false)
+      } else {
+        toast.error('Failed to save exam. Please try again.')
+      }
+    } catch (err: unknown) {
+      console.error('Exam save failed', err)
+      toast.error(err instanceof Error ? err.message : 'Failed to save exam.')
+    }
   }
 
   return (

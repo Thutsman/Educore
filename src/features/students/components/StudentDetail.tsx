@@ -261,21 +261,30 @@ export function StudentDetail() {
                           </span>
                         ) : (
                           canEdit && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-7 text-xs cursor-pointer"
-                              disabled={inviteGuardian.isPending || !g.email}
-                              onClick={() => handleInviteGuardian(g.id, g.full_name)}
-                            >
-                              {inviteGuardian.isPending ? 'Inviting...' : 'Invite to portal'}
-                            </Button>
+                            g.email ? (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 text-xs cursor-pointer"
+                                disabled={inviteGuardian.isPending}
+                                onClick={() => handleInviteGuardian(g.id, g.full_name)}
+                              >
+                                {inviteGuardian.isPending ? 'Inviting...' : 'Invite to portal'}
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 text-xs cursor-pointer"
+                                onClick={() => {
+                                  setEditingGuardian({ id: g.id })
+                                  setShowGuardianEdit(true)
+                                }}
+                              >
+                                Onboard parent
+                              </Button>
+                            )
                           )
-                        )}
-                        {!g.email && !g.has_portal_access && canEdit && (
-                          <span className="mt-1 max-w-[140px] text-right text-[10px] text-muted-foreground">
-                            Add an email to invite this guardian.
-                          </span>
                         )}
                       </div>
                     </div>
