@@ -1,4 +1,4 @@
-﻿import { format, parseISO } from 'date-fns'
+import { format, parseISO } from 'date-fns'
 import { supabase } from '@/lib/supabase'
 import type {
   Invoice,
@@ -23,6 +23,18 @@ const n = (v: unknown) => Number(v) || 0
 
 function endOfDayIso(dateTo: string): string {
   return `${dateTo}T23:59:59.999Z`
+}
+
+function mapExpenseFormData(d: Partial<ExpenseFormData>) {
+  const payload: Record<string, unknown> = {}
+  if ('description' in d) payload.description = d.description
+  if ('amount' in d) payload.amount = d.amount
+  if ('category' in d) payload.category = d.category
+  if ('expense_date' in d) payload.expense_date = d.expense_date
+  if ('paid_to' in d) payload.vendor = d.paid_to || null
+  if ('reference_number' in d) payload.receipt_no = d.reference_number || null
+  if ('notes' in d) payload.notes = d.notes || null
+  return payload
 }
 
 function applyInvoiceReportFilters<T extends { eq: (...a: unknown[]) => T; gte: (...a: unknown[]) => T; lte: (...a: unknown[]) => T }>(
@@ -162,9 +174,8 @@ export async function getExpenses(
 ): Promise<Expense[]> {
   let q = supabase
     .from('expenses')
-    .select('id, description, amount, category, expense_date, vendor, receipt_no, notes, created_at, status, payment_method')
+    .select('id, description, amount, category, expense_date, vendor, receipt_no, notes, created_at, status, payment_method, approved_at, approved_by, rejected_at, rejected_by, rejection_reason')
     .eq('school_id', schoolId)
-    .neq('status', 'rejected')
     .order('expense_date', { ascending: false })
   if (filters?.category && filters.category !== 'all') q = q.eq('category', filters.category)
   if (filters?.search) q = q.ilike('description', `%${filters.search}%`)
@@ -172,7 +183,24 @@ export async function getExpenses(
   if (filters?.date_to) q = q.lte('expense_date', filters.date_to)
   const { data, error } = await q
   if (error || !data) return []
-  type Raw = { id: string; description: string; amount: unknown; category: string; expense_date: string; vendor: string | null; receipt_no: string | null; notes: string | null; created_at: string; status: string; payment_method: string | null }
+  type Raw = {
+    id: string
+    description: string
+    amount: unknown
+    category: string
+    expense_date: string
+    vendor: string | null
+    receipt_no: string | null
+    notes: string | null
+    created_at: string
+    status: string
+    payment_method: string | null
+    approved_at: string | null
+    approved_by: string | null
+    rejected_at: string | null
+    rejected_by: string | null
+    rejection_reason: string | null
+  }
   return (data as unknown as Raw[]).map(r => ({
     id: r.id,
     description: r.description,
@@ -185,6 +213,11 @@ export async function getExpenses(
     created_at: r.created_at,
     status: r.status as Expense['status'],
     payment_method: r.payment_method,
+    approved_at: r.approved_at,
+    approved_by: r.approved_by,
+    rejected_at: r.rejected_at,
+    rejected_by: r.rejected_by,
+    rejection_reason: r.rejection_reason,
   }))
 }
 
@@ -202,19 +235,82 @@ export async function createExpense(schoolId: string, d: ExpenseFormData): Promi
     notes: d.notes || null,
     school_id: schoolId,
     submitted_by: user.id,
-    status: 'paid',
+    status: 'pending',
   })
   return !error
 }
 
 export async function updateExpense(id: string, d: Partial<ExpenseFormData>): Promise<boolean> {
-  const { error } = await db.from('expenses').update(d).eq('id', id)
-  return !error
+  const payload = mapExpenseFormData(d)
+  const { data, error } = await db
+    .from('expenses')
+    .update(payload)
+    .eq('id', id)
+    .eq('status', 'pending')
+    .select('id')
+    .maybeSingle()
+  return !error && !!data
 }
 
 export async function deleteExpense(id: string): Promise<boolean> {
-  const { error } = await db.from('expenses').delete().eq('id', id)
-  return !error
+  const { data, error } = await db
+    .from('expenses')
+    .delete()
+    .eq('id', id)
+    .eq('status', 'pending')
+    .select('id')
+    .maybeSingle()
+  return !error && !!data
+}
+
+export async function approveExpense(expenseId: string, userId: string): Promise<boolean> {
+  const { data, error } = await db
+    .from('expenses')
+    .update({
+      status: 'approved',
+      approved_by: userId,
+      approved_at: new Date().toISOString(),
+      rejected_by: null,
+      rejected_at: null,
+      rejection_reason: null,
+    })
+    .eq('id', expenseId)
+    .eq('status', 'pending')
+    .select('id')
+    .maybeSingle()
+  return !error && !!data
+}
+
+export async function rejectExpense(expenseId: string, userId: string, reason: string): Promise<boolean> {
+  const trimmedReason = reason.trim()
+  if (!trimmedReason) return false
+
+  const { data, error } = await db
+    .from('expenses')
+    .update({
+      status: 'rejected',
+      rejected_by: userId,
+      rejected_at: new Date().toISOString(),
+      rejection_reason: trimmedReason,
+      approved_by: null,
+      approved_at: null,
+    })
+    .eq('id', expenseId)
+    .eq('status', 'pending')
+    .select('id')
+    .maybeSingle()
+  return !error && !!data
+}
+
+export async function markExpenseAsPaid(expenseId: string): Promise<boolean> {
+  const { data, error } = await db
+    .from('expenses')
+    .update({ status: 'paid' })
+    .eq('id', expenseId)
+    .eq('status', 'approved')
+    .select('id')
+    .maybeSingle()
+  return !error && !!data
 }
 
 // ─── Students for invoice form ────────────────────────────────────────────────
@@ -321,7 +417,7 @@ export async function getBursarExpenseLineItems(
     .from('expenses')
     .select('expense_date, description, category, amount, vendor, receipt_no, payment_method, status, notes')
     .eq('school_id', schoolId)
-    .neq('status', 'rejected')
+    .eq('status', 'paid')
     .order('expense_date', { ascending: false })
   if (filters?.date_from) q = q.gte('expense_date', filters.date_from)
   if (filters?.date_to) q = q.lte('expense_date', filters.date_to)
@@ -457,7 +553,7 @@ export async function getBursarIncomeStatementLineItems(
     .from('expenses')
     .select('expense_date, receipt_no, description, category, vendor, payment_method, amount')
     .eq('school_id', schoolId)
-    .neq('status', 'rejected')
+    .eq('status', 'paid')
     .order('expense_date', { ascending: false })
   if (filters?.date_from) expQ = expQ.gte('expense_date', filters.date_from)
   if (filters?.date_to) expQ = expQ.lte('expense_date', filters.date_to)
@@ -515,7 +611,7 @@ export async function getBursarExpensesByCategory(
     .from('expenses')
     .select('category, amount')
     .eq('school_id', schoolId)
-    .neq('status', 'rejected')
+    .eq('status', 'paid')
   if (filters?.date_from) q = q.gte('expense_date', filters.date_from)
   if (filters?.date_to) q = q.lte('expense_date', filters.date_to)
   const { data, error } = await q
@@ -605,7 +701,7 @@ export async function getBursarBudgetVsActual(
     .from('expenses')
     .select('category, amount')
     .eq('school_id', schoolId)
-    .neq('status', 'rejected')
+    .eq('status', 'paid')
   if (filters?.date_from) expQ = expQ.gte('expense_date', filters.date_from)
   if (filters?.date_to) expQ = expQ.lte('expense_date', filters.date_to)
   const { data: expData } = await expQ

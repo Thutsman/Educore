@@ -89,6 +89,14 @@ Project-specific instructions for Claude Code. These override default behaviour.
 
 Headmaster > Deputy Headmaster > Bursar > HOD > Teacher / Class Teacher > Non-teaching > Parent > Student
 
+## Headmaster, Deputy, Staff & Academics (UX patterns)
+
+- **Staff (`/staff`):** Show **login / access roles** from `user_roles` (join `roles.name`) for the **current school** — batch-fetch by `user_id` + `school_id`, not user-only queries. `getRolesForUser(userId, schoolId)` must filter `.eq('school_id', schoolId)`. After role changes, invalidate `['staff', 'profiles-unlinked']` where relevant. Non-teaching **`staff.role_title`** is the job title; access roles still come from `user_roles`.
+- **Headmaster dashboard:** Focus on **school-wide attendance** and **scheme book** counts (HOD vs executive approval). Not a finance-first layout.
+- **Attendance marking:** **`headmaster`** is excluded from the **Attendance** sidebar item and `/attendance` route (oversight lives on the dashboard). **`deputy_headmaster`** retains access. Users with **both** `headmaster` and `teacher`/`class_teacher` may still reach attendance via the teaching role.
+- **Academics:** **`headmaster`** and **`deputy_headmaster`** see **`ExecutiveAcademicsOverview`** (`src/features/academics/services/executiveAcademics.ts`, `useExecutiveClassOverview`) — read-only per-class performance (attendance, grades, allocations, scheme books, assignments, assessments). **`school_admin`** and teaching roles use the tabbed Academics CRUD. **`canEdit`** on academic structure tabs is **`school_admin`** only (years, classes, departments); **subjects** also **`hod`**; **exams** — **`hod`**, **`class_teacher`**, **`teacher`** only (not headmaster/deputy).
+- **Students list:** `StudentList` honours **`/students?classId=<uuid>`** to pre-select the class filter (e.g. links from the executive Academics table).
+
 ## Dashboard Metrics
 
 - Attendance rate = `(present + late) / (activeStudents × uniqueDaysRecorded) × 100`
@@ -101,7 +109,7 @@ src/
   features/
     attendance/     services/, hooks/, components/, types.ts
     students/
-    academics/
+    academics/      services/academics.ts, executiveAcademics.ts (exec class overview)
     finance/
     staff/
     assets/
@@ -118,7 +126,7 @@ src/
     lesson-plans/
     class-analytics/
     auth/           ProtectedRoute, useRoleRedirect
-  services/         dashboard.ts, teacher-dashboard.ts, parent-dashboard.ts, hod-dashboard.ts
+  services/         dashboard.ts (incl. headmaster attendance + scheme stats), teacher-dashboard.ts, parent-dashboard.ts, hod-dashboard.ts
   components/ui/    shadcn components
   lib/              supabase.ts, validations/, query-client.ts
   utils/            cn.ts, format.ts, csv.ts, exportToCsv.ts

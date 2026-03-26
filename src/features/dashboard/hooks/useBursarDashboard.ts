@@ -22,7 +22,7 @@ export function useMonthlyFinancials() {
   const { currentSchool } = useSchool()
   const schoolId = currentSchool?.id ?? ''
   return useQuery({
-    queryKey: ['dashboard', 'monthly-financials', schoolId],
+    queryKey: ['monthly-financials', schoolId],
     queryFn:  () => getMonthlyFinancials(schoolId),
     enabled:  !!schoolId,
     staleTime: 1000 * 60 * 10,

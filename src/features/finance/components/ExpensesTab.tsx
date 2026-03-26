@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Plus, Search, Pencil, Trash2 } from 'lucide-react'
+import { CheckCircle2, Pencil, Plus, Search, Trash2, XCircle } from 'lucide-react'
 import { DataTable, type Column } from '@/components/common/DataTable'
+import { EmptyState } from '@/components/common/EmptyState'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -18,7 +19,17 @@ import {
 } from '@/components/ui/form'
 import { useAuth } from '@/hooks/useAuth'
 import { formatCurrency, formatDate } from '@/utils/format'
-import { useExpenses, useCreateExpense, useUpdateExpense, useDeleteExpense } from '../hooks/useFinance'
+import { cn } from '@/utils/cn'
+import { toast } from 'sonner'
+import {
+  useExpenses,
+  useCreateExpense,
+  useUpdateExpense,
+  useDeleteExpense,
+  useApproveExpense,
+  useRejectExpense,
+  useMarkExpenseAsPaid,
+} from '../hooks/useFinance'
 import type { Expense, ExpenseFormData } from '../types'
 
 const CATEGORIES = [
@@ -43,10 +54,31 @@ const schema = z.object({
 })
 type FormValues = z.infer<typeof schema>
 
+const rejectionSchema = z.object({
+  reason: z.string().trim().min(1, 'Rejection reason is required'),
+})
+type RejectionFormValues = z.infer<typeof rejectionSchema>
+
+const STATUS_STYLES: Record<Expense['status'], string> = {
+  pending: 'border-amber-500/30 bg-amber-500/10 text-amber-800',
+  approved: 'border-blue-500/30 bg-blue-500/10 text-blue-700',
+  paid: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700',
+  rejected: 'border-red-500/30 bg-red-500/10 text-red-700',
+}
+
+function ExpenseStatusBadge({ status }: { status: Expense['status'] }) {
+  return (
+    <span className={cn('rounded-full border px-2.5 py-0.5 text-xs font-medium capitalize', STATUS_STYLES[status])}>
+      {status}
+    </span>
+  )
+}
+
 function ExpenseFormModal({ open, onOpenChange, expense }: { open: boolean; onOpenChange: (v: boolean) => void; expense?: Expense | null }) {
   const isEdit = !!expense
   const create = useCreateExpense()
   const update = useUpdateExpense()
+  const [serverError, setServerError] = useState<string | null>(null)
   const form = useForm<FormValues>({
     resolver: zodResolver(schema) as Resolver<FormValues>,
     defaultValues: {
@@ -59,11 +91,43 @@ function ExpenseFormModal({ open, onOpenChange, expense }: { open: boolean; onOp
       notes: expense?.notes ?? '',
     },
   })
+  useEffect(() => {
+    if (!open) return
+    setServerError(null)
+    form.reset({
+      description: expense?.description ?? '',
+      amount: expense?.amount ?? 0,
+      category: expense?.category ?? 'other',
+      expense_date: expense?.expense_date ?? new Date().toISOString().slice(0, 10),
+      paid_to: expense?.paid_to ?? '',
+      reference_number: expense?.reference_number ?? '',
+      notes: expense?.notes ?? '',
+    })
+  }, [expense, form, open])
+
   const onSubmit = async (v: FormValues) => {
-    const ok = isEdit && expense
-      ? await update.mutateAsync({ id: expense.id, data: v as ExpenseFormData })
-      : await create.mutateAsync(v as ExpenseFormData)
-    if (ok) { form.reset(); onOpenChange(false) }
+    setServerError(null)
+    try {
+      const ok = isEdit && expense
+        ? await update.mutateAsync({ id: expense.id, data: v as ExpenseFormData })
+        : await create.mutateAsync(v as ExpenseFormData)
+
+      if (ok) {
+        toast.success(isEdit ? 'Expense updated successfully' : 'Expense submitted for approval')
+        form.reset()
+        onOpenChange(false)
+      } else {
+        const message = isEdit
+          ? 'Only pending expenses can be edited.'
+          : 'Failed to create expense. Please try again.'
+        setServerError(message)
+        toast.error(message)
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to save expense. Please try again.'
+      setServerError(message)
+      toast.error(message)
+    }
   }
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -71,6 +135,11 @@ function ExpenseFormModal({ open, onOpenChange, expense }: { open: boolean; onOp
         <DialogHeader><DialogTitle>{isEdit ? 'Edit Expense' : 'Add Expense'}</DialogTitle></DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            {serverError ? (
+              <div className="rounded-md border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                {serverError}
+              </div>
+            ) : null}
             <FormField control={form.control} name="description" render={({ field }) => (
               <FormItem><FormLabel>Description *</FormLabel><FormControl><Input placeholder="e.g. Electricity bill" {...field} /></FormControl><FormMessage /></FormItem>
             )} />
@@ -106,7 +175,7 @@ function ExpenseFormModal({ open, onOpenChange, expense }: { open: boolean; onOp
             <DialogFooter>
               <Button variant="outline" type="button" onClick={() => onOpenChange(false)}>Cancel</Button>
               <Button type="submit" disabled={create.isPending || update.isPending}>
-                {create.isPending || update.isPending ? 'Saving...' : 'Save'}
+                {create.isPending || update.isPending ? 'Saving...' : isEdit ? 'Save Changes' : 'Submit Expense'}
               </Button>
             </DialogFooter>
           </form>
@@ -116,38 +185,209 @@ function ExpenseFormModal({ open, onOpenChange, expense }: { open: boolean; onOp
   )
 }
 
+function RejectExpenseDialog({
+  expense,
+  open,
+  onOpenChange,
+}: {
+  expense: Expense | null
+  open: boolean
+  onOpenChange: (v: boolean) => void
+}) {
+  const rejectExpense = useRejectExpense()
+  const form = useForm<RejectionFormValues>({
+    resolver: zodResolver(rejectionSchema) as Resolver<RejectionFormValues>,
+    defaultValues: { reason: '' },
+  })
+
+  useEffect(() => {
+    if (open) form.reset({ reason: '' })
+  }, [form, open])
+
+  const onSubmit = async (values: RejectionFormValues) => {
+    if (!expense) return
+    try {
+      const ok = await rejectExpense.mutateAsync({ expenseId: expense.id, reason: values.reason })
+      if (ok) {
+        toast.success('Expense rejected')
+        onOpenChange(false)
+      } else {
+        toast.error('Only pending expenses can be rejected.')
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to reject expense.')
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader><DialogTitle>Reject Expense</DialogTitle></DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Provide a reason for rejecting <span className="font-medium text-foreground">{expense?.description ?? 'this expense'}</span>.
+            </p>
+            <FormField control={form.control} name="reason" render={({ field }) => (
+              <FormItem>
+                <FormLabel>Rejection reason *</FormLabel>
+                <FormControl><Textarea rows={4} placeholder="Explain why this expense is being rejected" {...field} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )} />
+            <DialogFooter>
+              <Button variant="outline" type="button" onClick={() => onOpenChange(false)}>Cancel</Button>
+              <Button type="submit" variant="destructive" disabled={rejectExpense.isPending}>
+                {rejectExpense.isPending ? 'Rejecting...' : 'Reject Expense'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function MarkPaidDialog({
+  expense,
+  open,
+  onOpenChange,
+}: {
+  expense: Expense | null
+  open: boolean
+  onOpenChange: (v: boolean) => void
+}) {
+  const markAsPaid = useMarkExpenseAsPaid()
+
+  const handleConfirm = async () => {
+    if (!expense) return
+    try {
+      const ok = await markAsPaid.mutateAsync(expense.id)
+      if (ok) {
+        toast.success('Expense marked as paid')
+        onOpenChange(false)
+      } else {
+        toast.error('Only approved expenses can be marked as paid.')
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to mark expense as paid.')
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader><DialogTitle>Mark Expense as Paid</DialogTitle></DialogHeader>
+        <p className="text-sm text-muted-foreground">
+          Confirm payment for <span className="font-medium text-foreground">{expense?.description ?? 'this expense'}</span>.
+        </p>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button onClick={handleConfirm} disabled={markAsPaid.isPending}>
+            {markAsPaid.isPending ? 'Saving...' : 'Mark as Paid'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 export function ExpensesTab() {
-  const { role } = useAuth()
-  const canEdit = role === 'headmaster' || role === 'bursar'
+  const { hasRole } = useAuth()
+  const canCreate = hasRole('bursar')
+  const canApprove = hasRole('headmaster', 'deputy_headmaster')
+  const canMarkPaid = hasRole('bursar')
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [search, setSearch] = useState('')
   const [editTarget, setEditTarget] = useState<Expense | null>(null)
+  const [rejectTarget, setRejectTarget] = useState<Expense | null>(null)
+  const [payTarget, setPayTarget] = useState<Expense | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
 
   const { data: expenses = [], isLoading } = useExpenses({ category: categoryFilter, search })
   const deleteExpense = useDeleteExpense()
+  const approveExpense = useApproveExpense()
 
   const totalAmount = expenses.reduce((s, e) => s + e.amount, 0)
 
+  const canEditExpense = (expense: Expense) => canCreate && expense.status === 'pending'
+  const canDeleteExpense = (expense: Expense) => canCreate && expense.status === 'pending'
+  const hasRowActions = (expense: Expense) =>
+    (canApprove && expense.status === 'pending') ||
+    (canMarkPaid && expense.status === 'approved') ||
+    canEditExpense(expense) ||
+    canDeleteExpense(expense)
+
   const columns: Column<Expense>[] = [
-    { key: 'description', header: 'Description', sortable: true, cell: r => <span className="font-medium">{r.description}</span> },
+    {
+      key: 'description',
+      header: 'Description',
+      sortable: true,
+      cell: r => (
+        <div>
+          <span className="font-medium">{r.description}</span>
+          {r.status === 'rejected' && r.rejection_reason ? (
+            <p className="mt-1 text-xs text-red-700">{r.rejection_reason}</p>
+          ) : null}
+        </div>
+      ),
+    },
     { key: 'category', header: 'Category', cell: r => <span className="capitalize">{r.category.replace('_', ' ')}</span> },
     { key: 'amount', header: 'Amount', sortable: true, className: 'text-right tabular-nums', cell: r => formatCurrency(r.amount) },
     { key: 'expense_date', header: 'Date', sortable: true, cell: r => formatDate(r.expense_date) },
     { key: 'paid_to', header: 'Paid To', cell: r => r.paid_to || '—' },
-    ...(canEdit ? [{
+    { key: 'status', header: 'Status', cell: r => <ExpenseStatusBadge status={r.status} /> },
+    ...((canApprove || canCreate) ? [{
       key: 'actions' as keyof Expense,
-      header: '',
+      header: 'Actions',
       className: 'text-right',
       cell: (r: Expense) => (
         <div className="flex justify-end gap-2">
-          <Button size="icon" variant="ghost" className="h-9 w-9" onClick={e => { e.stopPropagation(); setEditTarget(r); setShowForm(true) }}>
-            <Pencil className="h-4 w-4" />
-          </Button>
-          <Button size="icon" variant="ghost" className="h-9 w-9 text-destructive hover:text-destructive" onClick={e => { e.stopPropagation(); setDeleteId(r.id) }}>
-            <Trash2 className="h-4 w-4" />
-          </Button>
+          {hasRowActions(r) ? (
+            <>
+              {canApprove && r.status === 'pending' ? (
+                <>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-9"
+                    disabled={approveExpense.isPending}
+                    onClick={async (e) => {
+                      e.stopPropagation()
+                      const ok = await approveExpense.mutateAsync(r.id)
+                      if (ok) toast.success('Expense approved')
+                      else toast.error('Only pending expenses can be approved.')
+                    }}
+                  >
+                    <CheckCircle2 className="mr-2 h-4 w-4" />
+                    Approve
+                  </Button>
+                  <Button size="sm" variant="outline" className="h-9" onClick={(e) => { e.stopPropagation(); setRejectTarget(r) }}>
+                    <XCircle className="mr-2 h-4 w-4" />
+                    Reject
+                  </Button>
+                </>
+              ) : null}
+              {canMarkPaid && r.status === 'approved' ? (
+                <Button size="sm" className="h-9" onClick={(e) => { e.stopPropagation(); setPayTarget(r) }}>
+                  Mark as Paid
+                </Button>
+              ) : null}
+              {canEditExpense(r) ? (
+                <Button size="icon" variant="ghost" className="h-9 w-9" onClick={e => { e.stopPropagation(); setEditTarget(r); setShowForm(true) }}>
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              ) : null}
+              {canDeleteExpense(r) ? (
+                <Button size="icon" variant="ghost" className="h-9 w-9 text-destructive hover:text-destructive" onClick={e => { e.stopPropagation(); setDeleteId(r.id) }}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              ) : null}
+            </>
+          ) : (
+            <span className="text-xs text-muted-foreground">No actions</span>
+          )}
         </div>
       ),
     }] : []),
@@ -171,7 +411,7 @@ export function ExpensesTab() {
         </div>
         <div className="flex items-center gap-4">
           <p className="text-sm text-muted-foreground">Total: <span className="font-semibold text-foreground">{formatCurrency(totalAmount)}</span></p>
-          {canEdit && (
+          {canCreate && (
             <Button onClick={() => { setEditTarget(null); setShowForm(true) }} className="h-9 sm:h-10">
               <Plus className="mr-2 h-4 w-4" />Add Expense
             </Button>
@@ -181,23 +421,52 @@ export function ExpensesTab() {
 
       <div className="overflow-x-auto">
         <DataTable<Expense>
-        columns={columns}
-        data={expenses}
-        keyExtractor={r => r.id}
-        loading={isLoading}
-      />
+          columns={columns}
+          data={expenses}
+          keyExtractor={r => r.id}
+          loading={isLoading}
+          rowClassName={r => r.status === 'rejected' ? 'bg-red-500/5' : ''}
+          emptyState={
+            <EmptyState
+              title="No expenses yet"
+              description="No expenses yet. Create your first expense to start tracking school spending."
+              action={canCreate ? (
+                <Button onClick={() => { setEditTarget(null); setShowForm(true) }}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Expense
+                </Button>
+              ) : null}
+              className="border-0 rounded-none"
+            />
+          }
+        />
       </div>
 
       <ExpenseFormModal open={showForm} onOpenChange={v => { setShowForm(v); if (!v) setEditTarget(null) }} expense={editTarget} />
+      <RejectExpenseDialog open={!!rejectTarget} onOpenChange={v => !v && setRejectTarget(null)} expense={rejectTarget} />
+      <MarkPaidDialog open={!!payTarget} onOpenChange={v => !v && setPayTarget(null)} expense={payTarget} />
 
       <Dialog open={!!deleteId} onOpenChange={v => !v && setDeleteId(null)}>
         <DialogContent className="max-w-sm">
           <DialogHeader><DialogTitle>Delete Expense</DialogTitle></DialogHeader>
-          <p className="text-sm text-muted-foreground">This will permanently delete this expense record.</p>
+          <p className="text-sm text-muted-foreground">Only pending expenses can be deleted. This action permanently removes the record.</p>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteId(null)}>Cancel</Button>
             <Button variant="destructive" disabled={deleteExpense.isPending}
-              onClick={async () => { if (deleteId) { await deleteExpense.mutateAsync(deleteId); setDeleteId(null) } }}>
+              onClick={async () => {
+                if (!deleteId) return
+                try {
+                  const ok = await deleteExpense.mutateAsync(deleteId)
+                  if (ok) {
+                    toast.success('Expense deleted')
+                    setDeleteId(null)
+                  } else {
+                    toast.error('Only pending expenses can be deleted.')
+                  }
+                } catch (error) {
+                  toast.error(error instanceof Error ? error.message : 'Failed to delete expense.')
+                }
+              }}>
               Delete
             </Button>
           </DialogFooter>

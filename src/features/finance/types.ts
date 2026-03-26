@@ -53,6 +53,11 @@ export interface Expense {
   created_at: string
   status: ExpenseStatus
   payment_method: string | null
+  approved_at?: string | null
+  approved_by?: string | null
+  rejected_at?: string | null
+  rejected_by?: string | null
+  rejection_reason?: string | null
 }
 
 export interface Budget {

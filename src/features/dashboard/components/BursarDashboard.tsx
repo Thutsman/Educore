@@ -133,9 +133,9 @@ export function BursarDashboard() {
   const expenseInfoContent = (
     <div className="max-w-xs space-y-2 text-xs">
       <p>
-        Includes pending ({formatCurrency(expenseByStatus?.pending ?? 0)}), approved (
-        {formatCurrency(expenseByStatus?.approved ?? 0)}), and paid ({formatCurrency(expenseByStatus?.paid ?? 0)})
-        expenses. Only rejected expenses are excluded.
+        This card uses paid expenses only ({formatCurrency(expenseByStatus?.paid ?? 0)}). Pending approval (
+        {formatCurrency(expenseByStatus?.pending ?? 0)}) and approved awaiting payment (
+        {formatCurrency(expenseByStatus?.approved ?? 0)}) stay out of financial totals until paid.
       </p>
     </div>
   )
@@ -230,7 +230,7 @@ export function BursarDashboard() {
           <StatCard
             title="Total Expenses (YTD)"
             value={formatCurrency(finance.totalExpenses ?? 0)}
-            subtitle="All recorded expenses (excl. rejected)"
+            subtitle="Paid expenses only"
             icon={TrendingDown}
             iconClassName="bg-rose-500/10 text-rose-500"
             loading={finance.isLoading}

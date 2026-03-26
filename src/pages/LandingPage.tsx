@@ -457,6 +457,13 @@ function LandingNavbar() {
 }
 
 function HeroSection() {
+  const valueBullets = [
+    'Track school fees, payments, and outstanding balances in real time',
+    'Monitor expenses and enforce approval workflows',
+    'See class performance and attendance instantly',
+    'Hold staff accountable with clear roles and actions',
+  ]
+
   return (
     <section className="relative overflow-hidden border-b border-slate-200/80 bg-linear-to-br from-teal-50 via-white to-emerald-50 dark:border-slate-800 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900">
       <style>{heroMotionStyles}</style>
@@ -480,12 +487,18 @@ function HeroSection() {
               </span>
             </h1>
             <p className="mt-6 max-w-md text-lg leading-relaxed text-gray-500 dark:text-gray-400">
-              Educore gives heads, bursars, teachers, and parents one place to see
-              fees, expenses, budgets, class performance, and staff accountability.
-              Parents stay up to date on their child&apos;s progress, while teachers
-              run attendance, assessments, and follow-up tasks with less daily
-              friction.
+              Educore gives school owners and leaders one clear view of finance,
+              academics, attendance, and daily operations so you can act early,
+              not at the end of term.
             </p>
+            <ul className="mt-5 space-y-2 text-sm text-gray-600 dark:text-gray-300">
+              {valueBullets.map((item) => (
+                <li key={item} className="flex items-start gap-2">
+                  <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-teal-600 dark:text-teal-400" />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
             <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center">
               <a
                 href={DEMO_WHATSAPP}
@@ -502,6 +515,30 @@ function HeroSection() {
               >
                 Login
               </Link>
+            </div>
+            <div className="mt-4 space-y-1.5 text-sm text-gray-600 dark:text-gray-300">
+              <p className="inline-flex items-center gap-2">
+                <CheckCircle2 className="size-4 shrink-0 text-teal-600 dark:text-teal-400" />
+                We help you set up your school in under 24 hours
+              </p>
+              <p className="inline-flex items-center gap-2">
+                <CheckCircle2 className="size-4 shrink-0 text-teal-600 dark:text-teal-400" />
+                No technical experience required
+              </p>
+            </div>
+            <div className="mt-5 flex flex-wrap items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-300">
+              <span className="rounded-full border border-slate-300 bg-white px-3 py-1 dark:border-slate-700 dark:bg-slate-900">
+                Built for Zimbabwean schools
+              </span>
+              <span className="rounded-full border border-slate-300 bg-white px-3 py-1 dark:border-slate-700 dark:bg-slate-900">
+                Secure, role-based access for staff
+              </span>
+              <span className="rounded-full border border-slate-300 bg-white px-3 py-1 dark:border-slate-700 dark:bg-slate-900">
+                Your data is safely stored and backed up
+              </span>
+              <span className="rounded-full border border-slate-300 bg-white px-3 py-1 dark:border-slate-700 dark:bg-slate-900">
+                Designed with real school workflows in mind
+              </span>
             </div>
             <div className="educore-hero-enter-trust mt-6 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-400 dark:text-gray-500">
               <span className="inline-flex items-center gap-1">
@@ -534,6 +571,43 @@ function HeroSection() {
   )
 }
 
+function WhatEducoreDoesSection() {
+  const blocks = [
+    'Track fees and know exactly who has not paid',
+    'Record and control expenses with approvals',
+    'Monitor student performance across classes',
+    'Manage attendance and daily school operations',
+    'Generate finance and academic reports instantly',
+  ]
+
+  return (
+    <section className="border-b border-slate-200/80 bg-white py-20 dark:border-slate-800 dark:bg-slate-950">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+        <h2 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl dark:text-white">
+          What Educore helps you do
+        </h2>
+        <p className="mt-4 max-w-2xl text-lg text-slate-600 dark:text-slate-300">
+          Run your school with clear daily visibility instead of waiting for
+          end-of-term surprises.
+        </p>
+        <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {blocks.map((item) => (
+            <div
+              key={item}
+              className="rounded-xl border border-slate-200 bg-slate-50 p-5 text-sm font-medium leading-relaxed text-slate-800 dark:border-slate-700 dark:bg-slate-900/60 dark:text-slate-100"
+            >
+              <span className="inline-flex items-start gap-2">
+                <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-teal-600 dark:text-teal-400" />
+                <span>{item}</span>
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
 function ProblemSection() {
   const items = [
     'No real-time financial visibility — you only see problems after the term ends.',
@@ -550,6 +624,10 @@ function ProblemSection() {
         <p className="mt-4 max-w-2xl text-lg text-slate-600 dark:text-slate-300">
           Most schools run on disconnected registers, delayed reports, and gut
           feel. That is not mismanagement — it is missing infrastructure.
+        </p>
+        <p className="mt-4 max-w-3xl text-base font-medium text-slate-700 dark:text-slate-200">
+          Most schools only discover problems at the end of term — when it&apos;s
+          too late to fix them.
         </p>
         <ul className="mt-12 grid gap-4 sm:grid-cols-2">
           {items.map((text) => (
@@ -573,23 +651,23 @@ function SolutionSection() {
   const cards = [
     {
       icon: Wallet,
-      title: 'Finance intelligence',
-      body: 'Live fee collection, outstanding balances, expenses, and cash position — plus category budgets with actual vs allocated tracking and dedicated finance reports for committees and auditors.',
+      title: 'Track fees, expenses, and cash flow',
+      body: 'See payments, balances, and spending in one place so finance decisions are based on today&apos;s numbers, not old spreadsheets.',
     },
     {
       icon: BarChart3,
-      title: 'Academic tracking',
-      body: 'See performance patterns across classes and terms so you intervene while students can still recover — not after results are final.',
+      title: 'Monitor student and class performance',
+      body: 'Compare class trends, spot weak subjects early, and intervene before final results are locked in.',
     },
     {
       icon: Shield,
-      title: 'Staff accountability',
-      body: 'Clear ownership for attendance, marking, and approvals. Less ambiguity, fewer “I thought someone else did it” moments.',
+      title: 'Know who did what and when',
+      body: 'Track attendance, approvals, and key actions with clear role ownership across your team.',
     },
     {
       icon: LayoutDashboard,
-      title: 'Real-time dashboards',
-      body: 'Executive-ready snapshots for heads and deputies: what needs attention this week, not what happened last term on paper.',
+      title: "See your school's status instantly",
+      body: 'Get weekly leadership visibility on finance, academics, and operations so you can act before issues grow.',
     },
   ]
   return (
@@ -639,20 +717,30 @@ function DashboardShowcase() {
           financial health, budgets, and academic control in one system.
         </p>
         <div className="mt-14 grid gap-12 lg:grid-cols-2">
-          <DashboardPreview
-            className={previewTone}
-            title="Bursar: financial health & forecasting"
-            description="Revenue, outstanding fees, expenses, collection rate, and projected end-of-term position — so you intervene before cash turns critical."
-            imageSrc="/Finance.png"
-            imageAlt="Educore bursar dashboard showing financial health KPIs and projected end-of-term balance"
-          />
-          <DashboardPreview
-            className={previewTone}
-            title="Headmaster: academic control center"
-            description="Attendance trends, scheme-book pipeline, and approvals waiting on HODs or executives — leadership sees what needs action this week."
-            imageSrc="/Academia.png"
-            imageAlt="Educore headmaster dashboard with attendance trend chart and scheme book approval status"
-          />
+          <div className="space-y-3">
+            <p className="text-sm font-semibold text-slate-700">
+              What your bursar sees daily
+            </p>
+            <DashboardPreview
+              className={previewTone}
+              title="Bursar: financial health & forecasting"
+              description="See who hasn&apos;t paid, track cash flow, and act before problems grow."
+              imageSrc="/Finance.png"
+              imageAlt="Educore bursar dashboard showing financial health KPIs and projected end-of-term balance"
+            />
+          </div>
+          <div className="space-y-3">
+            <p className="text-sm font-semibold text-slate-700">
+              What your headmaster monitors weekly
+            </p>
+            <DashboardPreview
+              className={previewTone}
+              title="Headmaster: academic control center"
+              description="Track attendance patterns, monitor class outcomes, and follow up on pending approvals before they delay progress."
+              imageSrc="/Academia.png"
+              imageAlt="Educore headmaster dashboard with attendance trend chart and scheme book approval status"
+            />
+          </div>
         </div>
         <div className="mt-12 max-w-4xl">
           <DashboardPreview
@@ -811,9 +899,8 @@ function PricingSection() {
                 Pricing
               </h2>
               <p className="mt-2 max-w-xl text-slate-600 dark:text-slate-300">
-                We tailor plans to school size, modules, and support needs. No
-                generic price list — talk to us and we will map something that
-                fits your budget and rollout.
+                Simple pricing designed for schools. Affordable plans based on
+                your school size, modules, and support needs.
               </p>
             </div>
             <Button size="lg" asChild>
@@ -843,7 +930,7 @@ function CTASection() {
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_75%_55%_at_50%_100%,rgba(255,255,255,0.1),transparent)]" />
       <div className="relative mx-auto max-w-6xl px-4 text-center sm:px-6 lg:px-8">
         <h2 className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
-          Start running your school with data
+          Stop running your school blindly. Take control with Educore.
         </h2>
         <p className="mx-auto mt-4 max-w-2xl text-lg text-slate-300">
           Book a walkthrough with our team, or sign in if your school is already
@@ -934,6 +1021,7 @@ export default function LandingPage() {
       <LandingNavbar />
       <main>
         <HeroSection />
+        <WhatEducoreDoesSection />
         <ProblemSection />
         <SolutionSection />
         <DashboardShowcase />

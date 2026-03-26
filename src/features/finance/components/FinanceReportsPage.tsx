@@ -302,7 +302,7 @@ export function FinanceReportsPage() {
         <div>
           <div>{r.description}</div>
           {r.notes && expExpanded.has(r._key) ? (
-            <p className="mt-1 text-xs text-muted-foreground pl-0 border-l-2 border-border pl-2">{r.notes}</p>
+            <p className="mt-1 border-l-2 border-border pl-2 text-xs text-muted-foreground">{r.notes}</p>
           ) : null}
         </div>
       ),
@@ -402,7 +402,7 @@ export function FinanceReportsPage() {
               </span>
             </div>
             <p className="text-xs text-muted-foreground pt-1 border-t border-border">
-              Paid: {formatCurrency(expenseByStatus.data?.paid ?? 0)} · Approved (pending payment):{' '}
+              Financial totals use paid expenses only. Approved (pending payment):{' '}
               {formatCurrency(expenseByStatus.data?.approved ?? 0)} · Pending approval:{' '}
               {formatCurrency(expenseByStatus.data?.pending ?? 0)}
             </p>
@@ -440,7 +440,7 @@ export function FinanceReportsPage() {
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
             {expenseGroups.length === 0 ? (
-              <p className="text-xs text-muted-foreground">No expenses recorded yet.</p>
+              <p className="text-xs text-muted-foreground">No paid expenses recorded yet.</p>
             ) : (
               expenseGroups.map((group) => {
                 const pct = totalExpenses > 0 ? (group.total / totalExpenses) * 100 : 0
@@ -462,7 +462,7 @@ export function FinanceReportsPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Expense Transactions</CardTitle>
-          <p className="text-sm text-muted-foreground">All recorded expenses for selected period</p>
+          <p className="text-sm text-muted-foreground">Paid expenses only for the selected period</p>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap gap-3">
@@ -491,8 +491,6 @@ export function FinanceReportsPage() {
               <SelectTrigger className="w-[140px]"><SelectValue placeholder="Status" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All statuses</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="approved">Approved</SelectItem>
                 <SelectItem value="paid">Paid</SelectItem>
               </SelectContent>
             </Select>
@@ -502,7 +500,7 @@ export function FinanceReportsPage() {
             {Math.min(expPage * expPageSize, filteredExpenseRows.length)} of {filteredExpenseRows.length} expenses
           </p>
           {filteredExpenseRows.length === 0 && !expenseLinesQuery.isLoading ? (
-            <p className="text-sm text-muted-foreground py-8 text-center">No expenses recorded for the selected filters</p>
+            <p className="text-sm text-muted-foreground py-8 text-center">No paid expenses recorded for the selected filters</p>
           ) : (
             <DataTable
               columns={expColumns}

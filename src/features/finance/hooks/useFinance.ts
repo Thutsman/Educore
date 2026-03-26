@@ -10,6 +10,9 @@ import {
   createExpense,
   updateExpense,
   deleteExpense,
+  approveExpense,
+  rejectExpense,
+  markExpenseAsPaid,
   getStudentsForInvoice,
   getBudgets,
   createBudget,
@@ -24,6 +27,7 @@ import {
 } from '../services/finance'
 import type { PaymentFormData, ExpenseFormData, InvoiceFormData, BudgetFormData, Budget } from '../types'
 import { useSchool } from '@/context/SchoolContext'
+import { useAuth } from '@/hooks/useAuth'
 import {
   getTotalInvoicedAmount,
   getTotalPaymentsReceived,
@@ -42,7 +46,7 @@ const KEY = {
   invoices: (schoolId: string, f?: object) => ['finance', 'invoices', schoolId, f] as const,
   invoice:  (id: string) => ['finance', 'invoice', id] as const,
   payments: (invoiceId: string) => ['finance', 'payments', invoiceId] as const,
-  expenses: (schoolId: string, f?: object) => ['finance', 'expenses', schoolId, f] as const,
+  expenses: (schoolId: string, f?: object) => ['expenses', schoolId, f] as const,
   students: (schoolId: string) => ['finance', 'students', schoolId] as const,
   budgets:  (schoolId: string, f?: object) => ['finance', 'budgets', schoolId, f] as const,
   reportExpenseLines: (schoolId: string, f?: object) => ['finance', 'report-expense-lines', schoolId, f] as const,
@@ -143,6 +147,9 @@ export function useCreateExpense() {
   return useMutation({
     mutationFn: (d: ExpenseFormData) => createExpense(schoolId, d),
     onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['expenses'] })
+      qc.invalidateQueries({ queryKey: ['finance-summary'] })
+      qc.invalidateQueries({ queryKey: ['monthly-financials'] })
       qc.invalidateQueries({ queryKey: ['finance'] })
       qc.invalidateQueries({ queryKey: ['dashboard'] })
     },
@@ -153,7 +160,13 @@ export function useUpdateExpense() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<ExpenseFormData> }) => updateExpense(id, data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['finance', 'expenses'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['expenses'] })
+      qc.invalidateQueries({ queryKey: ['finance-summary'] })
+      qc.invalidateQueries({ queryKey: ['monthly-financials'] })
+      qc.invalidateQueries({ queryKey: ['finance'] })
+      qc.invalidateQueries({ queryKey: ['dashboard'] })
+    },
   })
 }
 
@@ -161,7 +174,63 @@ export function useDeleteExpense() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: deleteExpense,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['finance', 'expenses'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['expenses'] })
+      qc.invalidateQueries({ queryKey: ['finance-summary'] })
+      qc.invalidateQueries({ queryKey: ['monthly-financials'] })
+      qc.invalidateQueries({ queryKey: ['finance'] })
+      qc.invalidateQueries({ queryKey: ['dashboard'] })
+    },
+  })
+}
+
+export function useApproveExpense() {
+  const qc = useQueryClient()
+  const { profile } = useAuth()
+  return useMutation({
+    mutationFn: (expenseId: string) => {
+      if (!profile?.id) return Promise.resolve(false)
+      return approveExpense(expenseId, profile.id)
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['expenses'] })
+      qc.invalidateQueries({ queryKey: ['finance-summary'] })
+      qc.invalidateQueries({ queryKey: ['monthly-financials'] })
+      qc.invalidateQueries({ queryKey: ['finance'] })
+      qc.invalidateQueries({ queryKey: ['dashboard'] })
+    },
+  })
+}
+
+export function useRejectExpense() {
+  const qc = useQueryClient()
+  const { profile } = useAuth()
+  return useMutation({
+    mutationFn: ({ expenseId, reason }: { expenseId: string; reason: string }) => {
+      if (!profile?.id) return Promise.resolve(false)
+      return rejectExpense(expenseId, profile.id, reason)
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['expenses'] })
+      qc.invalidateQueries({ queryKey: ['finance-summary'] })
+      qc.invalidateQueries({ queryKey: ['monthly-financials'] })
+      qc.invalidateQueries({ queryKey: ['finance'] })
+      qc.invalidateQueries({ queryKey: ['dashboard'] })
+    },
+  })
+}
+
+export function useMarkExpenseAsPaid() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: markExpenseAsPaid,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['expenses'] })
+      qc.invalidateQueries({ queryKey: ['finance-summary'] })
+      qc.invalidateQueries({ queryKey: ['monthly-financials'] })
+      qc.invalidateQueries({ queryKey: ['finance'] })
+      qc.invalidateQueries({ queryKey: ['dashboard'] })
+    },
   })
 }
 
@@ -225,7 +294,7 @@ export function useFinanceSummary(filters?: FinanceSummaryFilters) {
   })
 
   const invoices = invoicesQuery.data ?? []
-  const expenses = expensesQuery.data ?? []
+  const expenses = (expensesQuery.data ?? []).filter((expense) => expense.status === 'paid')
 
   const totalInvoiced = getTotalInvoicedAmount(invoices)
   const totalPaid = getTotalPaymentsReceived(invoices)

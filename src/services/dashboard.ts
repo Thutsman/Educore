@@ -474,7 +474,7 @@ export async function getTeacherPerformance(schoolId: string): Promise<TeacherPe
 // ════════════════════════════════════════════════════════════════════════════
 
 /**
- * Earliest payment or expense date for the school (non-rejected expenses only).
+ * Earliest payment or paid expense date for the school.
  */
 export async function getBursarChartStartDate(schoolId: string): Promise<string | null> {
   const [payRes, expRes] = await Promise.all([
@@ -489,7 +489,7 @@ export async function getBursarChartStartDate(schoolId: string): Promise<string 
       .from('expenses')
       .select('expense_date')
       .eq('school_id', schoolId)
-      .neq('status', 'rejected')
+      .eq('status', 'paid')
       .order('expense_date', { ascending: true })
       .limit(1)
       .maybeSingle(),
@@ -544,7 +544,7 @@ export async function getMonthlyFinancials(schoolId: string): Promise<MonthlyFin
       .from('expenses')
       .select('expense_date, amount')
       .eq('school_id', schoolId)
-      .neq('status', 'rejected')
+      .eq('status', 'paid')
       .gte('expense_date', since),
   ])
 
@@ -681,7 +681,7 @@ export async function getBursarStats(schoolId: string) {
       .from('expenses')
       .select('amount')
       .eq('school_id', schoolId)
-      .neq('status', 'rejected')
+      .eq('status', 'paid')
       .gte('expense_date', yearStart),
   ])
 
