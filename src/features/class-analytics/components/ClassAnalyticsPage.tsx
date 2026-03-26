@@ -4,8 +4,8 @@ import { useAuth } from '@/hooks/useAuth'
 import {
   useHomeroomClass,
   useClassAttendanceTrend,
+  useClassRecentAssessmentAverages,
 } from '@/features/dashboard/hooks/useTeacherDashboard'
-import { useClassAssessmentAverages } from '@/features/assessments/hooks/useAssessments'
 import { AppAreaChart } from '@/components/charts/AppAreaChart'
 import { AppBarChart } from '@/components/charts/AppBarChart'
 
@@ -14,16 +14,20 @@ export function ClassAnalyticsPage() {
   const { data: teacher } = useTeacherRecord(user?.id)
   const { data: homeroom } = useHomeroomClass(teacher?.id)
   const { data: attTrend = [] } = useClassAttendanceTrend(homeroom?.id, 30)
-  const { data: assessmentAverages = [] } = useClassAssessmentAverages(homeroom?.id ?? null)
+  const { data: assessmentAverages = [] } = useClassRecentAssessmentAverages(homeroom?.id)
+  const assessmentChartData = assessmentAverages.map((a) => {
+    const typeLabel = a.assessment_type.charAt(0).toUpperCase() + a.assessment_type.slice(1)
+    const shortName = a.name.length > 10 ? `${a.name.slice(0, 10)}…` : a.name
+    return {
+      name: `${shortName} (${typeLabel})`,
+      average: Math.round(a.average * 10) / 10,
+    }
+  })
+
 
   const attendanceChartData = attTrend.map((p) => ({
     date: p.date,
     rate: p.rate,
-  }))
-
-  const assessmentChartData = assessmentAverages.slice(0, 10).map((a) => ({
-    name: a.title.length > 10 ? a.title.slice(0, 10) + '…' : a.title,
-    average: Math.round(a.average * 10) / 10,
   }))
 
   if (!teacher) {
@@ -73,12 +77,12 @@ export function ClassAnalyticsPage() {
         </div>
 
         <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
-          <h3 className="mb-3 text-sm font-semibold">Assessment averages</h3>
+          <h3 className="mb-3 text-sm font-semibold">Assessment averages (last 10)</h3>
           {assessmentChartData.length > 0 ? (
             <AppBarChart
               data={assessmentChartData}
               xKey="name"
-              series={[{ key: 'average', label: 'Average' }]}
+              series={[{ key: 'average', label: 'Average %' }]}
               height={220}
               colorByBar
             />

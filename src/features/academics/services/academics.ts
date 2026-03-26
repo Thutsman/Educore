@@ -203,27 +203,40 @@ export async function getTerms(academicYearId?: string): Promise<Term[]> {
 
 // ─── Exams ───────────────────────────────────────────────────────────────────
 
-export async function getExams(schoolId: string, filters?: { classId?: string; subjectId?: string; termId?: string }): Promise<Exam[]> {
+export async function getExams(
+  schoolId: string,
+  filters?: { classId?: string; subjectId?: string; termId?: string; assessmentType?: Exam['assessment_type'] },
+): Promise<Exam[]> {
   let q = supabase
     .from('exams')
-    .select('id, name, subject_id, class_id, term_id, exam_date, total_marks, subject:subjects(name), class:classes(name), term:terms(name)')
+    .select('id, name, assessment_type, weighting_percent, exam_type, weight, subject_id, class_id, term_id, exam_date, total_marks, subject:subjects(name), class:classes(name), term:terms(name)')
     .eq('school_id', schoolId)
     .order('exam_date', { ascending: false })
 
   if (filters?.classId) q = q.eq('class_id', filters.classId)
   if (filters?.subjectId) q = q.eq('subject_id', filters.subjectId)
   if (filters?.termId) q = q.eq('term_id', filters.termId)
+  if (filters?.assessmentType) q = q.eq('assessment_type', filters.assessmentType)
 
   const { data, error } = await q
   if (error || !data) return []
 
   type Raw = {
     id: string; name: string; subject_id: string; class_id: string; term_id: string | null
+    assessment_type: Exam['assessment_type'] | null
+    weighting_percent: number | null
+    exam_type: string | null
+    weight: number | null
     exam_date: string | null; total_marks: number
     subject: { name: string } | null; class: { name: string } | null; term: { name: string } | null
   }
   return (data as unknown as Raw[]).map(r => ({
     id: r.id, name: r.name,
+    assessment_type: r.assessment_type
+      ?? ((r.exam_type === 'practical' || r.exam_type === 'quiz' || r.exam_type === 'test')
+        ? r.exam_type
+        : 'exam'),
+    weighting_percent: r.weighting_percent ?? r.weight ?? 100,
     subject_id: r.subject_id, subject_name: r.subject?.name ?? '—',
     class_id: r.class_id, class_name: r.class?.name ?? '—',
     term_id: r.term_id, term_name: r.term?.name ?? null,
@@ -232,17 +245,20 @@ export async function getExams(schoolId: string, filters?: { classId?: string; s
   }))
 }
 
-export async function createExam(schoolId: string, d: { name: string; subject_id: string; class_id: string; term_id?: string; exam_date?: string; total_marks: number; description?: string }): Promise<boolean> {
-  const nameLower = d.name.trim().toLowerCase()
-  const examType =
-    nameLower.includes('mid') ? 'mid_term'
-      : nameLower.includes('end') ? 'end_of_term'
-        : nameLower.includes('mock') ? 'mock'
-          : nameLower.includes('practical') ? 'practical'
-            : nameLower.includes('assignment') ? 'assignment'
-              : nameLower.includes('quiz') ? 'quiz'
-                : 'test'
-
+export async function createExam(
+  schoolId: string,
+  d: {
+    name: string
+    assessment_type: Exam['assessment_type']
+    weighting_percent: number
+    subject_id: string
+    class_id: string
+    term_id?: string
+    exam_date?: string
+    total_marks: number
+    description?: string
+  },
+): Promise<boolean> {
   const { data: userData } = await supabase.auth.getUser()
   const createdBy = userData.user?.id
   if (!createdBy) return false
@@ -297,7 +313,10 @@ export async function createExam(schoolId: string, d: { name: string; subject_id
 
   const payload = {
     name: d.name,
-    exam_type: examType,
+    assessment_type: d.assessment_type,
+    weighting_percent: d.weighting_percent,
+    exam_type: d.assessment_type === 'exam' ? 'mid_term' : d.assessment_type,
+    weight: d.weighting_percent,
     subject_id: d.subject_id,
     class_id: d.class_id,
     term_id: termId,
@@ -312,9 +331,24 @@ export async function createExam(schoolId: string, d: { name: string; subject_id
   return !error
 }
 
-export async function updateExam(id: string, d: Partial<{ name: string; subject_id: string; class_id: string; term_id: string; exam_date: string; total_marks: number; description: string }>): Promise<boolean> {
+export async function updateExam(
+  id: string,
+  d: Partial<{
+    name: string
+    assessment_type: Exam['assessment_type']
+    weighting_percent: number
+    subject_id: string
+    class_id: string
+    term_id: string
+    exam_date: string
+    total_marks: number
+    description: string
+  }>,
+): Promise<boolean> {
   const patch = {
     ...(d.name !== undefined && { name: d.name }),
+    ...(d.assessment_type !== undefined && { assessment_type: d.assessment_type, exam_type: d.assessment_type === 'exam' ? 'mid_term' : d.assessment_type }),
+    ...(d.weighting_percent !== undefined && { weighting_percent: d.weighting_percent, weight: d.weighting_percent }),
     ...(d.subject_id !== undefined && { subject_id: d.subject_id }),
     ...(d.class_id !== undefined && { class_id: d.class_id }),
     ...(d.term_id !== undefined && { term_id: d.term_id }),
@@ -362,10 +396,22 @@ export async function getExamGrades(examId: string): Promise<Grade[]> {
   })
 }
 
-export async function upsertGrade(examId: string, studentId: string, marksObtained: number | null, remarks?: string): Promise<boolean> {
+export async function upsertGrade(
+  schoolId: string,
+  examId: string,
+  studentId: string,
+  marksObtained: number | null,
+  remarks?: string,
+): Promise<boolean> {
   const { error } = await db.from('grades').upsert(
-    { exam_id: examId, student_id: studentId, marks_obtained: marksObtained, remarks: remarks || null },
-    { onConflict: 'exam_id,student_id' }
+    {
+      school_id: schoolId,
+      exam_id: examId,
+      student_id: studentId,
+      marks_obtained: marksObtained,
+      remarks: remarks || null,
+    },
+    { onConflict: 'student_id,exam_id' }
   )
   return !error
 }

@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import {
   CheckCircle2, ChevronDown, ArrowRight,
-  BookOpen, ClipboardList, FolderOpen,
+  BookOpen, FolderOpen,
   BookMarked, CalendarDays, FileQuestion, GraduationCap,
   Sun, AlertTriangle,
 } from 'lucide-react'
@@ -279,7 +279,7 @@ export function SubjectTeacherHelp() {
     { icon: BookMarked,   title: 'Scheme Book',    description: 'Term-level curriculum plan per subject and class.',                  color: 'bg-blue-500/10 text-blue-600',     to: '/scheme-book' },
     { icon: CalendarDays, title: 'Lesson Plans',   description: 'Detailed lesson-by-lesson plans with topics and outcomes.',          color: 'bg-violet-500/10 text-violet-600', to: '/lesson-plans' },
     { icon: FileQuestion, title: 'Assignments',    description: 'Set and track student assignments and deadlines.',                   color: 'bg-emerald-500/10 text-emerald-600', to: '/assignments' },
-    { icon: ClipboardList,title: 'Assessments',    description: 'Manage tests, quizzes, and project assessments.',                   color: 'bg-orange-500/10 text-orange-600', to: '/assessments' },
+    { icon: BookOpen,     title: 'Assessments',    description: 'Create assessments in Academics (Exams tab) and enter marks in Grade Entry.', color: 'bg-orange-500/10 text-orange-600', to: '/academics' },
     { icon: BookOpen,     title: 'Academics',      description: 'Exams and grade entry for your assigned classes and subjects.',      color: 'bg-amber-500/10 text-amber-600',   to: '/academics' },
     { icon: FolderOpen,   title: 'Resources',      description: 'Upload and organise teaching materials and student resources.',      color: 'bg-rose-500/10 text-rose-600',     to: '/resources' },
   ]

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Play, Pencil } from 'lucide-react'
+import { Play, Pencil, BarChart3, FileDown, Files } from 'lucide-react'
 import { PageHeader } from '@/components/common/PageHeader'
 import { DataTable, type Column } from '@/components/common/DataTable'
 import { Button } from '@/components/ui/button'
@@ -11,16 +11,25 @@ import {
 } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
 import { useTerms, useClasses } from '@/features/academics/hooks/useAcademics'
-import { useTermReports, useUpdateTermReportComment, useGenerateTermReports } from '../hooks/useReports'
+import {
+  useTermReports,
+  useUpdateTermReportComment,
+  useGenerateTermReports,
+  useTermReportSubjectBreakdown,
+} from '../hooks/useReports'
+import { getTermReportSubjectBreakdown } from '../services/reports'
 import type { TermReport } from '../types'
+import { useSchool } from '@/context/SchoolContext'
 
 export function TermReportsPage() {
   const [termFilter, setTermFilter] = useState<string>('all')
   const [classFilter, setClassFilter] = useState<string>('all')
   const [generateTermId, setGenerateTermId] = useState<string | null>(null)
-  const [generateClassId, setGenerateClassId] = useState<string>('')
+  const [generateClassId, setGenerateClassId] = useState<string>('all')
   const [editingReport, setEditingReport] = useState<TermReport | null>(null)
+  const [breakdownReport, setBreakdownReport] = useState<TermReport | null>(null)
   const [editComment, setEditComment] = useState('')
+  const { currentSchool } = useSchool()
 
   const filters = {
     termId: termFilter !== 'all' ? termFilter : undefined,
@@ -29,14 +38,126 @@ export function TermReportsPage() {
   const { data: reports = [], isLoading } = useTermReports(filters)
   const updateComment = useUpdateTermReportComment()
   const generate = useGenerateTermReports()
+  const { data: subjectBreakdown = [], isLoading: breakdownLoading } = useTermReportSubjectBreakdown(
+    breakdownReport?.student_id ?? null,
+    breakdownReport?.term_id ?? null,
+  )
 
   const { data: terms = [] } = useTerms()
   const { data: classes = [] } = useClasses()
 
+  const exportReportPdf = async (report: TermReport) => {
+    const breakdown = await getTermReportSubjectBreakdown(report.student_id, report.term_id)
+    const rows = breakdown.map((s) =>
+      `<tr><td style="padding:6px;border:1px solid #ddd">${s.subject_name}</td><td style="padding:6px;border:1px solid #ddd;text-align:right">${s.average_percentage}%</td><td style="padding:6px;border:1px solid #ddd;text-align:right">${s.assessments_count}</td></tr>`
+    ).join('')
+    const attendance = report.attendance_days_present != null && report.attendance_days_total != null
+      ? `${report.attendance_days_present}/${report.attendance_days_total}${report.attendance_percentage != null ? ` (${report.attendance_percentage}%)` : ''}`
+      : '—'
+
+    const win = window.open('', '_blank', 'width=900,height=700')
+    if (!win) return
+    win.document.write(`
+      <html>
+        <head><title>Term Report - ${report.student_name}</title></head>
+        <body style="font-family: Arial, sans-serif; padding: 24px; color: #111;">
+          <h2 style="margin:0 0 6px 0;">${currentSchool?.name ?? 'School'} - Term Report</h2>
+          <p style="margin:0 0 14px 0;">Student: <strong>${report.student_name}</strong> (${report.admission_no})</p>
+          <p style="margin:0 0 14px 0;">Class: ${report.class_name} | Term: ${report.term_name}</p>
+          <table style="border-collapse:collapse; width:100%; margin-bottom:16px;">
+            <tr><td style="padding:6px;border:1px solid #ddd;">Average</td><td style="padding:6px;border:1px solid #ddd;">${report.average_mark != null ? report.average_mark.toFixed(1) : '—'}</td></tr>
+            <tr><td style="padding:6px;border:1px solid #ddd;">Attendance</td><td style="padding:6px;border:1px solid #ddd;">${attendance}</td></tr>
+            <tr><td style="padding:6px;border:1px solid #ddd;">Homework</td><td style="padding:6px;border:1px solid #ddd;">${report.homework_completion_rate != null ? `${report.homework_completion_rate}%` : '—'}</td></tr>
+          </table>
+          <h3 style="margin:0 0 8px 0;">Subject Breakdown</h3>
+          <table style="border-collapse:collapse; width:100%;">
+            <thead>
+              <tr>
+                <th style="padding:6px;border:1px solid #ddd;text-align:left;">Subject</th>
+                <th style="padding:6px;border:1px solid #ddd;text-align:right;">Average %</th>
+                <th style="padding:6px;border:1px solid #ddd;text-align:right;">Assessments</th>
+              </tr>
+            </thead>
+            <tbody>${rows || '<tr><td colspan="3" style="padding:6px;border:1px solid #ddd;">No subject marks found for this term.</td></tr>'}</tbody>
+          </table>
+          <p style="margin-top:16px;">Comment: ${report.teacher_comment ?? '—'}</p>
+        </body>
+      </html>
+    `)
+    win.document.close()
+    win.focus()
+    win.print()
+  }
+
+  const exportAllReportsPdf = async () => {
+    if (!reports.length) return
+
+    const breakdownEntries = await Promise.all(
+      reports.map(async (r) => {
+        const b = await getTermReportSubjectBreakdown(r.student_id, r.term_id)
+        return [r.id, b] as const
+      })
+    )
+    const breakdownMap = new Map(breakdownEntries)
+
+    const sections = reports.map((report) => {
+      const breakdown = breakdownMap.get(report.id) ?? []
+      const rows = breakdown.map((s) =>
+        `<tr><td style="padding:6px;border:1px solid #ddd">${s.subject_name}</td><td style="padding:6px;border:1px solid #ddd;text-align:right">${s.average_percentage}%</td><td style="padding:6px;border:1px solid #ddd;text-align:right">${s.assessments_count}</td></tr>`
+      ).join('')
+      const attendance = report.attendance_days_present != null && report.attendance_days_total != null
+        ? `${report.attendance_days_present}/${report.attendance_days_total}${report.attendance_percentage != null ? ` (${report.attendance_percentage}%)` : ''}`
+        : '—'
+
+      return `
+        <section style="page-break-after: always; margin-bottom: 24px;">
+          <h2 style="margin:0 0 6px 0;">${currentSchool?.name ?? 'School'} - Term Report</h2>
+          <p style="margin:0 0 14px 0;">Student: <strong>${report.student_name}</strong> (${report.admission_no})</p>
+          <p style="margin:0 0 14px 0;">Class: ${report.class_name} | Term: ${report.term_name}</p>
+          <table style="border-collapse:collapse; width:100%; margin-bottom:16px;">
+            <tr><td style="padding:6px;border:1px solid #ddd;">Average</td><td style="padding:6px;border:1px solid #ddd;">${report.average_mark != null ? report.average_mark.toFixed(1) : '—'}</td></tr>
+            <tr><td style="padding:6px;border:1px solid #ddd;">Attendance</td><td style="padding:6px;border:1px solid #ddd;">${attendance}</td></tr>
+            <tr><td style="padding:6px;border:1px solid #ddd;">Homework</td><td style="padding:6px;border:1px solid #ddd;">${report.homework_completion_rate != null ? `${report.homework_completion_rate}%` : '—'}</td></tr>
+          </table>
+          <h3 style="margin:0 0 8px 0;">Subject Breakdown</h3>
+          <table style="border-collapse:collapse; width:100%;">
+            <thead>
+              <tr>
+                <th style="padding:6px;border:1px solid #ddd;text-align:left;">Subject</th>
+                <th style="padding:6px;border:1px solid #ddd;text-align:right;">Average %</th>
+                <th style="padding:6px;border:1px solid #ddd;text-align:right;">Assessments</th>
+              </tr>
+            </thead>
+            <tbody>${rows || '<tr><td colspan="3" style="padding:6px;border:1px solid #ddd;">No subject marks found for this term.</td></tr>'}</tbody>
+          </table>
+          <p style="margin-top:16px;">Comment: ${report.teacher_comment ?? '—'}</p>
+        </section>
+      `
+    }).join('')
+
+    const win = window.open('', '_blank', 'width=1000,height=800')
+    if (!win) return
+    win.document.write(`
+      <html>
+        <head><title>Term Reports - ${currentSchool?.name ?? 'School'}</title></head>
+        <body style="font-family: Arial, sans-serif; padding: 24px; color: #111;">
+          ${sections}
+        </body>
+      </html>
+    `)
+    win.document.close()
+    win.focus()
+    win.print()
+  }
+
   const handleGenerate = async () => {
     if (!generateTermId) return
-    await generate.mutateAsync({ termId: generateTermId, classId: generateClassId || undefined })
+    await generate.mutateAsync({
+      termId: generateTermId,
+      classId: generateClassId !== 'all' ? generateClassId : undefined,
+    })
     setGenerateTermId(null)
+    setGenerateClassId('all')
   }
 
   const handleSaveComment = async () => {
@@ -52,7 +173,16 @@ export function TermReportsPage() {
     { key: 'class_name', header: 'Class' },
     { key: 'term_name', header: 'Term' },
     { key: 'average_mark', header: 'Average', className: 'tabular-nums', cell: (r) => (r.average_mark != null ? r.average_mark.toFixed(1) : '—') },
-    { key: 'attendance_percentage', header: 'Attendance %', className: 'tabular-nums', cell: (r) => (r.attendance_percentage != null ? `${r.attendance_percentage}%` : '—') },
+    {
+      key: 'attendance_percentage',
+      header: 'Attendance',
+      className: 'tabular-nums',
+      cell: (r) => {
+        if (r.attendance_days_present == null || r.attendance_days_total == null) return '—'
+        const pct = r.attendance_percentage != null ? ` (${r.attendance_percentage}%)` : ''
+        return `${r.attendance_days_present}/${r.attendance_days_total}${pct}`
+      },
+    },
     { key: 'homework_completion_rate', header: 'Homework %', className: 'tabular-nums', cell: (r) => (r.homework_completion_rate != null ? `${r.homework_completion_rate}%` : '—') },
     {
       key: 'teacher_comment',
@@ -66,15 +196,23 @@ export function TermReportsPage() {
       header: '',
       className: 'text-right',
       cell: (r) => (
-        <Button
-          size="icon"
-          variant="ghost"
-          className="h-7 w-7"
-          onClick={() => { setEditingReport(r); setEditComment(r.teacher_comment ?? '') }}
-          title="Edit comment"
-        >
-          <Pencil className="h-3.5 w-3.5" />
-        </Button>
+        <div className="flex justify-end gap-1">
+          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setBreakdownReport(r)} title="View subject breakdown">
+            <BarChart3 className="h-3.5 w-3.5" />
+          </Button>
+          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => void exportReportPdf(r)} title="Export PDF">
+            <FileDown className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-7 w-7"
+            onClick={() => { setEditingReport(r); setEditComment(r.teacher_comment ?? '') }}
+            title="Edit comment"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </Button>
+        </div>
       ),
     },
   ]
@@ -85,9 +223,14 @@ export function TermReportsPage() {
         title="Term Reports"
         subtitle="1. Choose term and class · 2. Generate reports · 3. Edit teacher comments"
         actions={
-          <Button onClick={() => setGenerateTermId(terms[0]?.id ?? '')}>
-            <Play className="mr-2 h-4 w-4" /> Generate term reports
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={() => void exportAllReportsPdf()} disabled={!reports.length}>
+              <Files className="mr-2 h-4 w-4" /> Export all PDFs
+            </Button>
+            <Button onClick={() => setGenerateTermId(terms[0]?.id ?? '')}>
+              <Play className="mr-2 h-4 w-4" /> Generate term reports
+            </Button>
+          </div>
         }
       />
 
@@ -120,7 +263,13 @@ export function TermReportsPage() {
         }
       />
 
-      <Dialog open={!!generateTermId} onOpenChange={() => setGenerateTermId(null)}>
+      <Dialog
+        open={!!generateTermId}
+        onOpenChange={() => {
+          setGenerateTermId(null)
+          setGenerateClassId('all')
+        }}
+      >
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>Generate term reports</DialogTitle>
@@ -130,7 +279,7 @@ export function TermReportsPage() {
           </p>
           <div className="space-y-2">
             <label className="text-sm font-medium">Term</label>
-            <Select value={generateTermId ?? ''} onValueChange={setGenerateTermId}>
+            <Select value={generateTermId ?? undefined} onValueChange={setGenerateTermId}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {terms.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
@@ -142,7 +291,7 @@ export function TermReportsPage() {
             <Select value={generateClassId} onValueChange={setGenerateClassId}>
               <SelectTrigger><SelectValue placeholder="All classes" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All classes</SelectItem>
+                <SelectItem value="all">All classes</SelectItem>
                 {classes.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
               </SelectContent>
             </Select>
@@ -177,6 +326,40 @@ export function TermReportsPage() {
                 </Button>
               </DialogFooter>
             </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!breakdownReport} onOpenChange={() => setBreakdownReport(null)}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Subject Breakdown - {breakdownReport?.student_name}</DialogTitle>
+          </DialogHeader>
+          {breakdownLoading ? (
+            <p className="text-sm text-muted-foreground">Loading subject performance...</p>
+          ) : subjectBreakdown.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No subject marks found for this term.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
+                    <th className="py-2">Subject</th>
+                    <th className="py-2 text-right">Average %</th>
+                    <th className="py-2 text-right">Assessments</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {subjectBreakdown.map((s) => (
+                    <tr key={s.subject_id} className="border-b border-border last:border-0">
+                      <td className="py-2">{s.subject_name}</td>
+                      <td className="py-2 text-right tabular-nums">{s.average_percentage}%</td>
+                      <td className="py-2 text-right tabular-nums">{s.assessments_count}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </DialogContent>
       </Dialog>

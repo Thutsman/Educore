@@ -25,8 +25,17 @@ import {
 } from '../hooks/useAcademics'
 import type { Exam } from '../types'
 
+const ASSESSMENT_TYPE_OPTIONS: Array<{ value: Exam['assessment_type']; label: string }> = [
+  { value: 'exam', label: 'Exam' },
+  { value: 'test', label: 'Test' },
+  { value: 'quiz', label: 'Quiz' },
+  { value: 'practical', label: 'Practical' },
+]
+
 const schema = z.object({
   name:        z.string().min(1, 'Required'),
+  assessment_type: z.enum(['exam', 'test', 'quiz', 'practical']),
+  weighting_percent: z.coerce.number().min(0, 'Must be >= 0').max(100, 'Must be <= 100'),
   subject_id:  z.string().min(1, 'Required'),
   class_id:    z.string().min(1, 'Required'),
   term_id:     z.string().optional(),
@@ -50,6 +59,8 @@ function ExamFormModal({
     resolver: zodResolver(schema) as Resolver<FormValues>,
     defaultValues: {
       name:        exam?.name ?? '',
+      assessment_type: exam?.assessment_type ?? 'exam',
+      weighting_percent: exam?.weighting_percent ?? 100,
       subject_id:  exam?.subject_id ?? '',
       class_id:    exam?.class_id ?? '',
       term_id:     exam?.term_id ?? '',
@@ -96,6 +107,27 @@ function ExamFormModal({
                 <FormMessage />
               </FormItem>
             )} />
+            <div className="grid grid-cols-2 gap-4">
+              <FormField control={form.control} name="assessment_type" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Type *</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl><SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger></FormControl>
+                    <SelectContent>
+                      {ASSESSMENT_TYPE_OPTIONS.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <FormField control={form.control} name="weighting_percent" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Weighting % *</FormLabel>
+                  <FormControl><Input type="number" min={0} max={100} step="0.01" placeholder="40" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <FormField control={form.control} name="subject_id" render={({ field }) => (
                 <FormItem>
@@ -170,12 +202,14 @@ export function ExamsTab() {
 
   const [classFilter, setClassFilter] = useState<string>('all')
   const [subjectFilter, setSubjectFilter] = useState<string>('all')
+  const [typeFilter, setTypeFilter] = useState<string>('all')
 
   const { data: classes = [] } = useClasses()
   const { data: subjects = [] } = useSubjects()
   const { data: exams = [], isLoading } = useExams({
     classId:   classFilter !== 'all' ? classFilter : undefined,
     subjectId: subjectFilter !== 'all' ? subjectFilter : undefined,
+    assessmentType: typeFilter !== 'all' ? typeFilter as Exam['assessment_type'] : undefined,
   })
   const deleteExam = useDeleteExam()
   const [editTarget, setEditTarget] = useState<Exam | null>(null)
@@ -184,10 +218,12 @@ export function ExamsTab() {
 
   const columns: Column<Exam>[] = [
     { key: 'name', header: 'Exam', sortable: true, cell: r => <span className="font-medium">{r.name}</span> },
+    { key: 'assessment_type', header: 'Type', sortable: true, cell: r => ASSESSMENT_TYPE_OPTIONS.find(t => t.value === r.assessment_type)?.label ?? 'Exam' },
     { key: 'subject_name', header: 'Subject', sortable: true },
     { key: 'class_name', header: 'Class', sortable: true },
     { key: 'term_name', header: 'Term', cell: r => r.term_name || '—' },
     { key: 'exam_date', header: 'Date', cell: r => formatDate(r.exam_date) },
+    { key: 'weighting_percent', header: 'Weighting %', className: 'text-right tabular-nums', cell: r => `${r.weighting_percent}%` },
     { key: 'total_marks', header: 'Total Marks', className: 'text-right tabular-nums' },
     ...(canEdit ? [{
       key: 'actions' as keyof Exam,
@@ -222,6 +258,13 @@ export function ExamsTab() {
             <SelectContent>
               <SelectItem value="all">All Subjects</SelectItem>
               {subjects.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger className="w-40"><SelectValue placeholder="All Types" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              {ASSESSMENT_TYPE_OPTIONS.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>

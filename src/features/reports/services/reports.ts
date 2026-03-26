@@ -4,18 +4,36 @@ import type { TermReport } from '../types'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = supabase as any
 
+export interface TermReportSubjectBreakdown {
+  subject_id: string
+  subject_name: string
+  average_percentage: number
+  assessments_count: number
+}
+
+function countWeekdaysInclusive(startDate: string, endDate: string): number {
+  const start = new Date(`${startDate}T00:00:00`)
+  const end = new Date(`${endDate}T00:00:00`)
+  let count = 0
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    const day = d.getDay()
+    if (day !== 0 && day !== 6) count++
+  }
+  return count
+}
+
 export async function getTermReports(schoolId: string, filters?: { termId?: string; classId?: string }): Promise<TermReport[]> {
+  void schoolId
   let q = supabase
     .from('term_reports')
     .select(`
       id, student_id, class_id, term_id, academic_year_id,
-      average_mark, attendance_percentage, homework_completion_rate,
+      average_mark, attendance_days_present, attendance_days_total, attendance_percentage, homework_completion_rate,
       teacher_comment, rank, generated_at, created_at,
       student:students(full_name, admission_no),
       class:classes(name),
       term:terms(name)
     `)
-    .eq('school_id', schoolId)
     .order('class_id')
     .order('rank', { ascending: true })
 
@@ -47,6 +65,51 @@ export async function updateTermReportComment(id: string, teacher_comment: strin
   return !error
 }
 
+export async function getTermReportSubjectBreakdown(
+  studentId: string,
+  termId: string,
+): Promise<TermReportSubjectBreakdown[]> {
+  const { data, error } = await supabase
+    .from('grades')
+    .select('marks_obtained, exam:exams(term_id, total_marks, subject:subjects(id, name))')
+    .eq('student_id', studentId)
+    .not('marks_obtained', 'is', null)
+
+  if (error || !data) return []
+
+  type Row = {
+    marks_obtained: number | null
+    exam: {
+      term_id: string
+      total_marks: number
+      subject: { id: string; name: string } | null
+    } | null
+  }
+
+  const grouped: Record<string, { subject_name: string; sum: number; count: number }> = {}
+
+  ;(data as unknown as Row[]).forEach((r) => {
+    if (!r.exam || r.exam.term_id !== termId || !r.exam.subject || r.marks_obtained == null) return
+    const total = Number(r.exam.total_marks)
+    if (!total || total <= 0) return
+
+    const key = r.exam.subject.id
+    const pct = (Number(r.marks_obtained) / total) * 100
+    if (!grouped[key]) grouped[key] = { subject_name: r.exam.subject.name, sum: 0, count: 0 }
+    grouped[key].sum += pct
+    grouped[key].count += 1
+  })
+
+  return Object.entries(grouped)
+    .map(([subject_id, v]) => ({
+      subject_id,
+      subject_name: v.subject_name,
+      average_percentage: Math.round((v.sum / v.count) * 10) / 10,
+      assessments_count: v.count,
+    }))
+    .sort((a, b) => b.average_percentage - a.average_percentage)
+}
+
 function performanceLevel(average: number): string {
   if (average >= 80) return 'excellent'
   if (average >= 70) return 'good'
@@ -72,6 +135,7 @@ export async function generateTermReports(schoolId: string, termId: string, clas
   const startDate = (term as { start_date: string }).start_date
   const endDate = (term as { end_date: string }).end_date
   const academicYearId = (term as { academic_year_id: string }).academic_year_id
+  const termSchoolDays = countWeekdaysInclusive(startDate, endDate)
 
   let studentsQ = supabase
     .from('students')
@@ -88,18 +152,14 @@ export async function generateTermReports(schoolId: string, termId: string, clas
     const studentId = student.id
     const cid = student.class_id
 
-    const [attendanceRes, assessmentMarksRes, gradesRes, assignmentsRes] = await Promise.all([
+    const [attendanceRes, gradesRes, assignmentsRes] = await Promise.all([
       supabase
         .from('attendance_records')
-        .select('status')
+        .select('date, status')
         .eq('student_id', studentId)
         .eq('class_id', cid)
         .gte('date', startDate)
         .lte('date', endDate),
-      supabase
-        .from('assessment_marks')
-        .select('marks_obtained, assessment:assessments(date)')
-        .eq('student_id', studentId),
       supabase
         .from('grades')
         .select('marks_obtained, exam:exams(term_id)')
@@ -112,16 +172,17 @@ export async function generateTermReports(schoolId: string, termId: string, clas
         .lte('due_date', endDate),
     ])
 
-    const attendanceRecords = (attendanceRes.data ?? []) as { status: string }[]
-    const totalDays = attendanceRecords.length
-    const presentDays = attendanceRecords.filter((r) => r.status === 'present' || r.status === 'late').length
-    const attendance_percentage = totalDays > 0 ? Math.round((presentDays / totalDays) * 1000) / 10 : null
-
-    const am = (assessmentMarksRes.data ?? []) as { marks_obtained: number | null; assessment: { date: string } | null }[]
-    const assessmentMarksInTerm = am
-      .filter((x) => x.assessment && x.assessment.date >= startDate && x.assessment.date <= endDate)
-      .map((x) => x.marks_obtained)
-      .filter((x): x is number => x != null)
+    const attendanceRecords = (attendanceRes.data ?? []) as { date: string; status: string }[]
+    const attendedDates = new Set(
+      attendanceRecords
+        .filter((r) => r.status === 'present' || r.status === 'late')
+        .map((r) => r.date)
+    )
+    const attendance_days_present = attendedDates.size
+    const attendance_days_total = termSchoolDays
+    const attendance_percentage = attendance_days_total > 0
+      ? Math.round((attendance_days_present / attendance_days_total) * 1000) / 10
+      : null
 
     const gr = (gradesRes.data ?? []) as { marks_obtained: number | null; exam: { term_id: string } | null }[]
     const gradesInTerm = gr
@@ -129,7 +190,7 @@ export async function generateTermReports(schoolId: string, termId: string, clas
       .map((x) => x.marks_obtained)
       .filter((x): x is number => x != null)
 
-    const allMarks = [...assessmentMarksInTerm, ...gradesInTerm]
+    const allMarks = gradesInTerm
     const average_mark = allMarks.length > 0
       ? Math.round((allMarks.reduce((a, b) => a + b, 0) / allMarks.length) * 100) / 100
       : null
@@ -153,12 +214,13 @@ export async function generateTermReports(schoolId: string, termId: string, clas
 
     const { error: upsertErr } = await db.from('term_reports').upsert(
       {
-        school_id: schoolId,
         student_id: studentId,
         class_id: cid,
         term_id: termId,
         academic_year_id: academicYearId,
         average_mark,
+        attendance_days_present,
+        attendance_days_total,
         attendance_percentage,
         homework_completion_rate,
         teacher_comment: comment,

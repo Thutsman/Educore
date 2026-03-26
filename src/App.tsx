@@ -102,9 +102,6 @@ const StudentAssignmentsPage = lazy(() =>
 const ResourcesPage = lazy(() =>
   import('@/features/resources').then(m => ({ default: m.ResourcesPage }))
 )
-const AssessmentsPage = lazy(() =>
-  import('@/features/assessments').then(m => ({ default: m.AssessmentsPage }))
-)
 const ParentMessagesPage = lazy(() =>
   import('@/features/parent-messages').then(m => ({ default: m.ParentMessagesPage }))
 )
@@ -246,7 +243,7 @@ export default function App() {
                 >
                   <Route path="/scheme-book" element={<SchemeBookPage />} />
                   <Route path="/lesson-plans" element={<LessonPlansPage />} />
-                  <Route path="/assessments" element={<AssessmentsPage />} />
+                  <Route path="/assessments" element={<Navigate to="/academics?tab=exams" replace />} />
                   <Route path="/resources" element={<ResourcesPage />} />
                 </Route>
 

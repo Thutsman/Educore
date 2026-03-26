@@ -30,6 +30,8 @@ export interface Subject {
 export interface Exam {
   id: string
   name: string
+  assessment_type: 'exam' | 'test' | 'quiz' | 'practical'
+  weighting_percent: number
   subject_id: string
   subject_name: string
   class_id: string

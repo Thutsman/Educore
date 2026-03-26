@@ -59,6 +59,15 @@ export interface TeacherExamRow {
   class_name: string
 }
 
+export interface ClassAssessmentAverageRow {
+  exam_id: string
+  name: string
+  exam_date: string | null
+  assessment_type: 'exam' | 'test' | 'quiz' | 'practical'
+  average: number
+  count: number
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function n(v: unknown): number {
@@ -263,4 +272,67 @@ export async function getTeacherRecentExams(schoolId: string, classIds: string[]
     subject_name: e.subject?.name ?? '—',
     class_name:   e.class?.name   ?? '—',
   }))
+}
+
+/** Recent class assessments with average scores (%), from exams + grades. */
+export async function getClassRecentAssessmentAverages(
+  schoolId: string,
+  classId: string,
+): Promise<ClassAssessmentAverageRow[]> {
+  const { data: exams, error: examsErr } = await supabase
+    .from('exams')
+    .select('id, name, exam_date, assessment_type, total_marks')
+    .eq('school_id', schoolId)
+    .eq('class_id', classId)
+    .order('exam_date', { ascending: false })
+    .limit(10)
+
+  if (examsErr || !exams?.length) return []
+
+  type RawExam = {
+    id: string
+    name: string
+    exam_date: string | null
+    assessment_type: 'exam' | 'test' | 'quiz' | 'practical' | null
+    total_marks: number
+  }
+  const examRows = exams as unknown as RawExam[]
+
+  const examIds = examRows.map(e => e.id)
+  const marksByExam: Record<string, { sumPct: number; count: number }> = {}
+  examIds.forEach(id => { marksByExam[id] = { sumPct: 0, count: 0 } })
+
+  const { data: grades } = await supabase
+    .from('grades')
+    .select('exam_id, marks_obtained, exam:exams(total_marks)')
+    .in('exam_id', examIds)
+    .not('marks_obtained', 'is', null)
+
+  type RawGrade = {
+    exam_id: string
+    marks_obtained: unknown
+    exam: { total_marks: unknown } | null
+  }
+  ;((grades ?? []) as RawGrade[]).forEach(g => {
+    const total = n(g.exam?.total_marks)
+    if (total <= 0 || !marksByExam[g.exam_id]) return
+    const pct = (n(g.marks_obtained) / total) * 100
+    marksByExam[g.exam_id].sumPct += pct
+    marksByExam[g.exam_id].count += 1
+  })
+
+  return examRows
+    .map(e => {
+      const agg = marksByExam[e.id]
+      if (!agg || agg.count === 0) return null
+      return {
+        exam_id: e.id,
+        name: e.name,
+        exam_date: e.exam_date,
+        assessment_type: e.assessment_type ?? 'exam',
+        average: Math.round((agg.sumPct / agg.count) * 10) / 10,
+        count: agg.count,
+      }
+    })
+    .filter((r): r is ClassAssessmentAverageRow => r != null)
 }

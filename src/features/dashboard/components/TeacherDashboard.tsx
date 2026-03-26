@@ -4,7 +4,7 @@ import {
   ClipboardCheck, BookOpen, FileText,
   CheckCircle2, XCircle, Clock, Home, AlertTriangle, UserX,
   MessageCircle, FileText as FileTextIcon, LineChart,
-  BookMarked, CalendarDays, FileQuestion, ClipboardList, FolderOpen,
+  BookMarked, CalendarDays, FileQuestion, FolderOpen,
   HelpCircle,
 } from 'lucide-react'
 import { PageHeader } from '@/components/common/PageHeader'
@@ -74,7 +74,6 @@ const SUBJECT_TEACHER_LINKS = [
   { to: '/scheme-book', label: 'Scheme Book', icon: BookMarked },
   { to: '/lesson-plans', label: 'Lesson Plans', icon: CalendarDays },
   { to: '/assignments', label: 'Assignments', icon: FileQuestion },
-  { to: '/assessments', label: 'Assessments', icon: ClipboardList },
   { to: '/resources', label: 'Resources', icon: FolderOpen },
   { to: '/timetable', label: 'Timetable', icon: CalendarDays },
 ]

@@ -11,6 +11,7 @@ import {
 import { getExecutiveClassOverview } from '../services/executiveAcademics'
 import type { ExecutiveClassOverviewFilters } from '../services/executiveAcademics'
 import { useSchool } from '@/context/SchoolContext'
+import type { Exam } from '../types'
 
 const KEY = {
   departments: (schoolId: string) => ['academics', 'departments', schoolId] as const,
@@ -119,7 +120,7 @@ export function useExecutiveClassOverview(filters: ExecutiveClassOverviewFilters
   })
 }
 
-export function useExams(filters?: { classId?: string; subjectId?: string; termId?: string }) {
+export function useExams(filters?: { classId?: string; subjectId?: string; termId?: string; assessmentType?: Exam['assessment_type'] }) {
   const { currentSchool } = useSchool()
   const schoolId = currentSchool?.id ?? ''
   return useQuery({
@@ -294,9 +295,11 @@ export function useDeleteExam() {
 
 export function useUpsertGrade(examId: string) {
   const qc = useQueryClient()
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
   return useMutation({
     mutationFn: ({ studentId, marks, remarks }: { studentId: string; marks: number | null; remarks?: string }) =>
-      upsertGrade(examId, studentId, marks, remarks),
+      upsertGrade(schoolId, examId, studentId, marks, remarks),
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY.grades(examId) }),
   })
 }

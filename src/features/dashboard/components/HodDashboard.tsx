@@ -124,7 +124,6 @@ const TEACHER_COLUMNS: Column<DepartmentTeacherRowWithLessonPlans>[] = [
 const HOD_QUICK_LINKS = [
   { to: '/class-analytics', label: 'Class Analytics', icon: LineChart },
   { to: '/reports', label: 'Term Reports', icon: ClipboardCheck },
-  { to: '/assessments', label: 'Assessments', icon: BookOpen },
   { to: '/attendance', label: 'Attendance', icon: Users },
   { to: '/lesson-plans', label: 'Lesson Plans', icon: CalendarDays },
 ]

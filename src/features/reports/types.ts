@@ -9,6 +9,8 @@ export interface TermReport {
   term_name: string
   academic_year_id: string
   average_mark: number | null
+  attendance_days_present: number | null
+  attendance_days_total: number | null
   attendance_percentage: number | null
   homework_completion_rate: number | null
   teacher_comment: string | null

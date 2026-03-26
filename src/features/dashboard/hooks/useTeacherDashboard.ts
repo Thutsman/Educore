@@ -7,6 +7,7 @@ import {
   getTodayAttendance,
   getClassAttendanceTrend,
   getTeacherRecentExams,
+  getClassRecentAssessmentAverages,
 } from '@/services/teacher-dashboard'
 
 export const teacherDashboardKeys = {
@@ -16,6 +17,7 @@ export const teacherDashboardKeys = {
   todayAttendance: (schoolId: string, classId: string)   => ['teacher-dash', 'today-att',  schoolId, classId]   as const,
   attendanceTrend: (schoolId: string, classId: string)   => ['teacher-dash', 'att-trend',  schoolId, classId]   as const,
   recentExams:     (schoolId: string, classIds: string[]) => ['teacher-dash', 'exams',     schoolId, ...classIds] as const,
+  classAverages:   (schoolId: string, classId: string)    => ['teacher-dash', 'class-averages', schoolId, classId] as const,
 }
 
 /** Step 1 — get the teacher row for the current user's profile. */
@@ -87,6 +89,18 @@ export function useTeacherRecentExams(classIds: string[]) {
     queryKey: teacherDashboardKeys.recentExams(schoolId, classIds),
     queryFn:  () => getTeacherRecentExams(schoolId, classIds),
     enabled:  classIds.length > 0 && !!schoolId,
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
+/** Last 10 assessments for a class with average scores. */
+export function useClassRecentAssessmentAverages(classId: string | undefined) {
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
+  return useQuery({
+    queryKey: teacherDashboardKeys.classAverages(schoolId, classId ?? ''),
+    queryFn: () => getClassRecentAssessmentAverages(schoolId, classId!),
+    enabled: !!classId && !!schoolId,
     staleTime: 5 * 60 * 1000,
   })
 }

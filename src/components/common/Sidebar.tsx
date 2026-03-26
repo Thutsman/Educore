@@ -17,7 +17,6 @@ import {
   BookMarked,
   CalendarDays,
   FileQuestion,
-  ClipboardList,
   FolderOpen,
   MessageCircle,
   FileText,
@@ -124,12 +123,6 @@ const NAV_GROUPS: NavGroup[] = [
         icon: FileQuestion,
         href: '/assignments',
         allowedRoles: ['headmaster','deputy_headmaster','hod','class_teacher','teacher'],
-      },
-      {
-        label: 'Assessments',
-        icon: ClipboardList,
-        href: '/assessments',
-        allowedRoles: ['headmaster','deputy_headmaster','hod','teacher'],
       },
       {
         label: 'Resources',

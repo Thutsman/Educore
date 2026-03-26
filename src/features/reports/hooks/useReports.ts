@@ -1,9 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSchool } from '@/context/SchoolContext'
-import { getTermReports, updateTermReportComment, generateTermReports } from '../services/reports'
+import {
+  getTermReports,
+  updateTermReportComment,
+  generateTermReports,
+  getTermReportSubjectBreakdown,
+} from '../services/reports'
 
 const KEY = {
   list: (schoolId: string, f?: { termId?: string; classId?: string }) => ['reports', 'term-reports', schoolId, f] as const,
+  breakdown: (studentId: string, termId: string) => ['reports', 'term-report-breakdown', studentId, termId] as const,
 }
 
 export function useTermReports(filters?: { termId?: string; classId?: string }) {
@@ -33,5 +39,13 @@ export function useGenerateTermReports() {
     mutationFn: ({ termId, classId }: { termId: string; classId?: string }) =>
       generateTermReports(schoolId, termId, classId),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['reports'] }),
+  })
+}
+
+export function useTermReportSubjectBreakdown(studentId: string | null, termId: string | null) {
+  return useQuery({
+    queryKey: KEY.breakdown(studentId ?? '', termId ?? ''),
+    queryFn: () => getTermReportSubjectBreakdown(studentId!, termId!),
+    enabled: !!studentId && !!termId,
   })
 }
