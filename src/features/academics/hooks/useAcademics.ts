@@ -5,6 +5,7 @@ import {
   getSubjects, createSubject, updateSubject, deleteSubject,
   getAcademicYears, createAcademicYear, updateAcademicYear,
   getTerms, createTerm, updateTerm, deleteTerm,
+  getTermCalendarEvents, createTermCalendarEvent, updateTermCalendarEvent, deleteTermCalendarEvent,
   getExams, createExam, updateExam, deleteExam,
   getExamGrades, upsertGrade, getEnrolledStudents,
 } from '../services/academics'
@@ -12,6 +13,7 @@ import { getExecutiveClassOverview } from '../services/executiveAcademics'
 import type { ExecutiveClassOverviewFilters } from '../services/executiveAcademics'
 import { useSchool } from '@/context/SchoolContext'
 import type { Exam } from '../types'
+import type { TermCalendarEventType } from '../types'
 
 const KEY = {
   departments: (schoolId: string) => ['academics', 'departments', schoolId] as const,
@@ -19,6 +21,7 @@ const KEY = {
   subjects:  (schoolId: string) => ['academics', 'subjects', schoolId] as const,
   years:     (schoolId: string) => ['academics', 'years', schoolId] as const,
   terms:     (yearId?: string) => ['academics', 'terms', yearId] as const,
+  termCalendar: (termId: string) => ['academics', 'term-calendar', termId] as const,
   exams:     (schoolId: string, f?: object) => ['academics', 'exams', schoolId, f] as const,
   grades:    (examId: string) => ['academics', 'grades', examId] as const,
   enrolled:  (classId: string) => ['academics', 'enrolled', classId] as const,
@@ -105,6 +108,14 @@ export function useAcademicYears() {
 
 export function useTerms(academicYearId?: string) {
   return useQuery({ queryKey: KEY.terms(academicYearId), queryFn: () => getTerms(academicYearId) })
+}
+
+export function useTermCalendarEvents(termId: string | null) {
+  return useQuery({
+    queryKey: KEY.termCalendar(termId ?? ''),
+    queryFn: () => getTermCalendarEvents(termId!),
+    enabled: !!termId,
+  })
 }
 
 export function useExecutiveClassOverview(filters: ExecutiveClassOverviewFilters | null) {
@@ -211,6 +222,40 @@ export function useDeleteTerm() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['academics', 'terms'] })
       qc.invalidateQueries({ queryKey: ['school-admin-setup', schoolId] })
+    },
+  })
+}
+
+export function useCreateTermCalendarEvent() {
+  const qc = useQueryClient()
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
+  return useMutation({
+    mutationFn: (d: { term_id: string; event_date: string; event_type: TermCalendarEventType; title?: string }) =>
+      createTermCalendarEvent(schoolId, d),
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: KEY.termCalendar(variables.term_id) })
+    },
+  })
+}
+
+export function useUpdateTermCalendarEvent() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; termId: string; data: Partial<{ event_date: string; event_type: TermCalendarEventType; title: string }> }) =>
+      updateTermCalendarEvent(id, data),
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: KEY.termCalendar(variables.termId) })
+    },
+  })
+}
+
+export function useDeleteTermCalendarEvent() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id }: { id: string; termId: string }) => deleteTermCalendarEvent(id),
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: KEY.termCalendar(variables.termId) })
     },
   })
 }

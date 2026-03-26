@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase'
-import type { Department, AcademicClass, Subject, Exam, Grade, AcademicYear, Term, EnrolledStudent } from '../types'
+import type { Department, AcademicClass, Subject, Exam, Grade, AcademicYear, Term, EnrolledStudent, TermCalendarEvent, TermCalendarEventType } from '../types'
 
 // Bypass generic Database placeholder for write operations
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -199,6 +199,52 @@ export async function getTerms(academicYearId?: string): Promise<Term[]> {
   if (error || !data) return []
   type Raw = { id: string; name: string; academic_year_id: string; start_date: string; end_date: string; is_current: boolean }
   return (data as unknown as Raw[]).map(r => ({ ...r }))
+}
+
+export async function getTermCalendarEvents(termId: string): Promise<TermCalendarEvent[]> {
+  const { data, error } = await supabase
+    .from('term_calendar_events')
+    .select('id, term_id, event_date, event_type, title')
+    .eq('term_id', termId)
+    .order('event_date')
+  if (error || !data) return []
+  type Row = { id: string; term_id: string; event_date: string; event_type: TermCalendarEventType; title: string | null }
+  return (data as unknown as Row[]).map(r => ({ ...r }))
+}
+
+export async function createTermCalendarEvent(
+  schoolId: string,
+  d: { term_id: string; event_date: string; event_type: TermCalendarEventType; title?: string },
+): Promise<boolean> {
+  const { data: userData } = await supabase.auth.getUser()
+  const createdBy = userData.user?.id ?? null
+  const { error } = await db.from('term_calendar_events').insert({
+    school_id: schoolId,
+    term_id: d.term_id,
+    event_date: d.event_date,
+    event_type: d.event_type,
+    title: d.title || null,
+    created_by: createdBy,
+  })
+  return !error
+}
+
+export async function updateTermCalendarEvent(
+  id: string,
+  d: Partial<{ event_date: string; event_type: TermCalendarEventType; title: string }>,
+): Promise<boolean> {
+  const patch = {
+    ...(d.event_date !== undefined && { event_date: d.event_date }),
+    ...(d.event_type !== undefined && { event_type: d.event_type }),
+    ...(d.title !== undefined && { title: d.title || null }),
+  }
+  const { error } = await db.from('term_calendar_events').update(patch).eq('id', id)
+  return !error
+}
+
+export async function deleteTermCalendarEvent(id: string): Promise<boolean> {
+  const { error } = await db.from('term_calendar_events').delete().eq('id', id)
+  return !error
 }
 
 // ─── Exams ───────────────────────────────────────────────────────────────────

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, Pencil, Trash2, CalendarDays, ChevronDown, ChevronRight } from 'lucide-react'
+import { Plus, Pencil, Trash2, CalendarDays, ChevronDown, ChevronRight, Calendar } from 'lucide-react'
 import { useForm, type Resolver } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -16,8 +16,9 @@ import {
   useAcademicYears, useTerms,
   useCreateAcademicYear, useUpdateAcademicYear,
   useCreateTerm, useUpdateTerm, useDeleteTerm,
+  useTermCalendarEvents, useCreateTermCalendarEvent, useUpdateTermCalendarEvent, useDeleteTermCalendarEvent,
 } from '../hooks/useAcademics'
-import type { AcademicYear, Term } from '../types'
+import type { AcademicYear, Term, TermCalendarEvent, TermCalendarEventType } from '../types'
 
 // ─── Academic Year Form ───────────────────────────────────────────────────────
 
@@ -115,6 +116,20 @@ const termSchema = z.object({
 })
 type TermForm = z.infer<typeof termSchema>
 
+const calendarEventSchema = z.object({
+  event_date: z.string().min(1, 'Date required'),
+  event_type: z.enum(['public_holiday', 'exeat_weekend', 'closure', 'school_day']),
+  title: z.string().optional(),
+})
+type CalendarEventForm = z.infer<typeof calendarEventSchema>
+
+const EVENT_TYPE_OPTIONS: Array<{ value: TermCalendarEventType; label: string }> = [
+  { value: 'public_holiday', label: 'Public Holiday' },
+  { value: 'exeat_weekend', label: 'Exeat Weekend' },
+  { value: 'closure', label: 'School Closure' },
+  { value: 'school_day', label: 'School Day Override' },
+]
+
 function TermModal({ open, onOpenChange, yearId, term }: {
   open: boolean; onOpenChange: (v: boolean) => void; yearId: string; term?: Term | null
 }) {
@@ -189,12 +204,143 @@ function TermModal({ open, onOpenChange, yearId, term }: {
   )
 }
 
+function TermCalendarModal({
+  open,
+  onOpenChange,
+  term,
+}: {
+  open: boolean
+  onOpenChange: (v: boolean) => void
+  term: Term
+}) {
+  const { data: events = [] } = useTermCalendarEvents(open ? term.id : null)
+  const createEvent = useCreateTermCalendarEvent()
+  const updateEvent = useUpdateTermCalendarEvent()
+  const deleteEvent = useDeleteTermCalendarEvent()
+  const [editTarget, setEditTarget] = useState<TermCalendarEvent | null>(null)
+
+  const { register, handleSubmit, reset, setValue, watch, formState: { errors, isSubmitting } } = useForm<CalendarEventForm>({
+    resolver: zodResolver(calendarEventSchema) as Resolver<CalendarEventForm>,
+    defaultValues: { event_date: '', event_type: 'public_holiday', title: '' },
+  })
+
+  useEffect(() => {
+    if (!open) return
+    reset({
+      event_date: editTarget?.event_date ?? '',
+      event_type: editTarget?.event_type ?? 'public_holiday',
+      title: editTarget?.title ?? '',
+    })
+  }, [open, editTarget, reset])
+
+  const onSubmit = async (v: CalendarEventForm) => {
+    const ok = editTarget
+      ? await updateEvent.mutateAsync({ id: editTarget.id, termId: term.id, data: v })
+      : await createEvent.mutateAsync({ term_id: term.id, ...v })
+    if (ok) {
+      reset({ event_date: '', event_type: 'public_holiday', title: '' })
+      setEditTarget(null)
+    } else {
+      toast.error('Failed to save calendar event.')
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) setEditTarget(null) }}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Term Calendar - {term.name}</DialogTitle>
+        </DialogHeader>
+        <p className="text-xs text-muted-foreground">
+          Add non-teaching days (public holidays, exeat weekends, closures) and overrides.
+        </p>
+
+        <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 gap-3 md:grid-cols-4">
+          <div className="space-y-1 md:col-span-1">
+            <Label>Date</Label>
+            <Input type="date" min={term.start_date} max={term.end_date} {...register('event_date')} />
+            {errors.event_date && <p className="text-xs text-destructive">{errors.event_date.message}</p>}
+          </div>
+          <div className="space-y-1 md:col-span-1">
+            <Label>Type</Label>
+            <select
+              className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              value={watch('event_type')}
+              onChange={(e) => setValue('event_type', e.target.value as TermCalendarEventType)}
+            >
+              {EVENT_TYPE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </div>
+          <div className="space-y-1 md:col-span-2">
+            <Label>Title (optional)</Label>
+            <Input placeholder="Heroes Day / Exeat Weekend / Closure" {...register('title')} />
+          </div>
+          <div className="md:col-span-4 flex justify-end gap-2">
+            {editTarget && (
+              <Button type="button" variant="outline" onClick={() => setEditTarget(null)}>
+                Cancel edit
+              </Button>
+            )}
+            <Button type="submit" disabled={isSubmitting || createEvent.isPending || updateEvent.isPending}>
+              {editTarget ? 'Update Event' : 'Add Event'}
+            </Button>
+          </div>
+        </form>
+
+        <div className="max-h-72 overflow-y-auto rounded-lg border border-border">
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 bg-muted/50">
+              <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
+                <th className="px-3 py-2">Date</th>
+                <th className="px-3 py-2">Type</th>
+                <th className="px-3 py-2">Title</th>
+                <th className="px-3 py-2 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {events.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-3 py-4 text-center text-muted-foreground">No calendar events for this term yet.</td>
+                </tr>
+              ) : (
+                events.map(ev => (
+                  <tr key={ev.id} className="border-b border-border last:border-0">
+                    <td className="px-3 py-2 tabular-nums">{ev.event_date}</td>
+                    <td className="px-3 py-2">{EVENT_TYPE_OPTIONS.find(o => o.value === ev.event_type)?.label ?? ev.event_type}</td>
+                    <td className="px-3 py-2">{ev.title || '—'}</td>
+                    <td className="px-3 py-2">
+                      <div className="flex justify-end gap-1">
+                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditTarget(ev)}>
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7 text-destructive hover:text-destructive"
+                          onClick={async () => { await deleteEvent.mutateAsync({ id: ev.id, termId: term.id }) }}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 // ─── Year Row with expandable terms ──────────────────────────────────────────
 
 function YearRow({ year, canEdit }: { year: AcademicYear; canEdit: boolean }) {
   const [expanded, setExpanded] = useState(false)
   const [showYearModal, setShowYearModal] = useState(false)
   const [showTermModal, setShowTermModal] = useState(false)
+  const [calendarTerm, setCalendarTerm] = useState<Term | null>(null)
   const [editTerm, setEditTerm] = useState<Term | null>(null)
   const [deleteTermId, setDeleteTermId] = useState<string | null>(null)
   const { data: terms = [] } = useTerms(expanded ? year.id : undefined)
@@ -249,6 +395,11 @@ function YearRow({ year, canEdit }: { year: AcademicYear; canEdit: boolean }) {
                   </div>
                   {canEdit && (
                     <div className="flex gap-1">
+                      {canEdit && (
+                        <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setCalendarTerm(t)} title="Term calendar">
+                          <Calendar className="h-3 w-3" />
+                        </Button>
+                      )}
                       <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => { setEditTerm(t); setShowTermModal(true) }}>
                         <Pencil className="h-3 w-3" />
                       </Button>
@@ -266,6 +417,9 @@ function YearRow({ year, canEdit }: { year: AcademicYear; canEdit: boolean }) {
 
       <YearModal open={showYearModal} onOpenChange={setShowYearModal} year={year} />
       <TermModal open={showTermModal} onOpenChange={v => { setShowTermModal(v); if (!v) setEditTerm(null) }} yearId={year.id} term={editTerm} />
+      {calendarTerm && (
+        <TermCalendarModal open={!!calendarTerm} onOpenChange={() => setCalendarTerm(null)} term={calendarTerm} />
+      )}
 
       <Dialog open={!!deleteTermId} onOpenChange={v => !v && setDeleteTermId(null)}>
         <DialogContent className="max-w-sm">

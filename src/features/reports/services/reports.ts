@@ -22,6 +22,43 @@ function countWeekdaysInclusive(startDate: string, endDate: string): number {
   return count
 }
 
+async function countTermSchoolDays(
+  schoolId: string,
+  termId: string,
+  startDate: string,
+  endDate: string,
+): Promise<number> {
+  const defaultWeekdays = countWeekdaysInclusive(startDate, endDate)
+  const { data, error } = await supabase
+    .from('term_calendar_events')
+    .select('event_date, event_type')
+    .eq('school_id', schoolId)
+    .eq('term_id', termId)
+
+  if (error || !data?.length) return defaultWeekdays
+
+  type Row = { event_date: string; event_type: 'public_holiday' | 'exeat_weekend' | 'closure' | 'school_day' }
+  const byDate = new Map<string, Row['event_type']>()
+  ;(data as unknown as Row[]).forEach((r) => byDate.set(r.event_date, r.event_type))
+
+  let count = 0
+  const start = new Date(`${startDate}T00:00:00`)
+  const end = new Date(`${endDate}T00:00:00`)
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+    const day = d.getDay()
+    const iso = d.toISOString().slice(0, 10)
+    const override = byDate.get(iso)
+    const defaultSchoolDay = day !== 0 && day !== 6
+
+    const isSchoolDay = override
+      ? override === 'school_day'
+      : defaultSchoolDay
+
+    if (isSchoolDay) count++
+  }
+  return count
+}
+
 export async function getTermReports(schoolId: string, filters?: { termId?: string; classId?: string }): Promise<TermReport[]> {
   void schoolId
   let q = supabase
@@ -135,7 +172,7 @@ export async function generateTermReports(schoolId: string, termId: string, clas
   const startDate = (term as { start_date: string }).start_date
   const endDate = (term as { end_date: string }).end_date
   const academicYearId = (term as { academic_year_id: string }).academic_year_id
-  const termSchoolDays = countWeekdaysInclusive(startDate, endDate)
+  const termSchoolDays = await countTermSchoolDays(schoolId, termId, startDate, endDate)
 
   let studentsQ = supabase
     .from('students')

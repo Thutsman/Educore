@@ -72,6 +72,16 @@ export interface Term {
   is_current: boolean
 }
 
+export type TermCalendarEventType = 'public_holiday' | 'exeat_weekend' | 'closure' | 'school_day'
+
+export interface TermCalendarEvent {
+  id: string
+  term_id: string
+  event_date: string
+  event_type: TermCalendarEventType
+  title: string | null
+}
+
 export interface EnrolledStudent {
   id: string
   full_name: string
