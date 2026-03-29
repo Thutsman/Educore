@@ -457,12 +457,12 @@ function LandingNavbar() {
 }
 
 function HeroSection() {
-  const valueBullets = [
-    'Track school fees, payments, and outstanding balances in real time',
-    'Monitor expenses and enforce approval workflows',
-    'See class performance and attendance instantly',
-    'Hold staff accountable with clear roles and actions',
-  ]
+  const heroScope = [
+    { Icon: Wallet, label: 'Finance' },
+    { Icon: BarChart3, label: 'Academics' },
+    { Icon: LayoutDashboard, label: 'Operations' },
+    { Icon: Shield, label: 'Roles & access' },
+  ] as const
 
   return (
     <section className="relative overflow-hidden border-b border-slate-200/80 bg-linear-to-br from-teal-50 via-white to-emerald-50 dark:border-slate-800 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900">
@@ -477,25 +477,37 @@ function HeroSection() {
       <div className="relative mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8 lg:py-28">
         <div className="grid items-center gap-12 md:grid-cols-2 md:gap-10 lg:gap-12">
           <div className="educore-hero-enter-left min-w-0">
-            <p className="mb-4 inline-flex items-center rounded-full border border-teal-200 bg-teal-50 px-3 py-1 text-xs font-semibold tracking-wider text-teal-700 dark:border-teal-800 dark:bg-teal-950/50 dark:text-teal-300">
-              SCHOOL PERFORMANCE CONTROL CENTER
+            <p className="mb-4 inline-flex items-center rounded-full border border-teal-200 bg-teal-50 px-3 py-1 text-xs font-semibold tracking-wide text-teal-700 dark:border-teal-800 dark:bg-teal-950/50 dark:text-teal-300">
+              Integrated school management
             </p>
-            <h1 className="max-w-xl text-3xl font-extrabold tracking-tight text-gray-900 md:text-4xl lg:text-5xl lg:leading-[1.1] dark:text-white">
-              Stop guessing.{' '}
+            <h1 className="max-w-xl text-3xl font-extrabold tracking-tight text-gray-900 md:text-4xl lg:text-[2.75rem] lg:leading-[1.12] dark:text-white">
+              One platform.{' '}
               <span className="text-teal-600 dark:text-teal-400">
-                Run your school on live data.
+                Every school function.
               </span>
             </h1>
-            <p className="mt-6 max-w-md text-lg leading-relaxed text-gray-500 dark:text-gray-400">
-              Educore gives school owners and leaders one clear view of finance,
-              academics, attendance, and daily operations so you can act early,
-              not at the end of term.
+            <p className="mt-5 max-w-md text-base leading-relaxed text-gray-600 dark:text-gray-300">
+              Real-time fees, academics, attendance, and reporting—so leaders
+              act early, not at term end.
             </p>
-            <ul className="mt-5 space-y-2 text-sm text-gray-600 dark:text-gray-300">
-              {valueBullets.map((item) => (
-                <li key={item} className="flex items-start gap-2">
-                  <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-teal-600 dark:text-teal-400" />
-                  <span>{item}</span>
+            <ul
+              className="mt-8 flex flex-wrap gap-3 sm:gap-4"
+              aria-label="Product scope"
+            >
+              {heroScope.map(({ Icon, label }) => (
+                <li
+                  key={label}
+                  className="flex w-[calc(50%-0.375rem)] flex-col items-center gap-2 rounded-xl border border-slate-200/90 bg-white/80 px-3 py-3 text-center sm:w-auto sm:min-w-22 dark:border-slate-700 dark:bg-slate-900/50"
+                >
+                  <span className="flex size-11 items-center justify-center rounded-full border border-slate-200 bg-slate-50 dark:border-slate-600 dark:bg-slate-800">
+                    <Icon
+                      className="size-5 text-teal-600 dark:text-teal-400"
+                      aria-hidden
+                    />
+                  </span>
+                  <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-600 dark:text-slate-300">
+                    {label}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -506,7 +518,7 @@ function HeroSection() {
                 rel="noopener noreferrer"
                 className="inline-flex items-center justify-center gap-2 rounded-lg bg-teal-700 px-6 py-3 text-base font-semibold text-white transition-colors hover:bg-teal-800"
               >
-                Request Demo
+                Request demo
                 <ArrowRight className="size-4" />
               </a>
               <Link
@@ -516,31 +528,11 @@ function HeroSection() {
                 Login
               </Link>
             </div>
-            <div className="mt-4 space-y-1.5 text-sm text-gray-600 dark:text-gray-300">
-              <p className="inline-flex items-center gap-2">
-                <CheckCircle2 className="size-4 shrink-0 text-teal-600 dark:text-teal-400" />
-                We help you set up your school in under 24 hours
-              </p>
-              <p className="inline-flex items-center gap-2">
-                <CheckCircle2 className="size-4 shrink-0 text-teal-600 dark:text-teal-400" />
-                No technical experience required
-              </p>
-            </div>
-            <div className="mt-5 flex flex-wrap items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-300">
-              <span className="rounded-full border border-slate-300 bg-white px-3 py-1 dark:border-slate-700 dark:bg-slate-900">
-                Built for Zimbabwean schools
-              </span>
-              <span className="rounded-full border border-slate-300 bg-white px-3 py-1 dark:border-slate-700 dark:bg-slate-900">
-                Secure, role-based access for staff
-              </span>
-              <span className="rounded-full border border-slate-300 bg-white px-3 py-1 dark:border-slate-700 dark:bg-slate-900">
-                Your data is safely stored and backed up
-              </span>
-              <span className="rounded-full border border-slate-300 bg-white px-3 py-1 dark:border-slate-700 dark:bg-slate-900">
-                Designed with real school workflows in mind
-              </span>
-            </div>
-            <div className="educore-hero-enter-trust mt-6 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-400 dark:text-gray-500">
+            <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
+              Setup in under 24 hours · No technical experience required · Built
+              for Zimbabwean schools
+            </p>
+            <div className="educore-hero-enter-trust mt-5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-400 dark:text-gray-500">
               <span className="inline-flex items-center gap-1">
                 <CheckCircle2 className="size-3.5 shrink-0 text-teal-600 opacity-80" />
                 No setup fee

@@ -23,6 +23,7 @@ export interface Guardian {
   address: string | null
   is_primary: boolean
   has_portal_access: boolean
+  profile_id: string | null
 }
 
 export interface StudentFeeSummary {

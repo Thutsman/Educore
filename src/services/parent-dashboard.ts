@@ -160,11 +160,19 @@ export async function getGuardianChildren(schoolId: string, profileId: string): 
   const guardian = await getGuardianByProfile(schoolId, profileId)
   if (!guardian) return []
 
+  // Use the same linkage source as RLS policies to avoid mismatches
+  // when guardian relations are updated from different flows.
+  const { data: linkedIds, error: linkedIdsError } = await db.rpc('get_guardian_student_ids')
+  if (linkedIdsError || !linkedIds) return []
+
+  const studentIds = (linkedIds as string[]).filter(Boolean)
+  if (!studentIds.length) return []
+
   const { data, error } = await db
     .from('students')
     .select('id, full_name, class_id, class:classes(name)')
     .eq('school_id', schoolId)
-    .or(`guardian_id.eq.${guardian.id},guardian2_id.eq.${guardian.id}`)
+    .in('id', studentIds)
     .eq('status', 'active')
     .is('deleted_at', null)
     .order('full_name', { ascending: true })
@@ -202,7 +210,6 @@ export async function getChildSubjectPerformance(schoolId: string, studentId: st
     `)
     .eq('school_id', schoolId)
     .eq('student_id', studentId)
-    .is('deleted_at', null)
     .order('created_at', { ascending: false })
 
   if (error || !data) return []
@@ -249,7 +256,6 @@ export async function getChildRecentResults(schoolId: string, studentId: string)
     `)
     .eq('school_id', schoolId)
     .eq('student_id', studentId)
-    .is('deleted_at', null)
     .order('created_at', { ascending: false })
     .limit(40)
 
@@ -373,7 +379,6 @@ export async function getChildAttendanceBreakdown(
     .eq('student_id', studentId)
     .gte('date', termRow.start_date)
     .lte('date', termRow.end_date)
-    .is('deleted_at', null)
 
   if (error || !data) {
     return { present: 0, late: 0, absent: 0, unreasonedAbsences: 0, rate: 0, uniqueDaysRecorded: 0 }

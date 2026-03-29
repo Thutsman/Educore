@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   ArrowLeft, Edit, Trash2, User, GraduationCap, Wallet, Users,
-  Phone, Mail, MapPin, Calendar, Hash,
+  Phone, Mail, MapPin, Calendar, Hash, Copy,
 } from 'lucide-react'
 import { PageHeader } from '@/components/common/PageHeader'
 import { Button } from '@/components/ui/button'
@@ -63,6 +63,7 @@ export function StudentDetail() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [editingGuardian, setEditingGuardian] = useState<null | { id: string }>(null)
   const [showGuardianEdit, setShowGuardianEdit] = useState(false)
+  const [createdParentCredentials, setCreatedParentCredentials] = useState<Record<string, { email: string; tempPassword: string }>>({})
 
   const handleDelete = async () => {
     if (!id) return
@@ -288,6 +289,26 @@ export function StudentDetail() {
                         )}
                       </div>
                     </div>
+                    {createdParentCredentials[g.id] && (
+                      <div className="mt-2 rounded-md border border-amber-300/50 bg-amber-50/70 px-2 py-1.5 text-[11px] text-amber-900">
+                        <p><strong>New parent credentials</strong></p>
+                        <p>Email: {createdParentCredentials[g.id].email}</p>
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="font-mono">Temp password: {createdParentCredentials[g.id].tempPassword}</p>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-6 px-2 text-[10px]"
+                            onClick={async () => {
+                              await navigator.clipboard.writeText(createdParentCredentials[g.id].tempPassword)
+                              toast.success('Temporary password copied')
+                            }}
+                          >
+                            <Copy className="mr-1 h-3 w-3" /> Copy
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -307,6 +328,9 @@ export function StudentDetail() {
         }}
         guardian={guardianToEdit}
         studentId={id ?? null}
+        onParentAccountCreated={({ guardianId, email, tempPassword }) => {
+          setCreatedParentCredentials(prev => ({ ...prev, [guardianId]: { email, tempPassword } }))
+        }}
       />
 
       {/* Delete confirmation */}

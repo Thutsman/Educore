@@ -325,6 +325,7 @@ export async function getStudentGuardians(studentId: string): Promise<Guardian[]
     address:      r.address,
     is_primary:   r.id === primaryId,
     has_portal_access: !!r.profile_id,
+    profile_id:   r.profile_id,
   }))
 
   guardians.sort((a, b) => Number(b.is_primary) - Number(a.is_primary))
@@ -510,4 +511,81 @@ export async function inviteGuardianAsParent(guardianId: string, schoolId: strin
   if (linkError) return 'error'
 
   return 'created'
+}
+
+export async function createGuardianParentAccount(
+  guardianId: string,
+  schoolId: string,
+): Promise<
+  | { status: 'created'; email: string; tempPassword: string }
+  | { status: 'already_linked' | 'missing_email' | 'error' }
+> {
+  const { data, error } = await supabase
+    .from('guardians')
+    .select('id, full_name, email, profile_id')
+    .eq('id', guardianId)
+    .eq('school_id', schoolId)
+    .maybeSingle()
+
+  if (error || !data) return { status: 'error' }
+
+  const guardian = data as { id: string; full_name: string; email: string | null; profile_id: string | null }
+  if (!guardian.email) return { status: 'missing_email' }
+  if (guardian.profile_id) return { status: 'already_linked' }
+
+  const onboardingClient = createOnboardingClient()
+  const tempPassword = `Edu@${crypto.randomUUID().replace(/-/g, '').slice(0, 10)}`
+
+  const { data: signUpData, error: signUpError } = await onboardingClient.auth.signUp({
+    email: guardian.email,
+    password: tempPassword,
+    options: {
+      data: { full_name: guardian.full_name },
+    },
+  })
+
+  if (signUpError || !signUpData.user) return { status: 'error' }
+
+  const userId = signUpData.user.id
+  const rolesOk = await setUserRoles(userId, ['parent'], schoolId)
+  if (!rolesOk) return { status: 'error' }
+
+  const { error: linkError } = await db
+    .from('guardians')
+    .update({ profile_id: userId })
+    .eq('id', guardianId)
+
+  if (linkError) return { status: 'error' }
+
+  return {
+    status: 'created',
+    email: guardian.email,
+    tempPassword,
+  }
+}
+
+export async function adminResetParentPassword(
+  guardianId: string,
+  schoolId: string,
+  newPassword: string,
+): Promise<{ success: true } | { success: false; error: string }> {
+  if (!schoolId) return { success: false, error: 'No school selected.' }
+
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) return { success: false, error: 'Not authenticated. Please log in again.' }
+
+  const { data, error } = await supabase.functions.invoke<{ success?: boolean; error?: string }>(
+    'admin-reset-parent-password',
+    {
+      body: { guardian_id: guardianId, school_id: schoolId, new_password: newPassword },
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    },
+  )
+
+  const bodyError =
+    data && typeof data === 'object' && typeof data.error === 'string' ? data.error : null
+  if (bodyError) return { success: false, error: bodyError }
+  if (error) return { success: false, error: error.message }
+
+  return { success: true }
 }

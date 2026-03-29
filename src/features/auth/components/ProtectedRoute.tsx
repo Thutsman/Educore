@@ -38,7 +38,7 @@ export function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
   }
 
   if (allowedRoles && (roles.length === 0 || !allowedRoles.some((r) => roles.includes(r)))) {
-    return <Navigate to="/unauthorized" replace />
+    return <Navigate to="/dashboard" replace />
   }
 
   return <Outlet />

@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Loader2, MailCheck } from 'lucide-react'
-import { supabase } from '@/lib/supabase'
+import { supabase, getPasswordResetRedirectToAttempts } from '@/lib/supabase'
 
 const schema = z.object({
   email: z.string().email('Enter a valid email address'),
@@ -27,15 +27,19 @@ export function ForgotPasswordPage() {
 
   const onSubmit = async (data: FormData) => {
     setServerError(null)
-    const redirectTo = `${window.location.origin}/reset-password`
-    const { error } = await supabase.auth.resetPasswordForEmail(data.email, {
-      redirectTo,
-    })
-    if (error) {
-      setServerError(error.message)
-      return
+    let lastMessage = 'Could not send reset email.'
+    for (const redirectTo of getPasswordResetRedirectToAttempts()) {
+      const { error } = await supabase.auth.resetPasswordForEmail(
+        data.email,
+        redirectTo ? { redirectTo } : {},
+      )
+      if (!error) {
+        setSent(true)
+        return
+      }
+      lastMessage = error.message || lastMessage
     }
-    setSent(true)
+    setServerError(lastMessage)
   }
 
   if (sent) {

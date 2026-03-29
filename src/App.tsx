@@ -209,8 +209,12 @@ export default function App() {
                   <Route path="hod"     element={<HodDashboard />} />
                   <Route path="teacher" element={<TeacherDashboard />} />
                   <Route path="staff"   element={<GeneralDashboard />} />
-                  <Route path="parent"  element={<ParentDashboard />} />
-                  <Route path="student" element={<GeneralDashboard />} />
+                  <Route element={<ProtectedRoute allowedRoles={['parent']} />}>
+                    <Route path="parent"  element={<ParentDashboard />} />
+                  </Route>
+                  <Route element={<ProtectedRoute allowedRoles={['student']} />}>
+                    <Route path="student" element={<GeneralDashboard />} />
+                  </Route>
                   <Route path="general" element={<GeneralDashboard />} />
                 </Route>
 

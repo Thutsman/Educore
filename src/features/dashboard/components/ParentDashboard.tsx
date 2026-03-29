@@ -290,8 +290,15 @@ export function ParentDashboard() {
             />
             <KpiCard
               title="Outstanding Balance"
-              value={balanceLoading ? '...' : totalOutstanding > 0 ? fmt(totalOutstanding) : 'All fees cleared'}
-              subtitle={totalOutstanding > 0 ? 'Tap to view invoice details' : 'No unpaid balances'}
+              value={
+                balanceLoading || invoicesLoading ? '...' :
+                totalOutstanding > 0 ? fmt(totalOutstanding) :
+                invoices.length > 0 ? 'All fees cleared' : '$0.00'
+              }
+              subtitle={
+                totalOutstanding > 0 ? 'Tap to view invoice details' :
+                invoices.length > 0 ? 'No unpaid balances' : 'No fees billed yet'
+              }
               icon={Wallet}
               valueClassName={totalOutstanding > 0 ? 'text-red-600 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'}
               onClick={() => scrollToSection(invoiceSectionRef)}

@@ -10,6 +10,8 @@ import {
   updateStudent,
   deleteStudent,
   inviteGuardianAsParent,
+  createGuardianParentAccount,
+  adminResetParentPassword,
   updateGuardian,
 } from '../services/students'
 import type { StudentFilters, StudentFormData } from '../types'
@@ -122,6 +124,30 @@ export function useInviteGuardianAsParent(studentId: string | null) {
         qc.invalidateQueries({ queryKey: studentKeys.guardians(studentId) })
       }
     },
+  })
+}
+
+export function useCreateGuardianParentAccount(studentId: string | null) {
+  const qc = useQueryClient()
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
+
+  return useMutation({
+    mutationFn: ({ guardianId }: { guardianId: string }) => createGuardianParentAccount(guardianId, schoolId),
+    onSuccess: () => {
+      if (studentId) {
+        qc.invalidateQueries({ queryKey: studentKeys.guardians(studentId) })
+      }
+    },
+  })
+}
+
+export function useAdminResetParentPassword() {
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
+  return useMutation({
+    mutationFn: ({ guardianId, newPassword }: { guardianId: string; newPassword: string }) =>
+      adminResetParentPassword(guardianId, schoolId, newPassword),
   })
 }
 

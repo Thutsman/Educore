@@ -1,9 +1,9 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog'
 import {
   Form, FormField, FormItem, FormLabel, FormControl, FormMessage,
@@ -12,10 +12,11 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
-import { useInviteGuardianAsParent, useUpdateGuardian } from '../hooks/useStudents'
+import { useAdminResetParentPassword, useCreateGuardianParentAccount, useInviteGuardianAsParent, useUpdateGuardian } from '../hooks/useStudents'
 import type { Guardian } from '../types'
 
 const schema = z.object({
@@ -33,13 +34,19 @@ interface Props {
   onOpenChange: (open: boolean) => void
   guardian: Guardian | null
   studentId: string | null
+  onParentAccountCreated?: (payload: { guardianId: string; email: string; tempPassword: string }) => void
 }
 
-export function GuardianFormModal({ open, onOpenChange, guardian, studentId }: Props) {
+export function GuardianFormModal({ open, onOpenChange, guardian, studentId, onParentAccountCreated }: Props) {
   const update = useUpdateGuardian(studentId)
   const isPending = update.isPending
   const inviteGuardian = useInviteGuardianAsParent(studentId)
+  const createParentAccount = useCreateGuardianParentAccount(studentId)
+  const adminResetPassword = useAdminResetParentPassword()
   const isInviting = inviteGuardian.isPending
+  const isCreatingParentAccount = createParentAccount.isPending
+  const isResettingPassword = adminResetPassword.isPending
+  const [newParentPassword, setNewParentPassword] = useState('')
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -57,6 +64,10 @@ export function GuardianFormModal({ open, onOpenChange, guardian, studentId }: P
       address: guardian.address ?? '',
     })
   }, [open, guardian, form])
+
+  useEffect(() => {
+    if (!open) setNewParentPassword('')
+  }, [open])
 
   const saveGuardian = async (values: FormValues) => {
     if (!guardian) return false
@@ -115,11 +126,76 @@ export function GuardianFormModal({ open, onOpenChange, guardian, studentId }: P
     }
   }
 
+  const onSaveAndCreateParentAccount = async (values: FormValues) => {
+    if (!guardian) return
+    if (guardian.has_portal_access) {
+      toast.success('This guardian already has portal access.')
+      onOpenChange(false)
+      return
+    }
+
+    const email = (values.email ?? '').trim()
+    if (!email) {
+      toast.error('Add an email to create a parent account.')
+      return
+    }
+
+    const ok = await saveGuardian(values)
+    if (!ok) return
+
+    const result = await createParentAccount.mutateAsync({ guardianId: guardian.id })
+    if (result.status === 'created') {
+      toast.success(`Parent account created for ${guardian.full_name}.`)
+      onParentAccountCreated?.({
+        guardianId: guardian.id,
+        email: result.email,
+        tempPassword: result.tempPassword,
+      })
+      onOpenChange(false)
+      return
+    }
+    if (result.status === 'missing_email') {
+      toast.error('Cannot create account because no email is recorded.')
+      return
+    }
+    if (result.status === 'already_linked') {
+      toast.success('This guardian already has portal access.')
+      onOpenChange(false)
+      return
+    }
+    toast.error('Failed to create parent account. Please try again.')
+  }
+
+  const onSetParentPassword = async () => {
+    if (!guardian) return
+    if (!guardian.profile_id) {
+      toast.error('This guardian does not have a portal account yet.')
+      return
+    }
+    if (newParentPassword.length < 8) {
+      toast.error('Password must be at least 8 characters.')
+      return
+    }
+    const result = await adminResetPassword.mutateAsync({
+      guardianId: guardian.id,
+      newPassword: newParentPassword,
+    })
+    if (result.success) {
+      toast.success('Parent portal password updated.')
+      setNewParentPassword('')
+      return
+    }
+    toast.error(result.error)
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Edit Guardian</DialogTitle>
+          <DialogDescription className="sr-only">
+            Update guardian details and parent portal password when applicable.
+          </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
@@ -175,6 +251,23 @@ export function GuardianFormModal({ open, onOpenChange, guardian, studentId }: P
               </FormItem>
             )} />
 
+            {guardian?.has_portal_access && (
+              <div className="space-y-2 rounded-md border border-border bg-muted/30 p-3">
+                <Label htmlFor="new-parent-password">New parent portal password</Label>
+                <Input
+                  id="new-parent-password"
+                  type="password"
+                  autoComplete="new-password"
+                  placeholder="Minimum 8 characters"
+                  value={newParentPassword}
+                  onChange={e => setNewParentPassword(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Sets the password immediately. Share it with the parent securely; email delivery is not used.
+                </p>
+              </div>
+            )}
+
             <DialogFooter>
               <Button
                 type="button"
@@ -185,17 +278,39 @@ export function GuardianFormModal({ open, onOpenChange, guardian, studentId }: P
                 Cancel
               </Button>
               {guardian && !guardian.has_portal_access ? (
-                <Button
-                  type="button"
-                  disabled={isPending || isInviting}
-                  onClick={() => void form.handleSubmit(onSaveAndInvite)()}
-                >
-                  {isPending || isInviting ? 'Saving & inviting...' : 'Save & Invite to portal'}
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={isPending || isInviting || isCreatingParentAccount}
+                    onClick={() => void form.handleSubmit(onSaveAndInvite)()}
+                  >
+                    {isPending || isInviting ? 'Saving & inviting...' : 'Save & Invite to portal'}
+                  </Button>
+                  <Button
+                    type="button"
+                    disabled={isPending || isInviting || isCreatingParentAccount}
+                    onClick={() => void form.handleSubmit(onSaveAndCreateParentAccount)()}
+                  >
+                    {isPending || isCreatingParentAccount ? 'Saving & creating...' : 'Create parent account'}
+                  </Button>
+                </div>
               ) : (
-                <Button type="submit" disabled={isPending}>
-                  {isPending ? 'Saving...' : 'Save Changes'}
-                </Button>
+                <div className="flex items-center gap-2">
+                  {guardian?.has_portal_access && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={isPending || isResettingPassword || newParentPassword.length < 8}
+                      onClick={() => void onSetParentPassword()}
+                    >
+                      {isResettingPassword ? 'Updating...' : 'Set parent password'}
+                    </Button>
+                  )}
+                  <Button type="submit" disabled={isPending}>
+                    {isPending ? 'Saving...' : 'Save Changes'}
+                  </Button>
+                </div>
               )}
             </DialogFooter>
           </form>
