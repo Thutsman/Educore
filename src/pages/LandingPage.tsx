@@ -8,6 +8,7 @@ import {
   Check,
   CheckCircle2,
   LayoutDashboard,
+  Menu,
   Percent,
   Shield,
   TrendingUp,
@@ -399,6 +400,8 @@ export function DashboardMockup() {
 }
 
 function LandingNavbar() {
+  const [mobileOpen, setMobileOpen] = useState(false)
+
   return (
     <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/90 backdrop-blur-md dark:border-slate-800 dark:bg-slate-950/90">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
@@ -417,6 +420,8 @@ function LandingNavbar() {
           </div>
           <span>Educore</span>
         </Link>
+
+        {/* Desktop nav */}
         <nav className="hidden items-center gap-8 text-sm font-medium text-slate-600 dark:text-slate-300 md:flex">
           <a
             href="#features"
@@ -437,21 +442,59 @@ function LandingNavbar() {
             Login
           </Link>
         </nav>
+
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" className="md:hidden" asChild>
-            <Link to="/login">Login</Link>
-          </Button>
           <Button size="sm" className="hidden sm:inline-flex" asChild>
-            <a
-              href={DEMO_WHATSAPP}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
+            <a href={DEMO_WHATSAPP} target="_blank" rel="noopener noreferrer">
               Request Demo
             </a>
           </Button>
+          {/* Hamburger — mobile only */}
+          <button
+            className="flex size-9 items-center justify-center rounded-md text-slate-600 transition-colors hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 md:hidden"
+            aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
+            onClick={() => setMobileOpen((v) => !v)}
+          >
+            {mobileOpen ? <X className="size-5" /> : <Menu className="size-5" />}
+          </button>
         </div>
       </div>
+
+      {/* Mobile menu */}
+      {mobileOpen && (
+        <div className="border-t border-slate-200/80 bg-white/95 px-4 pb-4 pt-2 backdrop-blur-md dark:border-slate-800 dark:bg-slate-950/95 md:hidden">
+          <nav className="flex flex-col gap-1 text-sm font-medium">
+            <a
+              href="#features"
+              onClick={() => setMobileOpen(false)}
+              className="rounded-md px-3 py-2.5 text-slate-700 transition-colors hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+            >
+              Features
+            </a>
+            <a
+              href="#pricing"
+              onClick={() => setMobileOpen(false)}
+              className="rounded-md px-3 py-2.5 text-slate-700 transition-colors hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+            >
+              Pricing
+            </a>
+            <Link
+              to="/login"
+              onClick={() => setMobileOpen(false)}
+              className="rounded-md px-3 py-2.5 text-slate-700 transition-colors hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+            >
+              Login
+            </Link>
+            <div className="mt-2 border-t border-slate-200 pt-2 dark:border-slate-800">
+              <Button className="w-full" asChild>
+                <a href={DEMO_WHATSAPP} target="_blank" rel="noopener noreferrer">
+                  Request Demo
+                </a>
+              </Button>
+            </div>
+          </nav>
+        </div>
+      )}
     </header>
   )
 }
