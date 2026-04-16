@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { UserPlus, Users, UserCheck, UserX, Search } from 'lucide-react'
+import { UserPlus, Users, UserCheck, UserX, Search, Pencil } from 'lucide-react'
 import { PageHeader } from '@/components/common/PageHeader'
 import { StatCard } from '@/components/common/StatCard'
 import { DataTable, type Column } from '@/components/common/DataTable'
@@ -30,6 +30,7 @@ export function StudentList() {
   const navigate = useNavigate()
   const { role, user } = useAuth()
   const canAdd = role === 'headmaster' || role === 'deputy_headmaster' || role === 'school_admin'
+  const canEdit = canAdd
 
   const location = useLocation()
   const searchParams = new URLSearchParams(location.search)
@@ -39,6 +40,7 @@ export function StudentList() {
 
   const [filters, setFilters] = useState<StudentFilters>({ search: '', classId: 'all', status: 'all' })
   const [showForm, setShowForm] = useState(false)
+  const [editTarget, setEditTarget] = useState<Student | null>(null)
 
   const { data: students = [], isLoading } = useStudents(filters)
   const { data: classes = [] } = useClassesForSelect()
@@ -113,6 +115,28 @@ export function StudentList() {
         </span>
       ),
     },
+    ...(canEdit ? [{
+      key: 'actions' as keyof Student,
+      header: '',
+      className: 'text-right',
+      cell: (row: Student) => (
+        <div className="flex justify-end">
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-7 w-7"
+            onClick={event => {
+              event.stopPropagation()
+              setEditTarget(row)
+              setShowForm(true)
+            }}
+            aria-label={`Edit ${row.full_name}`}
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      ),
+    }] : []),
   ]
 
   return (
@@ -126,7 +150,7 @@ export function StudentList() {
         }
         actions={
           canAdd ? (
-            <Button variant="emerald" onClick={() => setShowForm(true)}>
+            <Button variant="emerald" onClick={() => { setEditTarget(null); setShowForm(true) }}>
               <UserPlus className="mr-2 h-4 w-4" />
               Add Student
             </Button>
@@ -205,7 +229,14 @@ export function StudentList() {
         onRowClick={row => navigate(`/students/${row.id}`)}
       />
 
-      <StudentFormModal open={showForm} onOpenChange={setShowForm} />
+      <StudentFormModal
+        open={showForm}
+        onOpenChange={open => {
+          setShowForm(open)
+          if (!open) setEditTarget(null)
+        }}
+        student={editTarget}
+      />
     </div>
   )
 }

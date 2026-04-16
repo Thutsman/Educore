@@ -277,6 +277,7 @@ export function ClassesTab() {
   const { role } = useAuth()
   const canEdit = role === 'school_admin'
   const { data: classes = [], isLoading } = useClasses()
+  const hasDepartmentData = classes.some(cls => Boolean(cls.department_name))
   const deleteClass = useDeleteClass()
   const [editTarget, setEditTarget] = useState<AcademicClass | null>(null)
   const [showForm, setShowForm] = useState(false)
@@ -286,7 +287,7 @@ export function ClassesTab() {
     { key: 'name', header: 'Class Name', sortable: true, cell: r => <span className="font-medium">{r.name}</span> },
     { key: 'level', header: 'Level', cell: r => r.level != null ? String(r.level) : '—' },
     { key: 'stream', header: 'Stream', cell: r => r.stream || '—' },
-    { key: 'department_name', header: 'Department', cell: r => r.department_name || '—' },
+    ...(hasDepartmentData ? [{ key: 'department_name', header: 'Department', cell: (r: AcademicClass) => r.department_name || '—' }] : []),
     { key: 'academic_year_name', header: 'Academic Year', cell: r => r.academic_year_name || '—' },
     { key: 'class_teacher_name', header: 'Class Teacher', cell: r => r.class_teacher_name || '—' },
     ...(canEdit ? [{
