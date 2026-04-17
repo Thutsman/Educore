@@ -1,9 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Plus, Pencil, Trash2, Building2 } from 'lucide-react'
 import { DataTable, type Column } from '@/components/common/DataTable'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog'
@@ -15,30 +15,243 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
 import { useAuth } from '@/hooks/useAuth'
-import { useDepartments, useCreateDepartment, useUpdateDepartment, useDeleteDepartment } from '../hooks/useAcademics'
-import type { Department } from '../types'
+import {
+  useDepartments,
+  useCreateDepartment,
+  useUpdateDepartment,
+  useDeleteDepartment,
+  useSubjects,
+  useSetDepartmentSubjects,
+  useEnsureDepartmentSubjects,
+} from '../hooks/useAcademics'
+import type { Department, Subject } from '../types'
+
+const ZIMBABWE_DEPARTMENT_OPTIONS = [
+  'Sciences',
+  'Commercials',
+  'Humanities',
+  'Languages',
+  'Mathematics',
+  'ICT',
+  'Technical/Vocational',
+  'Arts',
+  'Physical Education',
+  'Agriculture',
+]
+
+const DEPARTMENT_CODE_MAP: Record<string, string> = {
+  Sciences: 'SCI',
+  Commercials: 'COMM',
+  Humanities: 'HUM',
+  Languages: 'LANG',
+  Mathematics: 'MATH',
+  ICT: 'ICT',
+  'Technical/Vocational': 'TECH',
+  Arts: 'ARTS',
+  'Physical Education': 'PE',
+  Agriculture: 'AGRI',
+}
+
+const DEPARTMENT_SUBJECT_HINTS: Record<string, string[]> = {
+  Sciences: ['biology', 'chemistry', 'physics', 'combined science', 'science', 'computer science', 'agriculture'],
+  Commercials: ['accounting', 'principles of accounts', 'accounts', 'commerce', 'economics', 'business studies', 'business enterprise', 'commercial studies'],
+  Humanities: ['history', 'geography', 'heritage studies', 'family and religious studies', 'divinity', 'economic history', 'sociology', 'literature'],
+  Languages: ['english language', 'english', 'shona', 'ndebele', 'indigenous language', 'french', 'foreign language', 'literature in english', 'literature in indigenous'],
+  Mathematics: ['mathematics', 'additional mathematics', 'pure mathematics', 'statistics'],
+  ICT: ['ict', 'computer science', 'information and communication technology', 'computer studies'],
+  'Technical/Vocational': ['wood technology', 'woodwork', 'metal technology', 'metalwork', 'technical graphics', 'building technology', 'textile technology', 'food technology', 'design and technology', 'home management'],
+  Arts: ['art', 'music', 'musical arts', 'dance', 'theatre arts'],
+  'Physical Education': ['physical education', 'sport', 'mass displays'],
+  Agriculture: ['agriculture', 'crop science'],
+}
+
+const DEPARTMENT_SUBJECT_TEMPLATES: Record<string, Array<{ name: string; code: string }>> = {
+  Sciences: [
+    { name: 'Biology', code: 'BIO' },
+    { name: 'Chemistry', code: 'CHEM' },
+    { name: 'Physics', code: 'PHY' },
+    { name: 'Combined Science', code: 'CSCI' },
+    { name: 'Computer Science', code: 'COMP' },
+    { name: 'Agriculture', code: 'AGRI' },
+  ],
+  Commercials: [
+    { name: 'Accounting', code: 'ACC' },
+    { name: 'Principles of Accounts', code: 'POA' },
+    { name: 'Economics', code: 'ECON' },
+    { name: 'Commerce', code: 'COMM' },
+    { name: 'Business Studies', code: 'BS' },
+  ],
+  Humanities: [
+    { name: 'History', code: 'HIST' },
+    { name: 'Geography', code: 'GEO' },
+    { name: 'Family and Religious Studies', code: 'FRS' },
+    { name: 'Heritage Studies', code: 'HER' },
+    { name: 'Sociology', code: 'SOC' },
+  ],
+  Languages: [
+    { name: 'English Language', code: 'ENG' },
+    { name: 'Shona', code: 'SHO' },
+    { name: 'Ndebele', code: 'NDEB' },
+    { name: 'Literature in English', code: 'LIT' },
+    { name: 'French', code: 'FRE' },
+  ],
+  Mathematics: [
+    { name: 'Mathematics', code: 'MATH' },
+    { name: 'Additional Mathematics', code: 'ADDM' },
+    { name: 'Statistics', code: 'STAT' },
+  ],
+  ICT: [
+    { name: 'ICT', code: 'ICT' },
+    { name: 'Computer Science', code: 'COMP' },
+  ],
+  'Technical/Vocational': [
+    { name: 'Technical Graphics', code: 'TG' },
+    { name: 'Building Technology', code: 'BUILD' },
+    { name: 'Wood Technology', code: 'WOOD' },
+    { name: 'Metal Technology', code: 'METAL' },
+    { name: 'Food Technology and Design', code: 'FTD' },
+  ],
+  Arts: [
+    { name: 'Art', code: 'ART' },
+    { name: 'Musical Arts', code: 'MUS' },
+    { name: 'Dance', code: 'DAN' },
+    { name: 'Theatre Arts', code: 'THA' },
+  ],
+  'Physical Education': [
+    { name: 'Physical Education', code: 'PE' },
+  ],
+  Agriculture: [
+    { name: 'Agriculture', code: 'AGRI' },
+    { name: 'Crop Science', code: 'CROP' },
+  ],
+}
+
+function normalizeToken(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+}
+
+function getRelevantSubjectsForDepartment(departmentName: string, allSubjects: Subject[]): Subject[] {
+  const hints = DEPARTMENT_SUBJECT_HINTS[departmentName]
+  if (!hints) return allSubjects
+  const normalizedHints = hints.map(normalizeToken)
+  return allSubjects.filter(subject => {
+    const haystacks = [subject.name, subject.code].filter(Boolean).map(v => normalizeToken(String(v)))
+    return normalizedHints.some(hint => haystacks.some(h => h.includes(hint) || hint.includes(h)))
+  })
+}
+
+function getMissingTemplatesForDepartment(departmentName: string, allSubjects: Subject[]): Array<{ name: string; code: string }> {
+  const templates = DEPARTMENT_SUBJECT_TEMPLATES[departmentName] ?? []
+  if (templates.length === 0) return []
+  return templates.filter(template => {
+    const normalizedTemplateName = normalizeToken(template.name)
+    const normalizedTemplateCode = normalizeToken(template.code)
+    const exists = allSubjects.some(subject => {
+      const normalizedName = normalizeToken(subject.name)
+      const normalizedCode = normalizeToken(subject.code)
+      return normalizedName === normalizedTemplateName || normalizedCode === normalizedTemplateCode
+    })
+    return !exists
+  })
+}
 
 const schema = z.object({
-  name:        z.string().min(1, 'Required'),
-  code:        z.string().optional(),
-  description: z.string().optional(),
+  name: z.string().min(1, 'Required'),
+  code: z.string().optional(),
+  subject_ids: z.array(z.string()).default([]),
 })
 type FormValues = z.infer<typeof schema>
 
-function DepartmentFormModal({ open, onOpenChange, dept }: { open: boolean; onOpenChange: (v: boolean) => void; dept?: Department | null }) {
+function DepartmentFormModal({
+  open,
+  onOpenChange,
+  dept,
+  subjects,
+}: {
+  open: boolean
+  onOpenChange: (v: boolean) => void
+  dept?: Department | null
+  subjects: Subject[]
+}) {
   const isEdit = !!dept
   const create = useCreateDepartment()
   const update = useUpdateDepartment()
+  const setSubjects = useSetDepartmentSubjects()
+  const ensureSubjects = useEnsureDepartmentSubjects()
+  const departmentOptions = useMemo(() => {
+    if (!dept?.name || ZIMBABWE_DEPARTMENT_OPTIONS.includes(dept.name)) return ZIMBABWE_DEPARTMENT_OPTIONS
+    return [dept.name, ...ZIMBABWE_DEPARTMENT_OPTIONS]
+  }, [dept?.name])
+  const selectedSubjectIdsForDept = useMemo(
+    () => (dept ? subjects.filter(s => s.department_id === dept.id).map(s => s.id) : []),
+    [dept, subjects],
+  )
   const form = useForm<FormValues>({
     resolver: zodResolver(schema) as Resolver<FormValues>,
-    defaultValues: { name: dept?.name ?? '', code: dept?.code ?? '', description: dept?.description ?? '' },
+    defaultValues: { name: dept?.name ?? '', code: dept?.code ?? '', subject_ids: selectedSubjectIdsForDept },
   })
+  const selectedDepartmentName = form.watch('name')
+  const relevantSubjects = useMemo(
+    () => (selectedDepartmentName ? getRelevantSubjectsForDepartment(selectedDepartmentName, subjects) : []),
+    [selectedDepartmentName, subjects],
+  )
+  const missingTemplates = useMemo(
+    () => (selectedDepartmentName ? getMissingTemplatesForDepartment(selectedDepartmentName, subjects) : []),
+    [selectedDepartmentName, subjects],
+  )
+  const [selectedTemplateCodes, setSelectedTemplateCodes] = useState<string[]>([])
+
+  useEffect(() => {
+    form.reset({
+      name: dept?.name ?? '',
+      code: dept?.code ?? '',
+      subject_ids: selectedSubjectIdsForDept,
+    })
+  }, [dept, form, open, selectedSubjectIdsForDept])
+
+  useEffect(() => {
+    if (!open) {
+      setSelectedTemplateCodes([])
+      return
+    }
+    if (!selectedDepartmentName) {
+      setSelectedTemplateCodes([])
+      return
+    }
+    setSelectedTemplateCodes(isEdit ? [] : missingTemplates.map(template => template.code))
+  }, [isEdit, missingTemplates, open, selectedDepartmentName])
 
   const onSubmit = async (v: FormValues) => {
-    const ok = isEdit && dept
-      ? await update.mutateAsync({ id: dept.id, data: { name: v.name, code: v.code || undefined, description: v.description } })
-      : await create.mutateAsync({ name: v.name, code: v.code, description: v.description })
-    if (ok) {
+    const selectedTemplates = missingTemplates.filter(template => selectedTemplateCodes.includes(template.code))
+
+    if (isEdit && dept) {
+      const ensuredSubjectIds = selectedTemplates.length > 0
+        ? await ensureSubjects.mutateAsync({ departmentId: dept.id, templates: selectedTemplates })
+        : []
+      const extraIds = ensuredSubjectIds ?? []
+      const updated = await update.mutateAsync({ id: dept.id, data: { name: v.name, code: v.code || undefined } })
+      const subjectsSaved = updated
+        ? await setSubjects.mutateAsync({ departmentId: dept.id, subjectIds: [...v.subject_ids, ...extraIds] })
+        : false
+      if (updated && subjectsSaved) {
+        toast.success('Department updated.')
+        form.reset()
+        onOpenChange(false)
+        return
+      }
+      toast.error('Failed to save department subjects. The code may already be in use.')
+      return
+    }
+
+    const departmentId = await create.mutateAsync({ name: v.name, code: v.code })
+    const ensuredSubjectIds = departmentId && selectedTemplates.length > 0
+      ? await ensureSubjects.mutateAsync({ departmentId, templates: selectedTemplates })
+      : []
+    const extraIds = ensuredSubjectIds ?? []
+    const subjectsSaved = departmentId
+      ? await setSubjects.mutateAsync({ departmentId, subjectIds: [...v.subject_ids, ...extraIds] })
+      : false
+    if (departmentId && subjectsSaved) {
       toast.success(isEdit ? 'Department updated.' : 'Department created.')
       form.reset()
       onOpenChange(false)
@@ -56,7 +269,28 @@ function DepartmentFormModal({ open, onOpenChange, dept }: { open: boolean; onOp
             <FormField control={form.control} name="name" render={({ field }) => (
               <FormItem>
                 <FormLabel>Department Name *</FormLabel>
-                <FormControl><Input placeholder="e.g. Science Department" {...field} /></FormControl>
+                <Select value={field.value} onValueChange={(value) => {
+                  field.onChange(value)
+                  const suggestedCode = DEPARTMENT_CODE_MAP[value]
+                  if (suggestedCode) form.setValue('code', suggestedCode, { shouldDirty: true })
+                  const suggestedSubjectIds = getRelevantSubjectsForDepartment(value, subjects).map(subject => subject.id)
+                  form.setValue('subject_ids', suggestedSubjectIds, { shouldDirty: true })
+                  const templates = getMissingTemplatesForDepartment(value, subjects)
+                  setSelectedTemplateCodes(isEdit ? [] : templates.map(template => template.code))
+                }}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select department" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {departmentOptions.map(option => (
+                      <SelectItem key={option} value={option}>
+                        {option}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <FormMessage />
               </FormItem>
             )} />
@@ -68,17 +302,81 @@ function DepartmentFormModal({ open, onOpenChange, dept }: { open: boolean; onOp
                 <FormMessage />
               </FormItem>
             )} />
-            <FormField control={form.control} name="description" render={({ field }) => (
+            <FormField control={form.control} name="subject_ids" render={({ field }) => (
               <FormItem>
-                <FormLabel>Description</FormLabel>
-                <FormControl><Textarea rows={2} placeholder="Optional..." {...field} /></FormControl>
+                <FormLabel>Subjects Under This Department</FormLabel>
+                <FormControl>
+                  <div className="max-h-52 space-y-2 overflow-y-auto rounded-md border p-3">
+                    {!selectedDepartmentName ? (
+                      <p className="text-sm text-muted-foreground">Select a department first to see suggested subjects.</p>
+                    ) : subjects.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">No subjects found. Add subjects first in the Subjects tab.</p>
+                    ) : relevantSubjects.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">No existing subjects found for this department yet.</p>
+                    ) : (
+                      relevantSubjects.map(subject => {
+                        const checked = field.value.includes(subject.id)
+                        return (
+                          <label key={subject.id} className="flex items-center gap-2 text-sm">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={e => {
+                                if (e.target.checked) {
+                                  field.onChange([...field.value, subject.id])
+                                  return
+                                }
+                                field.onChange(field.value.filter(id => id !== subject.id))
+                              }}
+                            />
+                            <span>{subject.name}</span>
+                            <span className="text-xs text-muted-foreground">({subject.code})</span>
+                          </label>
+                        )
+                      })
+                    )}
+                  </div>
+                </FormControl>
+                {selectedDepartmentName && missingTemplates.length > 0 && (
+                  <div className="space-y-2 rounded-md border border-dashed p-3">
+                    <p className="text-xs font-medium text-foreground">Create suggested subjects now</p>
+                    <p className="text-xs text-muted-foreground">
+                      These subjects are common for {selectedDepartmentName} and will be created automatically on save.
+                    </p>
+                    <div className="space-y-1.5">
+                      {missingTemplates.map(template => {
+                        const checked = selectedTemplateCodes.includes(template.code)
+                        return (
+                          <label key={template.code} className="flex items-center gap-2 text-sm">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={e => {
+                                if (e.target.checked) {
+                                  setSelectedTemplateCodes(prev => [...prev, template.code])
+                                  return
+                                }
+                                setSelectedTemplateCodes(prev => prev.filter(code => code !== template.code))
+                              }}
+                            />
+                            <span>{template.name}</span>
+                            <span className="text-xs text-muted-foreground">({template.code})</span>
+                          </label>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Zimbabwe example: Commercials usually includes Accounting, Economics, Commerce, and Business Studies.
+                </p>
                 <FormMessage />
               </FormItem>
             )} />
             <DialogFooter>
               <Button variant="outline" type="button" onClick={() => onOpenChange(false)}>Cancel</Button>
-              <Button type="submit" disabled={create.isPending || update.isPending}>
-                {create.isPending || update.isPending ? 'Saving...' : 'Save'}
+              <Button type="submit" disabled={create.isPending || update.isPending || setSubjects.isPending || ensureSubjects.isPending}>
+                {create.isPending || update.isPending || setSubjects.isPending || ensureSubjects.isPending ? 'Saving...' : 'Save'}
               </Button>
             </DialogFooter>
           </form>
@@ -92,15 +390,37 @@ export function DepartmentsTab() {
   const { role } = useAuth()
   const canEdit = role === 'school_admin'
   const { data: departments = [], isLoading } = useDepartments()
+  const { data: subjects = [] } = useSubjects()
   const deleteDept = useDeleteDepartment()
   const [editTarget, setEditTarget] = useState<Department | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
 
+  const subjectsByDepartment = useMemo(() => {
+    return subjects.reduce<Record<string, Subject[]>>((acc, subject) => {
+      if (!subject.department_id) return acc
+      acc[subject.department_id] = [...(acc[subject.department_id] ?? []), subject]
+      return acc
+    }, {})
+  }, [subjects])
+
   const columns: Column<Department>[] = [
     { key: 'name', header: 'Department', sortable: true, cell: r => <span className="font-medium">{r.name}</span> },
     { key: 'code', header: 'Code', className: 'font-mono text-xs', cell: r => r.code ?? <span className="text-muted-foreground">—</span> },
-    { key: 'description', header: 'Description', cell: r => r.description || <span className="text-muted-foreground">—</span> },
+    {
+      key: 'subjects',
+      header: 'Subjects Offered',
+      cell: r => {
+        const departmentSubjects = subjectsByDepartment[r.id] ?? []
+        if (departmentSubjects.length === 0) return <span className="text-muted-foreground">—</span>
+        return (
+          <div className="text-xs leading-5">
+            {departmentSubjects.slice(0, 3).map(s => s.name).join(', ')}
+            {departmentSubjects.length > 3 ? ` +${departmentSubjects.length - 3} more` : ''}
+          </div>
+        )
+      },
+    },
     ...(canEdit ? [{
       key: 'actions' as keyof Department,
       header: '',
@@ -122,6 +442,9 @@ export function DepartmentsTab() {
     <div className="space-y-4">
       <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-300">
         <strong>What is a Department?</strong> Departments are organisational units (e.g. Science Dept, Languages Dept) that group teachers and subjects. HODs are assigned to departments. Departments are different from Subjects — a department may contain many subjects.
+        <p className="mt-2 text-xs">
+          Common Zimbabwean departments include Sciences, Commercials, Humanities, Languages, Technical/Vocational, ICT, and Arts.
+        </p>
       </div>
       {canEdit && (
         <div className="flex justify-end">
@@ -147,6 +470,7 @@ export function DepartmentsTab() {
         open={showForm}
         onOpenChange={v => { setShowForm(v); if (!v) setEditTarget(null) }}
         dept={editTarget}
+        subjects={subjects}
       />
       <Dialog open={!!deleteId} onOpenChange={v => !v && setDeleteId(null)}>
         <DialogContent className="max-w-sm">

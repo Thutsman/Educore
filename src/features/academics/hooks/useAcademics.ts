@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  getDepartments, createDepartment, updateDepartment, deleteDepartment,
+  getDepartments, createDepartment, updateDepartment, deleteDepartment, setDepartmentSubjects, ensureDepartmentSubjects,
   getClasses, createClass, updateClass, deleteClass,
   getSubjects, createSubject, updateSubject, deleteSubject,
   getAcademicYears, createAcademicYear, updateAcademicYear,
@@ -71,6 +71,35 @@ export function useDeleteDepartment() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['academics', 'departments'] })
       qc.invalidateQueries({ queryKey: ['staff', 'departments'] })
+    },
+  })
+}
+
+export function useSetDepartmentSubjects() {
+  const qc = useQueryClient()
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
+  return useMutation({
+    mutationFn: ({ departmentId, subjectIds }: { departmentId: string; subjectIds: string[] }) =>
+      setDepartmentSubjects(schoolId, departmentId, subjectIds),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['academics', 'departments'] })
+      qc.invalidateQueries({ queryKey: ['academics', 'subjects'] })
+      qc.invalidateQueries({ queryKey: ['staff', 'departments'] })
+    },
+  })
+}
+
+export function useEnsureDepartmentSubjects() {
+  const qc = useQueryClient()
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
+  return useMutation({
+    mutationFn: ({ departmentId, templates }: { departmentId: string; templates: Array<{ name: string; code: string }> }) =>
+      ensureDepartmentSubjects(schoolId, departmentId, templates),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['academics', 'subjects'] })
+      qc.invalidateQueries({ queryKey: ['academics', 'departments'] })
     },
   })
 }

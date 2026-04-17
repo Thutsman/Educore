@@ -18,7 +18,7 @@ function getLetterGrade(pct: number): string {
 export async function getDepartments(schoolId: string): Promise<Department[]> {
   const { data, error } = await supabase
     .from('departments')
-    .select('id, name, code, description')
+    .select('id, name, code')
     .eq('school_id', schoolId)
     .is('deleted_at', null)
     .order('name')
@@ -26,19 +26,108 @@ export async function getDepartments(schoolId: string): Promise<Department[]> {
   return data as unknown as Department[]
 }
 
-export async function createDepartment(schoolId: string, d: { name: string; code?: string; description?: string }): Promise<boolean> {
-  const { error } = await db.from('departments').insert({
+export async function createDepartment(schoolId: string, d: { name: string; code?: string }): Promise<string | null> {
+  const { data, error } = await db.from('departments').insert({
     name: d.name,
     code: d.code || null,
-    description: d.description || null,
     school_id: schoolId,
-  })
+  }).select('id').single()
+  if (error || !data?.id) return null
+  return data.id as string
+}
+
+export async function updateDepartment(id: string, d: Partial<{ name: string; code: string }>): Promise<boolean> {
+  const { error } = await db.from('departments').update(d).eq('id', id)
   return !error
 }
 
-export async function updateDepartment(id: string, d: Partial<{ name: string; code: string; description: string }>): Promise<boolean> {
-  const { error } = await db.from('departments').update(d).eq('id', id)
-  return !error
+export async function setDepartmentSubjects(
+  schoolId: string,
+  departmentId: string,
+  subjectIds: string[],
+): Promise<boolean> {
+  const uniqueSubjectIds = [...new Set(subjectIds)]
+
+  const { error: clearError } = await db
+    .from('subjects')
+    .update({ department_id: null })
+    .eq('school_id', schoolId)
+    .eq('department_id', departmentId)
+    .is('deleted_at', null)
+  if (clearError) return false
+
+  if (uniqueSubjectIds.length === 0) return true
+
+  const { error: assignError } = await db
+    .from('subjects')
+    .update({ department_id: departmentId })
+    .eq('school_id', schoolId)
+    .in('id', uniqueSubjectIds)
+    .is('deleted_at', null)
+  return !assignError
+}
+
+function normalizeAcademicToken(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+}
+
+export async function ensureDepartmentSubjects(
+  schoolId: string,
+  departmentId: string,
+  templates: Array<{ name: string; code: string }>,
+): Promise<string[] | null> {
+  if (templates.length === 0) return []
+
+  type ExistingRow = {
+    id: string
+    name: string
+    code: string
+    deleted_at: string | null
+  }
+
+  const { data: existingRows, error: existingError } = await db
+    .from('subjects')
+    .select('id, name, code, deleted_at')
+    .eq('school_id', schoolId)
+
+  if (existingError || !existingRows) return null
+
+  const rows = existingRows as ExistingRow[]
+  const idsToAssign = new Set<string>()
+  const rowsToInsert: Array<{ name: string; code: string; school_id: string; department_id: string }> = []
+
+  for (const template of templates) {
+    const normalizedTemplateName = normalizeAcademicToken(template.name)
+    const normalizedTemplateCode = normalizeAcademicToken(template.code)
+
+    const activeExisting = rows.find(r => {
+      if (r.deleted_at) return false
+      return normalizeAcademicToken(r.code) === normalizedTemplateCode || normalizeAcademicToken(r.name) === normalizedTemplateName
+    })
+
+    if (activeExisting) {
+      idsToAssign.add(activeExisting.id)
+      continue
+    }
+
+    rowsToInsert.push({
+      name: template.name,
+      code: template.code,
+      school_id: schoolId,
+      department_id: departmentId,
+    })
+  }
+
+  if (rowsToInsert.length > 0) {
+    const { data: insertedRows, error: insertError } = await db
+      .from('subjects')
+      .insert(rowsToInsert)
+      .select('id')
+    if (insertError || !insertedRows) return null
+    for (const row of insertedRows as Array<{ id: string }>) idsToAssign.add(row.id)
+  }
+
+  return [...idsToAssign]
 }
 
 export async function deleteDepartment(id: string): Promise<boolean> {

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Edit, Trash2, User, GraduationCap, Wallet, Users,
   Phone, Mail, MapPin, Calendar, Hash, Copy,
@@ -111,8 +111,9 @@ export function StudentDetail() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" asChild>
-          <Link to="/students"><ArrowLeft className="h-4 w-4" /></Link>
+        <Button variant="emerald" size="sm" onClick={() => navigate('/students')}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Students
         </Button>
         <PageHeader
           title={student.full_name}

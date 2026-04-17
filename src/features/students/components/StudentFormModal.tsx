@@ -17,11 +17,13 @@ import { Button } from '@/components/ui/button'
 import { useCreateStudent, useUpdateStudent, useClassesForSelect } from '../hooks/useStudents'
 import type { Student } from '../types'
 import { toast } from 'sonner'
+import { useSchool } from '@/context/SchoolContext'
+import { getNextAdmissionNumber } from '../services/students'
 
-const schema = z.object({
+const baseSchema = z.object({
   full_name:      z.string().min(1, 'Required'),
-  admission_no:   z.string().min(1, 'Required'),
-  gender:         z.enum(['male', 'female', 'other']).optional(),
+  admission_no:   z.string().optional(),
+  gender:         z.enum(['male', 'female', 'other']),
   date_of_birth:  z.string().optional(),
   class_id:       z.string().optional(),
   status:         z.enum(['active', 'inactive', 'graduated', 'expelled', 'transferred']),
@@ -35,7 +37,15 @@ const schema = z.object({
   guardian_address: z.string().optional(),
 })
 
-type FormValues = z.infer<typeof schema>
+const createSchema = baseSchema.extend({
+  admission_no: z.string().optional(),
+})
+
+const editSchema = baseSchema.extend({
+  admission_no: z.string().min(1, 'Required'),
+})
+
+type FormValues = z.infer<typeof createSchema>
 
 interface Props {
   open: boolean
@@ -48,9 +58,11 @@ export function StudentFormModal({ open, onOpenChange, student }: Props) {
   const create = useCreateStudent()
   const update = useUpdateStudent()
   const { data: classes = [] } = useClassesForSelect()
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
 
   const form = useForm<FormValues>({
-    resolver: zodResolver(schema),
+    resolver: zodResolver(isEdit ? editSchema : createSchema),
     defaultValues: {
       full_name: '', admission_no: '',
       status: 'active', gender: undefined, date_of_birth: '',
@@ -86,12 +98,28 @@ export function StudentFormModal({ open, onOpenChange, student }: Props) {
     }
   }, [open, student, form])
 
+  useEffect(() => {
+    if (!open || isEdit) return
+    if (!schoolId) return
+
+    let cancelled = false
+    ;(async () => {
+      const admissionDate = form.getValues('admission_date')
+      const year = admissionDate ? Number(String(admissionDate).slice(0, 4)) : undefined
+      const next = await getNextAdmissionNumber(schoolId, year)
+      if (cancelled) return
+      form.setValue('admission_no', next, { shouldValidate: false, shouldDirty: false })
+    })()
+
+    return () => { cancelled = true }
+  }, [open, isEdit, schoolId, form])
+
   const onSubmit = async (values: FormValues) => {
     const payload = {
-      admission_no: values.admission_no,
+      admission_no: isEdit ? (values.admission_no || '') : (values.admission_no || undefined),
       full_name: values.full_name,
       date_of_birth: values.date_of_birth || undefined,
-      gender: values.gender || undefined,
+      gender: values.gender,
       address: values.address || undefined,
       status: values.status,
       admission_date: values.admission_date || undefined,
@@ -146,7 +174,17 @@ export function StudentFormModal({ open, onOpenChange, student }: Props) {
               <FormField control={form.control} name="admission_no" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Admission Number *</FormLabel>
-                  <FormControl><Input placeholder="ADM-2025-001" {...field} /></FormControl>
+                  <FormControl>
+                    <Input
+                      placeholder="ADM-2025-001"
+                      {...field}
+                    />
+                  </FormControl>
+                  {!isEdit && (
+                    <p className="text-xs text-muted-foreground">
+                      Auto-generated for you, but you can change it before saving.
+                    </p>
+                  )}
                   <FormMessage />
                 </FormItem>
               )} />
@@ -173,12 +211,16 @@ export function StudentFormModal({ open, onOpenChange, student }: Props) {
             <div className="grid grid-cols-2 gap-4">
               <FormField control={form.control} name="gender" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Gender</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value ?? ''}>
+                  <FormLabel>Gender *</FormLabel>
+                  <Select
+                    onValueChange={(v) => field.onChange(v === '__none__' ? undefined : v)}
+                    value={field.value ?? '__none__'}
+                  >
                     <FormControl>
                       <SelectTrigger><SelectValue placeholder="Select gender" /></SelectTrigger>
                     </FormControl>
                     <SelectContent>
+                      <SelectItem value="__none__">Select gender</SelectItem>
                       <SelectItem value="male">Male</SelectItem>
                       <SelectItem value="female">Female</SelectItem>
                       <SelectItem value="other">Other</SelectItem>

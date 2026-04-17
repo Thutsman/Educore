@@ -382,6 +382,31 @@ export async function getClassesForSelect(schoolId: string): Promise<{ id: strin
 
 // ─── CRUD ────────────────────────────────────────────────────────────────────
 
+export async function getNextAdmissionNumber(schoolId: string, year?: number): Promise<string> {
+  const y = year ?? new Date().getFullYear()
+  const prefix = `ADM-${y}-`
+
+  const { data, error } = await supabase
+    .from('students')
+    .select('admission_no')
+    .eq('school_id', schoolId)
+    .like('admission_no', `${prefix}%`)
+    .order('admission_no', { ascending: false })
+    .limit(1)
+
+  if (error) {
+    // Safe fallback: still preserves the year and uniqueness is enforced on insert.
+    const rnd = crypto.randomUUID().replace(/-/g, '').slice(0, 6).toUpperCase()
+    return `${prefix}${rnd}`
+  }
+
+  const last = (data as unknown as Array<{ admission_no: string }> | null)?.[0]?.admission_no ?? null
+  const m = last ? last.match(/ADM-(\d{4})-(\d+)$/) : null
+  const next = m ? (Number(m[2]) + 1) : 1
+  const padded = String(next).padStart(3, '0')
+  return `${prefix}${padded}`
+}
+
 export async function createStudent(schoolId: string, data: StudentFormData): Promise<{ id: string } | null> {
   let guardianId: string | null = null
 
@@ -404,40 +429,51 @@ export async function createStudent(schoolId: string, data: StudentFormData): Pr
     }
   }
 
-  const { data: result, error } = await db
-    .from('students')
-    .insert({
-      admission_no:   data.admission_no,
-      full_name:      data.full_name,
-      date_of_birth:  data.date_of_birth  || null,
-      gender:         data.gender         || null,
-      address:        data.address        || null,
-      status:         data.status,
-      admission_date: data.admission_date || null,
-      class_id:       data.class_id       || null,
-      guardian_id:    guardianId,
-      school_id:      schoolId,
-    })
-    .select('id')
-    .single()
+  const admissionYear = data.admission_date ? Number(String(data.admission_date).slice(0, 4)) : undefined
+  let admissionNo = data.admission_no && String(data.admission_no).trim() ? data.admission_no.trim() : await getNextAdmissionNumber(schoolId, admissionYear)
 
-  if (error) {
-    const msg = String((error as { message?: unknown }).message ?? '')
-    const code = String((error as { code?: unknown }).code ?? '')
+  // Unique constraints can race; retry a few times if admission_no collides.
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const { data: result, error } = await db
+      .from('students')
+      .insert({
+        admission_no:   admissionNo,
+        full_name:      data.full_name,
+        date_of_birth:  data.date_of_birth  || null,
+        gender:         data.gender         || null,
+        address:        data.address        || null,
+        status:         data.status,
+        admission_date: data.admission_date || null,
+        class_id:       data.class_id       || null,
+        guardian_id:    guardianId,
+        school_id:      schoolId,
+      })
+      .select('id')
+      .single()
 
-    // Postgres unique violation (commonly surfaces as 409 in Supabase REST)
-    if (code === '23505' || msg.toLowerCase().includes('duplicate') || msg.toLowerCase().includes('unique')) {
-      if (msg.toLowerCase().includes('admission') || msg.toLowerCase().includes('admission_no')) {
-        throw new Error('Admission number already in use')
+    if (!error && result) return { id: (result as unknown as { id: string }).id }
+
+    if (error) {
+      const msg = String((error as { message?: unknown }).message ?? '')
+      const code = String((error as { code?: unknown }).code ?? '')
+
+      // Postgres unique violation (commonly surfaces as 409 in Supabase REST)
+      if (code === '23505' || msg.toLowerCase().includes('duplicate') || msg.toLowerCase().includes('unique')) {
+        if (msg.toLowerCase().includes('admission') || msg.toLowerCase().includes('admission_no')) {
+          // Regen and retry
+          admissionNo = await getNextAdmissionNumber(schoolId, admissionYear)
+          continue
+        }
+        throw new Error('A record with the same unique value already exists')
       }
-      throw new Error('A record with the same unique value already exists')
+
+      throw new Error(msg || 'Failed to add student')
     }
 
-    throw new Error(msg || 'Failed to add student')
+    throw new Error('Failed to add student')
   }
 
-  if (!result) throw new Error('Failed to add student')
-  return { id: (result as unknown as { id: string }).id }
+  throw new Error('Admission number already in use')
 }
 
 export async function updateStudent(id: string, data: Partial<StudentFormData>): Promise<boolean> {
