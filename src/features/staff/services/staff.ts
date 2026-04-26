@@ -486,6 +486,47 @@ export async function removeTeacherAllocation(allocationId: string): Promise<boo
   return !error
 }
 
+export async function deleteTeacher(teacherId: string, schoolId: string): Promise<boolean> {
+  // Ensure homeroom and subject allocations are cleared before soft-delete.
+  const homeroomCleared = await clearHomeroomForTeacher(teacherId, schoolId)
+  if (!homeroomCleared) return false
+
+  const { error: allocationsError } = await db
+    .from('teacher_subjects')
+    .delete()
+    .eq('teacher_id', teacherId)
+  if (allocationsError) return false
+
+  const { error: teacherError } = await db
+    .from('teachers')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('id', teacherId)
+    .eq('school_id', schoolId)
+    .is('deleted_at', null)
+
+  return !teacherError
+}
+
+export async function deleteStaffMember(staffId: string, schoolId: string): Promise<boolean> {
+  const { error } = await db
+    .from('staff')
+    .update({ deleted_at: new Date().toISOString() })
+    .eq('id', staffId)
+    .eq('school_id', schoolId)
+    .is('deleted_at', null)
+  return !error
+}
+
+export async function deleteUnlinkedUserAccount(userId: string, schoolId: string): Promise<boolean> {
+  // "Delete" from the unlinked table means removing this user's school access roles.
+  const { error } = await db
+    .from('user_roles')
+    .delete()
+    .eq('user_id', userId)
+    .eq('school_id', schoolId)
+  return !error
+}
+
 export async function getStaffMembers(schoolId: string): Promise<StaffMember[]> {
   const { data, error } = await supabase
     .from('staff')

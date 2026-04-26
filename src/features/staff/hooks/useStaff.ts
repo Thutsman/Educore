@@ -6,6 +6,8 @@ import {
   getCurrentAcademicYear,
   getSubjectsForSelect, getClassesForSelect,
   getTeacherAllocations, addTeacherAllocation, addAllSubjectAllocations, removeTeacherAllocation,
+  deleteTeacher, deleteStaffMember,
+  deleteUnlinkedUserAccount,
   createUserAccount,
   createTeacher, updateTeacher,
   getRolesForUser,
@@ -226,6 +228,46 @@ export function useUpdateTeacher() {
       updateTeacher(id, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['staff', 'teachers'] })
+    },
+  })
+}
+
+export function useDeleteTeacher() {
+  const qc = useQueryClient()
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
+  return useMutation({
+    mutationFn: (teacherId: string) => deleteTeacher(teacherId, schoolId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['staff', 'teachers'] })
+      qc.invalidateQueries({ queryKey: ['staff', 'profiles-unlinked'] })
+      qc.invalidateQueries({ queryKey: ['academics', 'classes'] })
+    },
+  })
+}
+
+export function useDeleteStaffMember() {
+  const qc = useQueryClient()
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
+  return useMutation({
+    mutationFn: (staffId: string) => deleteStaffMember(staffId, schoolId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['staff', 'members'] })
+    },
+  })
+}
+
+export function useDeleteUnlinkedUserAccount() {
+  const qc = useQueryClient()
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
+  return useMutation({
+    mutationFn: (userId: string) => deleteUnlinkedUserAccount(userId, schoolId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['staff', 'profiles-unlinked'] })
+      qc.invalidateQueries({ queryKey: ['staff', 'teachers'] })
+      qc.invalidateQueries({ queryKey: ['staff', 'members'] })
     },
   })
 }

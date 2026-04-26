@@ -1,14 +1,15 @@
 import { useState } from 'react'
-import { UserPlus, BookOpen, ShieldCheck, HelpCircle, ChevronDown, ChevronUp, Pencil } from 'lucide-react'
+import { UserPlus, BookOpen, ShieldCheck, HelpCircle, ChevronDown, ChevronUp, Pencil, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { PageHeader } from '@/components/common/PageHeader'
 import { DataTable, type Column } from '@/components/common/DataTable'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { getInitials } from '@/utils/format'
 import { cn } from '@/utils/cn'
-import { useTeachers, useStaffMembers, useProfilesForTeacher } from '../hooks/useStaff'
+import { useTeachers, useStaffMembers, useProfilesForTeacher, useDeleteStaffMember, useDeleteUnlinkedUserAccount } from '../hooks/useStaff'
 import { TeacherFormModal } from './TeacherFormModal'
 import { CreateUserAccountModal } from './CreateUserAccountModal'
 import { ManageRolesModal } from './ManageRolesModal'
@@ -46,6 +47,8 @@ function TeachersTab() {
   const [initialProfileId, setInitialProfileId] = useState<string | null>(null)
   const [manageRolesUser, setManageRolesUser] = useState<{ id: string; name: string } | null>(null)
   const [allocationsTeacher, setAllocationsTeacher] = useState<{ id: string; name: string } | null>(null)
+  const [deleteUnlinkedTarget, setDeleteUnlinkedTarget] = useState<{ id: string; name: string } | null>(null)
+  const deleteUnlinked = useDeleteUnlinkedUserAccount()
 
   const openCreate = (profileId?: string, fromAccountCreation?: boolean) => {
     setSelected(null)
@@ -169,6 +172,15 @@ function TeachersTab() {
           <Button variant="outline" size="sm" onClick={e => { e.stopPropagation(); openCreate(r.id) }}>
             Link as Teacher
           </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 text-xs text-destructive hover:text-destructive"
+            onClick={e => { e.stopPropagation(); setDeleteUnlinkedTarget({ id: r.id, name: r.full_name }) }}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            Delete
+          </Button>
         </div>
       ),
     },
@@ -234,6 +246,36 @@ function TeachersTab() {
         teacherId={allocationsTeacher?.id ?? null}
         teacherName={allocationsTeacher?.name ?? ''}
       />
+      <Dialog open={!!deleteUnlinkedTarget} onOpenChange={open => !open && setDeleteUnlinkedTarget(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Delete Unlinked User</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            This removes {deleteUnlinkedTarget?.name ?? 'this account'} from this school's access list.
+            The global user account remains active.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteUnlinkedTarget(null)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              disabled={deleteUnlinked.isPending}
+              onClick={async () => {
+                if (!deleteUnlinkedTarget) return
+                const ok = await deleteUnlinked.mutateAsync(deleteUnlinkedTarget.id)
+                if (ok) {
+                  toast.success('Unlinked user deleted.')
+                  setDeleteUnlinkedTarget(null)
+                  return
+                }
+                toast.error('Failed to delete unlinked user.')
+              }}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
@@ -241,6 +283,8 @@ function TeachersTab() {
 function StaffTab() {
   const { data: staff = [], isLoading } = useStaffMembers()
   const [manageRolesUser, setManageRolesUser] = useState<{ id: string; name: string } | null>(null)
+  const [deleteStaffTarget, setDeleteStaffTarget] = useState<{ id: string; name: string } | null>(null)
+  const deleteStaffMember = useDeleteStaffMember()
 
   const columns: Column<StaffMember>[] = [
     {
@@ -284,13 +328,24 @@ function StaffTab() {
       header: '',
       className: 'text-right',
       cell: r => (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={e => { e.stopPropagation(); setManageRolesUser({ id: r.profile_id, name: r.full_name }) }}
-        >
-          Manage roles
-        </Button>
+        <div className="flex justify-end gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={e => { e.stopPropagation(); setManageRolesUser({ id: r.profile_id, name: r.full_name }) }}
+          >
+            Manage roles
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-destructive hover:text-destructive"
+            onClick={e => { e.stopPropagation(); setDeleteStaffTarget({ id: r.id, name: r.full_name }) }}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            <span className="ml-1">Delete</span>
+          </Button>
+        </div>
       ),
     },
   ]
@@ -309,6 +364,36 @@ function StaffTab() {
         userId={manageRolesUser?.id ?? null}
         userName={manageRolesUser?.name ?? ''}
       />
+      <Dialog open={!!deleteStaffTarget} onOpenChange={open => !open && setDeleteStaffTarget(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Delete Staff Member</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            This will remove {deleteStaffTarget?.name ?? 'this staff member'} from the non-teaching staff list.
+            The user account remains active.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteStaffTarget(null)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              disabled={deleteStaffMember.isPending}
+              onClick={async () => {
+                if (!deleteStaffTarget) return
+                const ok = await deleteStaffMember.mutateAsync(deleteStaffTarget.id)
+                if (ok) {
+                  toast.success('Staff member deleted.')
+                  setDeleteStaffTarget(null)
+                  return
+                }
+                toast.error('Failed to delete staff member.')
+              }}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

@@ -18,6 +18,7 @@ import {
   useCreateTeacher, useUpdateTeacher,
   useProfilesForTeacher, useDepartmentsForSelect,
   useNextTeacherEmployeeNo,
+  useDeleteTeacher,
 } from '../hooks/useStaff'
 import { isEmployeeNoTaken } from '../services/staff'
 import { useSchool } from '@/context/SchoolContext'
@@ -56,6 +57,7 @@ export function TeacherFormModal({ open, onOpenChange, teacher, initialProfileId
 
   const create = useCreateTeacher()
   const update = useUpdateTeacher()
+  const remove = useDeleteTeacher()
   const { data: profiles = [] }          = useProfilesForTeacher()
   const { data: departments = [] }       = useDepartmentsForSelect()
   const { data: suggestedEmployeeNo }    = useNextTeacherEmployeeNo(!isEdit)
@@ -145,7 +147,7 @@ export function TeacherFormModal({ open, onOpenChange, teacher, initialProfileId
     }
   }
 
-  const isPending = create.isPending || update.isPending
+  const isPending = create.isPending || update.isPending || remove.isPending
 
   // In edit mode the profile is already locked — we just show the name
   const currentProfile = isEdit
@@ -330,6 +332,27 @@ export function TeacherFormModal({ open, onOpenChange, teacher, initialProfileId
             )} />
 
             <DialogFooter>
+              {isEdit && teacher && (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  className="mr-auto"
+                  onClick={async () => {
+                    const confirmed = window.confirm('Delete this teacher record? This will clear homeroom and allocations.')
+                    if (!confirmed) return
+                    const ok = await remove.mutateAsync(teacher.id)
+                    if (ok) {
+                      toast.success('Teacher deleted.')
+                      onOpenChange(false)
+                      return
+                    }
+                    toast.error('Failed to delete teacher.')
+                  }}
+                  disabled={isPending}
+                >
+                  {remove.isPending ? 'Deleting...' : 'Delete Teacher'}
+                </Button>
+              )}
               <Button
                 type="button"
                 variant="outline"
