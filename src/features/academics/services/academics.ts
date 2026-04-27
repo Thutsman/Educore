@@ -5,6 +5,14 @@ import type { Department, AcademicClass, Subject, Exam, Grade, AcademicYear, Ter
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = supabase as any
 
+function isMissingColumnError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false
+  const maybe = error as { code?: string; message?: string; details?: string; hint?: string }
+  if (maybe.code === '42703') return true
+  const text = `${maybe.message ?? ''} ${maybe.details ?? ''} ${maybe.hint ?? ''}`.toLowerCase()
+  return text.includes('column') && text.includes('does not exist')
+}
+
 function getLetterGrade(pct: number): string {
   if (pct >= 80) return 'A'
   if (pct >= 70) return 'B'
@@ -354,7 +362,46 @@ export async function getExams(
   if (filters?.assessmentType) q = q.eq('assessment_type', filters.assessmentType)
 
   const { data, error } = await q
-  if (error || !data) return []
+  if (error && !isMissingColumnError(error)) return []
+
+  // Backward compatibility for DBs that don't yet have assessment_type / weighting_percent.
+  if (error && isMissingColumnError(error)) {
+    let legacyQuery = supabase
+      .from('exams')
+      .select('id, name, exam_type, weight, subject_id, class_id, term_id, exam_date, total_marks, subject:subjects(name), class:classes(name), term:terms(name)')
+      .eq('school_id', schoolId)
+      .order('exam_date', { ascending: false })
+
+    if (filters?.classId) legacyQuery = legacyQuery.eq('class_id', filters.classId)
+    if (filters?.subjectId) legacyQuery = legacyQuery.eq('subject_id', filters.subjectId)
+    if (filters?.termId) legacyQuery = legacyQuery.eq('term_id', filters.termId)
+    if (filters?.assessmentType && filters.assessmentType !== 'exam') legacyQuery = legacyQuery.eq('exam_type', filters.assessmentType)
+
+    const { data: legacyData, error: legacyError } = await legacyQuery
+    if (legacyError || !legacyData) return []
+
+    type LegacyRaw = {
+      id: string; name: string; subject_id: string; class_id: string; term_id: string | null
+      exam_type: string | null
+      weight: number | null
+      exam_date: string | null; total_marks: number
+      subject: { name: string } | null; class: { name: string } | null; term: { name: string } | null
+    }
+    return (legacyData as unknown as LegacyRaw[]).map(r => ({
+      id: r.id, name: r.name,
+      assessment_type: (r.exam_type === 'practical' || r.exam_type === 'quiz' || r.exam_type === 'test')
+        ? r.exam_type
+        : 'exam',
+      weighting_percent: r.weight ?? 100,
+      subject_id: r.subject_id, subject_name: r.subject?.name ?? '—',
+      class_id: r.class_id, class_name: r.class?.name ?? '—',
+      term_id: r.term_id, term_name: r.term?.name ?? null,
+      exam_date: r.exam_date, total_marks: r.total_marks,
+      description: null,
+    }))
+  }
+
+  if (!data) return []
 
   type Raw = {
     id: string; name: string; subject_id: string; class_id: string; term_id: string | null
@@ -463,7 +510,26 @@ export async function createExam(
   }
 
   const { error } = await db.from('exams').insert(payload)
-  return !error
+  if (!error) return true
+
+  if (!isMissingColumnError(error)) return false
+
+  // Backward compatibility for DBs before migration 044.
+  const legacyPayload = {
+    name: d.name,
+    exam_type: d.assessment_type === 'exam' ? 'mid_term' : d.assessment_type,
+    weight: d.weighting_percent,
+    subject_id: d.subject_id,
+    class_id: d.class_id,
+    term_id: termId,
+    academic_year_id: academicYearId,
+    exam_date: d.exam_date || null,
+    total_marks: d.total_marks,
+    created_by: createdBy,
+    school_id: schoolId,
+  }
+  const { error: legacyError } = await db.from('exams').insert(legacyPayload)
+  return !legacyError
 }
 
 export async function updateExam(
@@ -491,7 +557,22 @@ export async function updateExam(
     ...(d.total_marks !== undefined && { total_marks: d.total_marks }),
   }
   const { error } = await db.from('exams').update(patch).eq('id', id)
-  return !error
+  if (!error) return true
+
+  if (!isMissingColumnError(error)) return false
+
+  const legacyPatch = {
+    ...(d.name !== undefined && { name: d.name }),
+    ...(d.assessment_type !== undefined && { exam_type: d.assessment_type === 'exam' ? 'mid_term' : d.assessment_type }),
+    ...(d.weighting_percent !== undefined && { weight: d.weighting_percent }),
+    ...(d.subject_id !== undefined && { subject_id: d.subject_id }),
+    ...(d.class_id !== undefined && { class_id: d.class_id }),
+    ...(d.term_id !== undefined && { term_id: d.term_id }),
+    ...(d.exam_date !== undefined && { exam_date: d.exam_date }),
+    ...(d.total_marks !== undefined && { total_marks: d.total_marks }),
+  }
+  const { error: legacyError } = await db.from('exams').update(legacyPatch).eq('id', id)
+  return !legacyError
 }
 
 export async function deleteExam(id: string): Promise<boolean> {
