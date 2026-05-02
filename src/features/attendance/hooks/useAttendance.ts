@@ -4,10 +4,18 @@ import {
   getClassAttendanceSummary, getClassesForAttendance, getStudentsForClass,
 } from '../services/attendance'
 import type { AttendanceStatus } from '../types'
+import { useAuth } from '@/hooks/useAuth'
 import { useSchool } from '@/context/SchoolContext'
 
+function attendanceClassesScopeKey(userId: string | undefined, roles: string[]) {
+  if (!userId) return ''
+  const deputy = roles.includes('deputy_headmaster')
+  if (deputy) return `${userId}:all`
+  return `${userId}:${[...roles].sort().join(',')}`
+}
+
 const KEY = {
-  classes:  (schoolId: string) => ['attendance', 'classes', schoolId] as const,
+  classes:  (schoolId: string, scopeKey: string) => ['attendance', 'classes', schoolId, scopeKey] as const,
   students: (classId: string) => ['attendance', 'students', classId] as const,
   daily:    (classId: string, date: string) => ['attendance', 'daily', classId, date] as const,
   summary:  (classId: string, start: string, end: string) => ['attendance', 'summary', classId, start, end] as const,
@@ -15,11 +23,14 @@ const KEY = {
 
 export function useAttendanceClasses() {
   const { currentSchool } = useSchool()
+  const { user, roles } = useAuth()
   const schoolId = currentSchool?.id ?? ''
+  const scopeKey = attendanceClassesScopeKey(user?.id, roles)
   return useQuery({
-    queryKey: KEY.classes(schoolId),
-    queryFn: () => getClassesForAttendance(schoolId),
-    enabled: !!schoolId,
+    queryKey: KEY.classes(schoolId, scopeKey),
+    queryFn: () =>
+      getClassesForAttendance(schoolId, { userId: user!.id, roles }),
+    enabled: !!schoolId && !!user?.id && !!scopeKey,
     staleTime: 10 * 60 * 1000,
   })
 }

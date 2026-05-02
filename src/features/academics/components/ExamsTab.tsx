@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Plus, Pencil, Trash2, ClipboardList } from 'lucide-react'
 import { DataTable, type Column } from '@/components/common/DataTable'
 import { Button } from '@/components/ui/button'
@@ -46,8 +46,17 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>
 
 function ExamFormModal({
-  open, onOpenChange, exam,
-}: { open: boolean; onOpenChange: (v: boolean) => void; exam?: Exam | null }) {
+  open,
+  onOpenChange,
+  exam,
+  listFilters,
+}: {
+  open: boolean
+  onOpenChange: (v: boolean) => void
+  exam?: Exam | null
+  /** Toolbar filters — when adding, fixed dimensions are not re-shown in the modal */
+  listFilters: { classId: string; subjectId: string; type: string }
+}) {
   const isEdit = !!exam
   const create = useCreateExam()
   const update = useUpdateExam()
@@ -58,17 +67,49 @@ function ExamFormModal({
   const form = useForm<FormValues>({
     resolver: zodResolver(schema) as Resolver<FormValues>,
     defaultValues: {
-      name:        exam?.name ?? '',
-      assessment_type: exam?.assessment_type ?? 'exam',
-      weighting_percent: exam?.weighting_percent ?? 100,
-      subject_id:  exam?.subject_id ?? '',
-      class_id:    exam?.class_id ?? '',
-      term_id:     exam?.term_id ?? '',
-      exam_date:   exam?.exam_date ?? '',
-      total_marks: exam?.total_marks ?? 100,
-      description: exam?.description ?? '',
+      name: '',
+      assessment_type: 'exam',
+      weighting_percent: 100,
+      subject_id: '',
+      class_id: '',
+      term_id: '',
+      exam_date: '',
+      total_marks: 100,
+      description: '',
     },
   })
+
+  useEffect(() => {
+    if (!open) return
+    if (exam) {
+      form.reset({
+        name: exam.name,
+        assessment_type: exam.assessment_type,
+        weighting_percent: exam.weighting_percent,
+        subject_id: exam.subject_id,
+        class_id: exam.class_id,
+        term_id: exam.term_id ?? '',
+        exam_date: exam.exam_date ?? '',
+        total_marks: exam.total_marks,
+        description: exam.description ?? '',
+      })
+      return
+    }
+    const typeFromFilter =
+      listFilters.type !== 'all' ? (listFilters.type as FormValues['assessment_type']) : 'exam'
+    form.reset({
+      name: '',
+      assessment_type: typeFromFilter,
+      weighting_percent: 100,
+      subject_id: listFilters.subjectId !== 'all' ? listFilters.subjectId : '',
+      class_id: listFilters.classId !== 'all' ? listFilters.classId : '',
+      term_id: '',
+      exam_date: '',
+      total_marks: 100,
+      description: '',
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- reset modal when open/target/filters change; form.reset is stable
+  }, [open, exam, listFilters.classId, listFilters.subjectId, listFilters.type])
 
   const onSubmit = async (v: FormValues) => {
     const payload = {
@@ -100,6 +141,22 @@ function ExamFormModal({
         <DialogHeader><DialogTitle>{isEdit ? 'Edit Exam' : 'Add Exam'}</DialogTitle></DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            {!isEdit && (listFilters.classId !== 'all' || listFilters.subjectId !== 'all' || listFilters.type !== 'all') && (
+              <div className="rounded-lg border border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+                <span className="font-medium text-foreground">From list filters: </span>
+                {listFilters.classId !== 'all' && (
+                  <span>Class <span className="font-medium text-foreground">{classes.find(c => c.id === listFilters.classId)?.name ?? '—'}</span></span>
+                )}
+                {listFilters.classId !== 'all' && listFilters.subjectId !== 'all' && <span className="mx-1">·</span>}
+                {listFilters.subjectId !== 'all' && (
+                  <span>Subject <span className="font-medium text-foreground">{subjects.find(s => s.id === listFilters.subjectId)?.name ?? '—'}</span></span>
+                )}
+                {(listFilters.classId !== 'all' || listFilters.subjectId !== 'all') && listFilters.type !== 'all' && <span className="mx-1">·</span>}
+                {listFilters.type !== 'all' && (
+                  <span>Type <span className="font-medium text-foreground">{ASSESSMENT_TYPE_OPTIONS.find(t => t.value === listFilters.type)?.label ?? listFilters.type}</span></span>
+                )}
+              </div>
+            )}
             <FormField control={form.control} name="name" render={({ field }) => (
               <FormItem>
                 <FormLabel>Exam Name *</FormLabel>
@@ -107,19 +164,26 @@ function ExamFormModal({
                 <FormMessage />
               </FormItem>
             )} />
-            <div className="grid grid-cols-2 gap-4">
-              <FormField control={form.control} name="assessment_type" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Type *</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl><SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger></FormControl>
-                    <SelectContent>
-                      {ASSESSMENT_TYPE_OPTIONS.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )} />
+            <div className={`grid gap-4 ${isEdit || listFilters.type === 'all' ? 'grid-cols-2' : 'grid-cols-1'}`}>
+              <FormField
+                control={form.control}
+                name="assessment_type"
+                render={({ field }) =>
+                  isEdit || listFilters.type === 'all' ? (
+                    <FormItem>
+                      <FormLabel>Type *</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl><SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger></FormControl>
+                        <SelectContent>
+                          {ASSESSMENT_TYPE_OPTIONS.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  ) : (
+                    <input type="hidden" {...field} />
+                  )}
+              />
               <FormField control={form.control} name="weighting_percent" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Weighting % *</FormLabel>
@@ -129,26 +193,40 @@ function ExamFormModal({
               )} />
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <FormField control={form.control} name="subject_id" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Subject *</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl><SelectTrigger><SelectValue placeholder="Select subject" /></SelectTrigger></FormControl>
-                    <SelectContent>{subjects.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )} />
-              <FormField control={form.control} name="class_id" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Class *</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl><SelectTrigger><SelectValue placeholder="Select class" /></SelectTrigger></FormControl>
-                    <SelectContent>{classes.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )} />
+              <FormField
+                control={form.control}
+                name="subject_id"
+                render={({ field }) =>
+                  isEdit || listFilters.subjectId === 'all' ? (
+                    <FormItem>
+                      <FormLabel>Subject *</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl><SelectTrigger><SelectValue placeholder="Select subject" /></SelectTrigger></FormControl>
+                        <SelectContent>{subjects.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  ) : (
+                    <input type="hidden" {...field} />
+                  )}
+              />
+              <FormField
+                control={form.control}
+                name="class_id"
+                render={({ field }) =>
+                  isEdit || listFilters.classId === 'all' ? (
+                    <FormItem>
+                      <FormLabel>Class *</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl><SelectTrigger><SelectValue placeholder="Select class" /></SelectTrigger></FormControl>
+                        <SelectContent>{classes.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  ) : (
+                    <input type="hidden" {...field} />
+                  )}
+              />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <FormField control={form.control} name="term_id" render={({ field }) => (
@@ -288,7 +366,12 @@ export function ExamsTab() {
         }
       />
 
-      <ExamFormModal open={showForm} onOpenChange={v => { setShowForm(v); if (!v) setEditTarget(null) }} exam={editTarget} />
+      <ExamFormModal
+        open={showForm}
+        onOpenChange={v => { setShowForm(v); if (!v) setEditTarget(null) }}
+        exam={editTarget}
+        listFilters={{ classId: classFilter, subjectId: subjectFilter, type: typeFilter }}
+      />
 
       <Dialog open={!!deleteId} onOpenChange={v => !v && setDeleteId(null)}>
         <DialogContent className="max-w-sm">

@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import type { AppRole } from '@/types'
 import type { AttendanceRecord, AttendanceSummary, AttendanceStatus } from '../types'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = supabase as any
@@ -93,14 +94,106 @@ export async function getClassAttendanceSummary(
   }))
 }
 
-// ─── Class list (reused) ──────────────────────────────────────────────────────
-export async function getClassesForAttendance(schoolId: string): Promise<{ id: string; name: string }[]> {
+// ─── Class list: deputy sees whole school; others see homeroom + subject allocations (+ HOD department) ──
+export type AttendanceClassesContext = { userId: string; roles: AppRole[] }
+
+async function fetchAllClassesForSchool(schoolId: string): Promise<{ id: string; name: string }[]> {
   const { data, error } = await supabase
     .from('classes')
     .select('id, name')
     .eq('school_id', schoolId)
     .is('deleted_at', null)
     .order('name')
+  if (error || !data) return []
+  type Raw = { id: string; name: string }
+  return (data as unknown as Raw[]).map(r => ({ id: r.id, name: r.name }))
+}
+
+async function collectScopedAttendanceClassIds(
+  schoolId: string,
+  userId: string,
+  roles: AppRole[],
+): Promise<string[]> {
+  const ids = new Set<string>()
+
+  const { data: teacher } = await supabase
+    .from('teachers')
+    .select('id')
+    .eq('school_id', schoolId)
+    .eq('profile_id', userId)
+    .is('deleted_at', null)
+    .maybeSingle()
+
+  const teacherId = (teacher as { id: string } | null)?.id
+
+  if (teacherId) {
+    const { data: allocations } = await supabase
+      .from('teacher_subjects')
+      .select('class_id')
+      .eq('teacher_id', teacherId)
+
+    for (const row of (allocations ?? []) as { class_id: string }[]) {
+      if (row.class_id) ids.add(row.class_id)
+    }
+
+    const { data: homeroom } = await supabase
+      .from('classes')
+      .select('id')
+      .eq('school_id', schoolId)
+      .eq('class_teacher_id', teacherId)
+      .is('deleted_at', null)
+
+    for (const row of (homeroom ?? []) as { id: string }[]) {
+      ids.add(row.id)
+    }
+  }
+
+  const isHod = roles.includes('hod')
+  if (isHod && teacherId) {
+    const { data: dept } = await supabase
+      .from('departments')
+      .select('id')
+      .eq('school_id', schoolId)
+      .eq('hod_id', teacherId)
+      .maybeSingle()
+
+    const deptId = (dept as { id: string } | null)?.id
+    if (deptId) {
+      const { data: deptClasses } = await supabase
+        .from('classes')
+        .select('id')
+        .eq('school_id', schoolId)
+        .eq('department_id', deptId)
+        .is('deleted_at', null)
+
+      for (const row of (deptClasses ?? []) as { id: string }[]) {
+        ids.add(row.id)
+      }
+    }
+  }
+
+  return [...ids]
+}
+
+export async function getClassesForAttendance(
+  schoolId: string,
+  context: AttendanceClassesContext,
+): Promise<{ id: string; name: string }[]> {
+  if (context.roles.includes('deputy_headmaster')) {
+    return fetchAllClassesForSchool(schoolId)
+  }
+
+  const scopedIds = await collectScopedAttendanceClassIds(schoolId, context.userId, context.roles)
+  if (scopedIds.length === 0) return []
+
+  const { data, error } = await supabase
+    .from('classes')
+    .select('id, name')
+    .eq('school_id', schoolId)
+    .in('id', scopedIds)
+    .is('deleted_at', null)
+    .order('name')
+
   if (error || !data) return []
   type Raw = { id: string; name: string }
   return (data as unknown as Raw[]).map(r => ({ id: r.id, name: r.name }))
