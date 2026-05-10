@@ -440,13 +440,13 @@ export function DepartmentsTab() {
     {
       key: 'subjects',
       header: 'Subjects Offered',
+      className: 'max-w-xl align-top',
       cell: r => {
         const departmentSubjects = subjectsByDepartment[r.id] ?? []
         if (departmentSubjects.length === 0) return <span className="text-muted-foreground">—</span>
         return (
           <div className="text-xs leading-5">
-            {departmentSubjects.slice(0, 3).map(s => s.name).join(', ')}
-            {departmentSubjects.length > 3 ? ` +${departmentSubjects.length - 3} more` : ''}
+            {departmentSubjects.map(s => s.name).join(', ')}
           </div>
         )
       },
