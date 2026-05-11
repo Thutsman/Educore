@@ -133,7 +133,8 @@ export async function getSchoolStats(schoolId: string): Promise<SchoolStats> {
       .select('amount, amount_paid, balance, status')
       .eq('school_id', schoolId)
       .is('deleted_at', null)
-      .not('status', 'eq', 'void'),
+      .not('status', 'eq', 'void')
+      .not('status', 'eq', 'draft'),
 
     supabase
       .from('attendance_records')

@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   HelpCircle,
   ArrowRight,
+  ShoppingCart,
 } from 'lucide-react'
 import { PageHeader } from '@/components/common/PageHeader'
 import { StatCard } from '@/components/common/StatCard'
@@ -23,6 +24,7 @@ import {
 } from '@/features/dashboard/hooks/useHeadmasterDashboard'
 import { HeadmasterHelp } from '@/features/dashboard/components/help/HeadmasterHelp'
 import { formatPercent } from '@/utils/format'
+import { usePendingHmProcurementCount } from '@/features/procurement/hooks/useProcurement'
 
 function CardSkeleton() {
   return (
@@ -82,6 +84,8 @@ export function HeadmasterDashboard() {
   }
 
   const firstName = profile?.full_name?.split(' ')[0] ?? 'Headmaster'
+
+  const { data: pendingProcurement = 0, isLoading: procPendingLoading } = usePendingHmProcurementCount()
 
   const schemePieData = schemeStats
     ? [
@@ -180,6 +184,28 @@ export function HeadmasterDashboard() {
               </>
             )}
           </div>
+
+          {procPendingLoading ? (
+            <CardSkeleton />
+          ) : (
+            <StatCard
+              title="Procurement approvals"
+              value={pendingProcurement}
+              subtitle={
+                <>
+                  Supplier quotes awaiting your decision.{' '}
+                  <Link
+                    className="font-medium text-primary underline-offset-4 hover:underline"
+                    to="/finance?tab=procurement&filter=pending_hm"
+                  >
+                    Review in Finance →
+                  </Link>
+                </>
+              }
+              icon={ShoppingCart}
+              iconClassName="bg-orange-600/10 text-orange-700"
+            />
+          )}
 
           <div className="grid gap-6 lg:grid-cols-3">
             <div className="lg:col-span-2 rounded-xl border border-border bg-card p-6 shadow-sm">

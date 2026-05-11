@@ -1,4 +1,4 @@
-export type InvoiceStatus = 'unpaid' | 'partial' | 'paid' | 'overdue' | 'waived' | 'void'
+export type InvoiceStatus = 'draft' | 'unpaid' | 'partial' | 'paid' | 'overdue' | 'waived' | 'void'
 export type PaymentMethod = 'cash' | 'bank_transfer' | 'mobile_money' | 'cheque' | 'card' | 'other'
 export type ExpenseCategory =
   | 'salaries'
@@ -26,6 +26,7 @@ export interface Invoice {
   status: InvoiceStatus
   due_date: string | null
   description: string | null
+  billing_period_key: string | null
   created_at: string
 }
 
@@ -58,6 +59,7 @@ export interface Expense {
   rejected_at?: string | null
   rejected_by?: string | null
   rejection_reason?: string | null
+  requisition_id?: string | null
 }
 
 export interface Budget {
@@ -75,10 +77,19 @@ export interface Budget {
 export interface InvoiceFormData {
   student_id: string
   amount: number
-  academic_year_id: string
-  term_id?: string
+  billing_period_key?: string | null
   due_date?: string
   description?: string
+}
+
+export interface DraftInvoicesForClassInput {
+  class_id: string
+  billing_period_key: string
+  amount: number
+  due_date?: string | null
+  description?: string | null
+  /** When true, invoices are created as unpaid (live). When false, draft until issued. */
+  issue_immediately?: boolean
 }
 
 export interface PaymentFormData {
@@ -99,6 +110,7 @@ export interface ExpenseFormData {
   paid_to?: string
   reference_number?: string
   notes?: string
+  requisition_id?: string | null
 }
 
 export interface BudgetFormData {
@@ -110,8 +122,7 @@ export interface BudgetFormData {
 }
 
 export type FinanceReportFilters = {
-  academic_year_id?: string
-  term_id?: string
+  billing_period_key?: string
   date_from?: string
   date_to?: string
 }

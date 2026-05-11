@@ -430,6 +430,7 @@ export async function getGuardianOutstandingBalance(schoolId: string, guardianId
     .is('deleted_at', null)
     .neq('status', 'void')
     .neq('status', 'waived')
+    .neq('status', 'draft')
 
   if (error || !invoices) return 0
   return (invoices as { balance: number }[]).reduce((sum, row) => sum + n(row.balance), 0)
@@ -459,6 +460,7 @@ export async function getGuardianInvoices(schoolId: string, guardianId: string):
     .is('deleted_at', null)
     .neq('status', 'void')
     .neq('status', 'waived')
+    .neq('status', 'draft')
     .order('due_date', { ascending: false })
     .limit(20)
 

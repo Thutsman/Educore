@@ -15,6 +15,7 @@ import type {
   RevenueLineItem,
   IncomeStatementLineItems,
   BudgetVsActualLine,
+  DraftInvoicesForClassInput,
 } from '../types'
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const db = supabase as any
@@ -23,6 +24,10 @@ const n = (v: unknown) => Number(v) || 0
 
 function endOfDayIso(dateTo: string): string {
   return `${dateTo}T23:59:59.999Z`
+}
+
+function startOfDayIso(dateFrom: string): string {
+  return `${dateFrom}T00:00:00.000Z`
 }
 
 function mapExpenseFormData(d: Partial<ExpenseFormData>) {
@@ -37,14 +42,18 @@ function mapExpenseFormData(d: Partial<ExpenseFormData>) {
   return payload
 }
 
-function applyInvoiceReportFilters<T extends { eq: (...a: unknown[]) => T; gte: (...a: unknown[]) => T; lte: (...a: unknown[]) => T }>(
-  q: T,
-  filters?: FinanceReportFilters,
-): T {
+function applyInvoiceReportFilters<
+  T extends {
+    eq: (...a: unknown[]) => T
+    ilike: (...a: unknown[]) => T
+    gte: (...a: unknown[]) => T
+    lte: (...a: unknown[]) => T
+  },
+>(q: T, filters?: FinanceReportFilters): T {
   let x = q
-  if (filters?.academic_year_id) x = x.eq('academic_year_id', filters.academic_year_id) as T
-  if (filters?.term_id) x = x.eq('term_id', filters.term_id) as T
-  if (filters?.date_from) x = x.gte('created_at', filters.date_from) as T
+  const bp = filters?.billing_period_key?.trim()
+  if (bp) x = x.eq('billing_period_key', bp) as T
+  if (filters?.date_from) x = x.gte('created_at', startOfDayIso(filters.date_from)) as T
   if (filters?.date_to) x = x.lte('created_at', endOfDayIso(filters.date_to)) as T
   return x
 }
@@ -53,11 +62,11 @@ function applyInvoiceReportFilters<T extends { eq: (...a: unknown[]) => T; gte: 
 
 export async function getInvoices(
   schoolId: string,
-  filters?: { status?: string; search?: string; academic_year_id?: string; term_id?: string },
+  filters?: { status?: string; search?: string; billing_period_key?: string; created_from?: string; created_to?: string },
 ): Promise<Invoice[]> {
   let q = supabase
     .from('invoices')
-    .select('id, invoice_no, student_id, amount, amount_paid, balance, status, due_date, description, created_at, student:students(full_name, class:classes(name))')
+    .select('id, invoice_no, student_id, amount, amount_paid, balance, status, due_date, description, billing_period_key, created_at, student:students(full_name, class:classes(name))')
     .eq('school_id', schoolId)
     .is('deleted_at', null)
     .order('created_at', { ascending: false })
@@ -70,13 +79,15 @@ export async function getInvoices(
     }
   }
   if (filters?.search) q = q.ilike('invoice_no', `%${filters.search}%`)
-  if (filters?.academic_year_id) q = q.eq('academic_year_id', filters.academic_year_id)
-  if (filters?.term_id) q = q.eq('term_id', filters.term_id)
+  const bpk = filters?.billing_period_key?.trim()
+  if (bpk) q = q.eq('billing_period_key', bpk)
+  if (filters?.created_from) q = q.gte('created_at', startOfDayIso(filters.created_from))
+  if (filters?.created_to) q = q.lte('created_at', endOfDayIso(filters.created_to))
 
   const { data, error } = await q
   if (error || !data) return []
 
-  type Raw = { id: string; invoice_no: string; student_id: string; amount: unknown; amount_paid: unknown; balance: unknown; status: string; due_date: string | null; description: string | null; created_at: string; student: { full_name: string; class: { name: string } | null } | null }
+  type Raw = { id: string; invoice_no: string; student_id: string; amount: unknown; amount_paid: unknown; balance: unknown; status: string; due_date: string | null; description: string | null; billing_period_key: string | null; created_at: string; student: { full_name: string; class: { name: string } | null } | null }
   return (data as unknown as Raw[]).map(r => ({
     id: r.id,
     invoice_number: r.invoice_no,
@@ -89,6 +100,7 @@ export async function getInvoices(
     status: r.status as Invoice['status'],
     due_date: r.due_date,
     description: r.description,
+    billing_period_key: r.billing_period_key ?? null,
     created_at: r.created_at,
   }))
 }
@@ -96,12 +108,12 @@ export async function getInvoices(
 export async function getInvoiceById(id: string): Promise<Invoice | null> {
   const { data, error } = await supabase
     .from('invoices')
-    .select('id, invoice_no, student_id, amount, amount_paid, balance, status, due_date, description, created_at, student:students(full_name, class:classes(name))')
+    .select('id, invoice_no, student_id, amount, amount_paid, balance, status, due_date, description, billing_period_key, created_at, student:students(full_name, class:classes(name))')
     .eq('id', id)
     .is('deleted_at', null)
     .single()
   if (error || !data) return null
-  type Raw = { id: string; invoice_no: string; student_id: string; amount: unknown; amount_paid: unknown; balance: unknown; status: string; due_date: string | null; description: string | null; created_at: string; student: { full_name: string; class: { name: string } | null } | null }
+  type Raw = { id: string; invoice_no: string; student_id: string; amount: unknown; amount_paid: unknown; balance: unknown; status: string; due_date: string | null; description: string | null; billing_period_key: string | null; created_at: string; student: { full_name: string; class: { name: string } | null } | null }
   const r = data as unknown as Raw
   return {
     id: r.id, invoice_number: r.invoice_no, student_id: r.student_id,
@@ -109,21 +121,123 @@ export async function getInvoiceById(id: string): Promise<Invoice | null> {
     class_name: r.student?.class?.name ?? null,
     amount: n(r.amount), amount_paid: n(r.amount_paid), balance: n(r.balance),
     status: r.status as Invoice['status'], due_date: r.due_date,
-    description: r.description, created_at: r.created_at,
+    description: r.description, billing_period_key: r.billing_period_key ?? null, created_at: r.created_at,
   }
 }
 
 export async function createInvoice(schoolId: string, d: InvoiceFormData): Promise<boolean> {
+  const bpk = d.billing_period_key?.trim() || null
   const { error } = await db.from('invoices').insert({
     student_id: d.student_id,
     amount: d.amount,
-    academic_year_id: d.academic_year_id,
-    term_id: d.term_id || null,
+    academic_year_id: null,
+    term_id: null,
+    billing_period_key: bpk,
     due_date: d.due_date || null,
     description: d.description || null,
     school_id: schoolId,
   })
   return !error
+}
+
+export async function createDraftInvoicesForClass(
+  schoolId: string,
+  d: DraftInvoicesForClassInput,
+): Promise<{ created: number; skipped: number } | null> {
+  const { data: studentsRes, error: stErr } = await supabase
+    .from('students')
+    .select('id')
+    .eq('school_id', schoolId)
+    .eq('class_id', d.class_id)
+    .eq('status', 'active')
+    .is('deleted_at', null)
+  if (stErr || !studentsRes?.length) return null
+
+  const studentIds = (studentsRes as { id: string }[]).map((r) => r.id)
+  const bpk = d.billing_period_key.trim()
+
+  const { data: existingRows, error: exErr } = await db
+    .from('invoices')
+    .select('student_id')
+    .eq('school_id', schoolId)
+    .eq('billing_period_key', bpk)
+    .in('student_id', studentIds)
+    .neq('status', 'void')
+    .is('deleted_at', null)
+  if (exErr) return null
+
+  const taken = new Set((existingRows as { student_id: string }[] | null)?.map((r) => r.student_id) ?? [])
+  const toCreate = studentIds.filter((id) => !taken.has(id))
+  const skipped = studentIds.length - toCreate.length
+  if (toCreate.length === 0) return { created: 0, skipped }
+
+  const { data: { user } } = await supabase.auth.getUser()
+  const status = d.issue_immediately ? 'unpaid' : 'draft'
+  const row = {
+    amount: d.amount,
+    academic_year_id: null,
+    term_id: null,
+    billing_period_key: bpk,
+    due_date: d.due_date || null,
+    description: d.description || null,
+    school_id: schoolId,
+    status,
+    ...(user?.id ? { created_by: user.id } : {}),
+  }
+
+  const rows = toCreate.map((student_id) => ({ ...row, student_id }))
+  const chunkSize = 100
+  for (let i = 0; i < rows.length; i += chunkSize) {
+    const chunk = rows.slice(i, i + chunkSize)
+    const { error } = await db.from('invoices').insert(chunk)
+    if (error) return null
+  }
+
+  return { created: toCreate.length, skipped }
+}
+
+export async function finalizeInvoice(invoiceId: string): Promise<boolean> {
+  const { data, error } = await db
+    .from('invoices')
+    .update({ status: 'unpaid' })
+    .eq('id', invoiceId)
+    .eq('status', 'draft')
+    .select('id')
+    .maybeSingle()
+  return !error && !!data
+}
+
+export async function finalizeDraftsForClassBillingPeriod(
+  schoolId: string,
+  classId: string,
+  billingPeriodKey: string,
+): Promise<number | null> {
+  const bpk = billingPeriodKey.trim()
+  if (!bpk) return null
+
+  const { data: studentsRes, error: stErr } = await supabase
+    .from('students')
+    .select('id')
+    .eq('school_id', schoolId)
+    .eq('class_id', classId)
+    .eq('status', 'active')
+    .is('deleted_at', null)
+  if (stErr || !studentsRes?.length) return null
+
+  const studentIds = (studentsRes as { id: string }[]).map((r) => r.id)
+
+  const { data, error } = await db
+    .from('invoices')
+    .update({ status: 'unpaid' })
+    .eq('school_id', schoolId)
+    .eq('billing_period_key', bpk)
+    .eq('status', 'draft')
+    .in('student_id', studentIds)
+    .is('deleted_at', null)
+    .select('id')
+
+  if (error) return null
+  return (data as { id: string }[] | null)?.length ?? 0
 }
 
 export async function voidInvoice(id: string): Promise<boolean> {
@@ -174,7 +288,9 @@ export async function getExpenses(
 ): Promise<Expense[]> {
   let q = supabase
     .from('expenses')
-    .select('id, description, amount, category, expense_date, vendor, receipt_no, notes, created_at, status, payment_method, approved_at, approved_by, rejected_at, rejected_by, rejection_reason')
+    .select(
+      'id, description, amount, category, expense_date, vendor, receipt_no, notes, created_at, status, payment_method, approved_at, approved_by, rejected_at, rejected_by, rejection_reason, requisition_id',
+    )
     .eq('school_id', schoolId)
     .order('expense_date', { ascending: false })
   if (filters?.category && filters.category !== 'all') q = q.eq('category', filters.category)
@@ -200,6 +316,7 @@ export async function getExpenses(
     rejected_at: string | null
     rejected_by: string | null
     rejection_reason: string | null
+    requisition_id: string | null
   }
   return (data as unknown as Raw[]).map(r => ({
     id: r.id,
@@ -218,26 +335,33 @@ export async function getExpenses(
     rejected_at: r.rejected_at,
     rejected_by: r.rejected_by,
     rejection_reason: r.rejection_reason,
+    requisition_id: r.requisition_id ?? null,
   }))
 }
 
-export async function createExpense(schoolId: string, d: ExpenseFormData): Promise<boolean> {
+export async function createExpense(schoolId: string, d: ExpenseFormData): Promise<string | null> {
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return false
+  if (!user) return null
 
-  const { error } = await db.from('expenses').insert({
-    description: d.description,
-    amount: d.amount,
-    category: d.category,
-    expense_date: d.expense_date,
-    vendor: d.paid_to || null,
-    receipt_no: d.reference_number || null,
-    notes: d.notes || null,
-    school_id: schoolId,
-    submitted_by: user.id,
-    status: 'pending',
-  })
-  return !error
+  const { data, error } = await db
+    .from('expenses')
+    .insert({
+      description: d.description,
+      amount: d.amount,
+      category: d.category,
+      expense_date: d.expense_date,
+      vendor: d.paid_to || null,
+      receipt_no: d.reference_number || null,
+      notes: d.notes || null,
+      school_id: schoolId,
+      submitted_by: user.id,
+      status: 'pending',
+      requisition_id: d.requisition_id ?? null,
+    })
+    .select('id')
+    .maybeSingle()
+  if (error || !data?.id) return null
+  return data.id as string
 }
 
 export async function updateExpense(id: string, d: Partial<ExpenseFormData>): Promise<boolean> {
@@ -511,7 +635,7 @@ export async function getBursarIncomeStatementLineItems(
     .select(`
       payment_no, payment_date, payment_method, amount, notes,
       student:students(full_name),
-      invoice:invoices(description, academic_year_id, term_id)
+      invoice:invoices(description, billing_period_key, created_at)
     `)
     .eq('school_id', schoolId)
     .order('payment_date', { ascending: false })
@@ -526,14 +650,14 @@ export async function getBursarIncomeStatementLineItems(
     amount: unknown
     notes: string | null
     student: { full_name: string } | null
-    invoice: { description: string | null; academic_year_id: string; term_id: string | null } | { description: string | null; academic_year_id: string; term_id: string | null }[] | null
+    invoice: { description: string | null; billing_period_key: string | null; created_at: string } | { description: string | null; billing_period_key: string | null; created_at: string }[] | null
   }
   const payRows = (payRes.data ?? []) as RawPay[]
+  const bpExact = filters?.billing_period_key?.trim() ?? ''
   const revenues: RevenueLineItem[] = payRows
     .filter((r) => {
       const inv = Array.isArray(r.invoice) ? r.invoice[0] : r.invoice
-      if (filters?.academic_year_id && (!inv || inv.academic_year_id !== filters.academic_year_id)) return false
-      if (filters?.term_id && (!inv || inv.term_id !== filters.term_id)) return false
+      if (bpExact && (inv?.billing_period_key ?? '') !== bpExact) return false
       return true
     })
     .map((r) => {
@@ -644,18 +768,18 @@ export async function getBursarMonthlyCollection(
 
   let payQ = supabase
     .from('payments')
-    .select('payment_date, amount, invoice:invoices(academic_year_id, term_id)')
+    .select('payment_date, amount, invoice:invoices(billing_period_key)')
     .eq('school_id', schoolId)
   if (filters?.date_from) payQ = payQ.gte('payment_date', filters.date_from)
   if (filters?.date_to) payQ = payQ.lte('payment_date', filters.date_to)
   const payRes = await payQ
 
-  type PayRow = { payment_date: string; amount: unknown; invoice: { academic_year_id: string; term_id: string | null } | { academic_year_id: string; term_id: string | null }[] | null }
+  type PayRow = { payment_date: string; amount: unknown; invoice: { billing_period_key: string | null } | { billing_period_key: string | null }[] | null }
   let payRows = (payRes.data ?? []) as PayRow[]
+  const bpExact = filters?.billing_period_key?.trim() ?? ''
   payRows = payRows.filter((p) => {
     const inv = Array.isArray(p.invoice) ? p.invoice[0] : p.invoice
-    if (filters?.academic_year_id && inv && inv.academic_year_id !== filters.academic_year_id) return false
-    if (filters?.term_id && inv && inv.term_id !== filters.term_id) return false
+    if (bpExact && (inv?.billing_period_key ?? '') !== bpExact) return false
     return true
   })
 
@@ -690,11 +814,7 @@ export async function getBursarBudgetVsActual(
   schoolId: string,
   filters?: FinanceReportFilters,
 ): Promise<{ lines: BudgetVsActualLine[]; hasAnyBudget: boolean }> {
-  const budgetFilters: { academic_year_id?: string; term_id?: string } = {}
-  if (filters?.academic_year_id) budgetFilters.academic_year_id = filters.academic_year_id
-  if (filters?.term_id) budgetFilters.term_id = filters.term_id
-
-  const budgets = await getBudgets(schoolId, budgetFilters)
+  const budgets = await getBudgets(schoolId)
   const hasAnyBudget = budgets.length > 0
 
   let expQ = supabase

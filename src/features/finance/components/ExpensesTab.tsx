@@ -21,6 +21,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { formatCurrency, formatDate } from '@/utils/format'
 import { cn } from '@/utils/cn'
 import { toast } from 'sonner'
+import { useSearchParams } from 'react-router-dom'
 import {
   useExpenses,
   useCreateExpense,
@@ -31,6 +32,8 @@ import {
   useMarkExpenseAsPaid,
 } from '../hooks/useFinance'
 import type { Expense, ExpenseFormData } from '../types'
+import { financeToolbarControlClassName } from './FinanceTermSelector'
+import { useProcurementCommands, useRequisitionExpensePrefill } from '@/features/procurement/hooks/useProcurement'
 
 const CATEGORIES = [
   { value: 'salaries',    label: 'Salaries' },
@@ -74,10 +77,31 @@ function ExpenseStatusBadge({ status }: { status: Expense['status'] }) {
   )
 }
 
-function ExpenseFormModal({ open, onOpenChange, expense }: { open: boolean; onOpenChange: (v: boolean) => void; expense?: Expense | null }) {
+type ProcurementPrefill = {
+  description: string
+  category: FormValues['category']
+  amount: number
+  paid_to: string
+  expense_date: string
+}
+
+function ExpenseFormModal({
+  open,
+  onOpenChange,
+  expense,
+  procurementPrefill,
+  procurementRequisitionId,
+}: {
+  open: boolean
+  onOpenChange: (v: boolean) => void
+  expense?: Expense | null
+  procurementPrefill?: ProcurementPrefill | null
+  procurementRequisitionId?: string | null
+}) {
   const isEdit = !!expense
   const create = useCreateExpense()
   const update = useUpdateExpense()
+  const { linkExpense } = useProcurementCommands()
   const [serverError, setServerError] = useState<string | null>(null)
   const form = useForm<FormValues>({
     resolver: zodResolver(schema) as Resolver<FormValues>,
@@ -94,35 +118,63 @@ function ExpenseFormModal({ open, onOpenChange, expense }: { open: boolean; onOp
   useEffect(() => {
     if (!open) return
     setServerError(null)
+    const pf = procurementPrefill
     form.reset({
-      description: expense?.description ?? '',
-      amount: expense?.amount ?? 0,
-      category: expense?.category ?? 'other',
-      expense_date: expense?.expense_date ?? new Date().toISOString().slice(0, 10),
-      paid_to: expense?.paid_to ?? '',
+      description: pf?.description ?? expense?.description ?? '',
+      amount: pf?.amount ?? expense?.amount ?? 0,
+      category: pf?.category ?? expense?.category ?? 'other',
+      expense_date: pf?.expense_date ?? expense?.expense_date ?? new Date().toISOString().slice(0, 10),
+      paid_to: pf?.paid_to ?? expense?.paid_to ?? '',
       reference_number: expense?.reference_number ?? '',
       notes: expense?.notes ?? '',
     })
-  }, [expense, form, open])
+  }, [expense, form, open, procurementPrefill])
 
   const onSubmit = async (v: FormValues) => {
     setServerError(null)
     try {
-      const ok = isEdit && expense
-        ? await update.mutateAsync({ id: expense.id, data: v as ExpenseFormData })
-        : await create.mutateAsync(v as ExpenseFormData)
+      const reqId = procurementRequisitionId?.trim()
 
-      if (ok) {
-        toast.success(isEdit ? 'Expense updated successfully' : 'Expense submitted for approval')
-        form.reset()
-        onOpenChange(false)
-      } else {
-        const message = isEdit
-          ? 'Only pending expenses can be edited.'
-          : 'Failed to create expense. Please try again.'
+      const okEdit = isEdit && expense
+        ? await update.mutateAsync({ id: expense.id, data: v as ExpenseFormData })
+        : false
+
+      const expenseId = !isEdit
+        ? await create.mutateAsync({
+          ...(v as ExpenseFormData),
+          requisition_id: reqId ?? undefined,
+        })
+        : null
+
+      if (isEdit && expense) {
+        if (okEdit) {
+          toast.success('Expense updated successfully')
+          form.reset()
+          onOpenChange(false)
+          return
+        }
+        const message = 'Only pending expenses can be edited.'
         setServerError(message)
         toast.error(message)
+        return
       }
+
+      if (expenseId) {
+        if (reqId) {
+          const linked = await linkExpense.mutateAsync({ requisitionId: reqId, expenseId })
+          if (!linked) {
+            toast.error('Expense saved but procurement link failed — link from Procurement tab if needed.')
+          }
+        }
+        toast.success('Expense submitted for approval')
+        form.reset()
+        onOpenChange(false)
+        return
+      }
+
+      const message = 'Failed to create expense. Please try again.'
+      setServerError(message)
+      toast.error(message)
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to save expense. Please try again.'
       setServerError(message)
@@ -132,7 +184,11 @@ function ExpenseFormModal({ open, onOpenChange, expense }: { open: boolean; onOp
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
-        <DialogHeader><DialogTitle>{isEdit ? 'Edit Expense' : 'Add Expense'}</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>
+            {isEdit ? 'Edit Expense' : procurementRequisitionId ? 'Add expense (procurement)' : 'Add Expense'}
+          </DialogTitle>
+        </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             {serverError ? (
@@ -174,8 +230,8 @@ function ExpenseFormModal({ open, onOpenChange, expense }: { open: boolean; onOp
             )} />
             <DialogFooter>
               <Button variant="outline" type="button" onClick={() => onOpenChange(false)}>Cancel</Button>
-              <Button type="submit" disabled={create.isPending || update.isPending}>
-                {create.isPending || update.isPending ? 'Saving...' : isEdit ? 'Save Changes' : 'Submit Expense'}
+              <Button type="submit" disabled={create.isPending || update.isPending || linkExpense.isPending}>
+                {create.isPending || update.isPending || linkExpense.isPending ? 'Saving...' : isEdit ? 'Save Changes' : 'Submit Expense'}
               </Button>
             </DialogFooter>
           </form>
@@ -294,6 +350,7 @@ function MarkPaidDialog({
 
 export function ExpensesTab() {
   const { hasRole } = useAuth()
+  const [searchParams, setSearchParams] = useSearchParams()
   const canCreate = hasRole('bursar')
   const canApprove = hasRole('headmaster', 'deputy_headmaster')
   const canMarkPaid = hasRole('bursar')
@@ -304,7 +361,34 @@ export function ExpensesTab() {
   const [payTarget, setPayTarget] = useState<Expense | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
+  const prefillReqParam = searchParams.get('prefillReq')
+  const { data: procPrefillData } = useRequisitionExpensePrefill(
+    canCreate && prefillReqParam ? prefillReqParam : null,
+  )
+  const [procurementRequisitionId, setProcurementRequisitionId] = useState<string | null>(null)
+  const [procurementPrefill, setProcurementPrefill] = useState<ProcurementPrefill | null>(null)
 
+  useEffect(() => {
+    if (!canCreate || !prefillReqParam || !procPrefillData) return
+    setProcurementRequisitionId(prefillReqParam)
+    setProcurementPrefill(procPrefillData)
+    setEditTarget(null)
+    setShowForm(true)
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev)
+      next.delete('prefillReq')
+      return next
+    }, { replace: true })
+  }, [canCreate, prefillReqParam, procPrefillData, setSearchParams])
+
+  const onExpenseModalOpen = (open: boolean) => {
+    setShowForm(open)
+    if (!open) {
+      setEditTarget(null)
+      setProcurementRequisitionId(null)
+      setProcurementPrefill(null)
+    }
+  }
   const { data: expenses = [], isLoading } = useExpenses({ category: categoryFilter, search })
   const deleteExpense = useDeleteExpense()
   const approveExpense = useApproveExpense()
@@ -399,10 +483,17 @@ export function ExpensesTab() {
         <div className="flex flex-wrap gap-3">
           <div className="relative min-w-0 flex-1 sm:flex-initial">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="Search expenses..." className="pl-9 w-full sm:w-52 h-9 sm:h-10" value={search} onChange={e => setSearch(e.target.value)} />
+            <Input
+              placeholder="Search expenses..."
+              className={cn('pl-9 w-full sm:w-52 h-9 sm:h-10', financeToolbarControlClassName)}
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
           </div>
           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="w-full sm:w-40 h-9 sm:h-10"><SelectValue placeholder="All Categories" /></SelectTrigger>
+            <SelectTrigger className={cn('w-full sm:w-40 h-9 sm:h-10', financeToolbarControlClassName)}>
+              <SelectValue placeholder="All Categories" />
+            </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Categories</SelectItem>
               {CATEGORIES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
@@ -412,7 +503,15 @@ export function ExpensesTab() {
         <div className="flex items-center gap-4">
           <p className="text-sm text-muted-foreground">Total: <span className="font-semibold text-foreground">{formatCurrency(totalAmount)}</span></p>
           {canCreate && (
-            <Button onClick={() => { setEditTarget(null); setShowForm(true) }} className="h-9 sm:h-10">
+            <Button
+              onClick={() => {
+                setEditTarget(null)
+                setProcurementPrefill(null)
+                setProcurementRequisitionId(null)
+                setShowForm(true)
+              }}
+              className="h-9 sm:h-10"
+            >
               <Plus className="mr-2 h-4 w-4" />Add Expense
             </Button>
           )}
@@ -431,7 +530,14 @@ export function ExpensesTab() {
               title="No expenses yet"
               description="No expenses yet. Create your first expense to start tracking school spending."
               action={canCreate ? (
-                <Button onClick={() => { setEditTarget(null); setShowForm(true) }}>
+                <Button
+                  onClick={() => {
+                    setEditTarget(null)
+                    setProcurementPrefill(null)
+                    setProcurementRequisitionId(null)
+                    setShowForm(true)
+                  }}
+                >
                   <Plus className="mr-2 h-4 w-4" />
                   Add Expense
                 </Button>
@@ -442,7 +548,13 @@ export function ExpensesTab() {
         />
       </div>
 
-      <ExpenseFormModal open={showForm} onOpenChange={v => { setShowForm(v); if (!v) setEditTarget(null) }} expense={editTarget} />
+      <ExpenseFormModal
+        open={showForm}
+        onOpenChange={onExpenseModalOpen}
+        expense={editTarget}
+        procurementPrefill={editTarget ? null : procurementPrefill}
+        procurementRequisitionId={editTarget ? null : procurementRequisitionId}
+      />
       <RejectExpenseDialog open={!!rejectTarget} onOpenChange={v => !v && setRejectTarget(null)} expense={rejectTarget} />
       <MarkPaidDialog open={!!payTarget} onOpenChange={v => !v && setPayTarget(null)} expense={payTarget} />
 

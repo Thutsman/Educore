@@ -38,7 +38,7 @@ export function SchoolProvider({ children }: { children: ReactNode }) {
     async function fetchSchools() {
       const { data, error } = await supabase
         .from('user_roles')
-        .select('school:schools(id, name, slug, logo_url)')
+        .select('school:schools(id, name, slug, logo_url, procurement_initiator)')
         .eq('user_id', user!.id)
 
       if (cancelled) return
@@ -48,7 +48,15 @@ export function SchoolProvider({ children }: { children: ReactNode }) {
         return
       }
 
-      type RawRow = { school: { id: string; name: string; slug: string | null; logo_url: string | null } | null }
+      type RawRow = {
+        school: {
+          id: string
+          name: string
+          slug: string | null
+          logo_url: string | null
+          procurement_initiator?: School['procurement_initiator']
+        } | null
+      }
       const seen = new Set<string>()
       const list: School[] = []
       for (const row of data as unknown as RawRow[]) {

@@ -3,6 +3,9 @@ import {
   getInvoices,
   getInvoiceById,
   createInvoice,
+  createDraftInvoicesForClass,
+  finalizeInvoice,
+  finalizeDraftsForClassBillingPeriod,
   voidInvoice,
   getPaymentsForInvoice,
   recordPayment,
@@ -25,7 +28,7 @@ import {
   getBursarMonthlyCollection,
   getBursarBudgetVsActual,
 } from '../services/finance'
-import type { PaymentFormData, ExpenseFormData, InvoiceFormData, BudgetFormData, Budget } from '../types'
+import type { PaymentFormData, ExpenseFormData, InvoiceFormData, BudgetFormData, Budget, DraftInvoicesForClassInput, FinanceReportFilters } from '../types'
 import { useSchool } from '@/context/SchoolContext'
 import { useAuth } from '@/hooks/useAuth'
 import {
@@ -58,7 +61,7 @@ const KEY = {
 }
 
 export function useInvoices(
-  filters?: { status?: string; search?: string; academic_year_id?: string; term_id?: string },
+  filters?: { status?: string; search?: string; billing_period_key?: string; created_from?: string; created_to?: string },
 ) {
   const { currentSchool } = useSchool()
   const schoolId = currentSchool?.id ?? ''
@@ -118,6 +121,38 @@ export function useCreateInvoice() {
   })
 }
 
+export function useCreateDraftInvoicesForClass() {
+  const qc = useQueryClient()
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
+  return useMutation({
+    mutationFn: (d: DraftInvoicesForClassInput) => createDraftInvoicesForClass(schoolId, d),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['finance'] }),
+  })
+}
+
+export function useFinalizeInvoice() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: finalizeInvoice,
+    onSuccess: (_ok, invoiceId) => {
+      qc.invalidateQueries({ queryKey: ['finance', 'invoices'] })
+      qc.invalidateQueries({ queryKey: KEY.invoice(invoiceId) })
+    },
+  })
+}
+
+export function useFinalizeDraftsForClassBillingPeriod() {
+  const qc = useQueryClient()
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
+  return useMutation({
+    mutationFn: (d: { class_id: string; billing_period_key: string }) =>
+      finalizeDraftsForClassBillingPeriod(schoolId, d.class_id, d.billing_period_key),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['finance'] }),
+  })
+}
+
 export function useVoidInvoice() {
   const qc = useQueryClient()
   return useMutation({
@@ -152,6 +187,7 @@ export function useCreateExpense() {
       qc.invalidateQueries({ queryKey: ['monthly-financials'] })
       qc.invalidateQueries({ queryKey: ['finance'] })
       qc.invalidateQueries({ queryKey: ['dashboard'] })
+      qc.invalidateQueries({ queryKey: ['procurement'] })
     },
   })
 }
@@ -273,20 +309,16 @@ export function useDeleteBudget() {
   })
 }
 
-export type FinanceSummaryFilters = {
-  academic_year_id?: string
-  term_id?: string
-  date_from?: string
-  date_to?: string
-}
+export type FinanceSummaryFilters = FinanceReportFilters
 
 export function useFinanceSummary(filters?: FinanceSummaryFilters) {
   const { currentSchool } = useSchool()
   const schoolId = currentSchool?.id ?? ''
 
   const invoicesQuery = useInvoices({
-    academic_year_id: filters?.academic_year_id,
-    term_id: filters?.term_id,
+    billing_period_key: filters?.billing_period_key,
+    created_from: filters?.date_from,
+    created_to: filters?.date_to,
   })
   const expensesQuery = useExpenses({
     date_from: filters?.date_from,
@@ -344,9 +376,8 @@ export function useFinancialHealth(filters?: FinanceSummaryFilters) {
 export function useBursarExpenseByStatus(filters?: FinanceSummaryFilters) {
   const { currentSchool } = useSchool()
   const schoolId = currentSchool?.id ?? ''
-  const f = {
-    academic_year_id: filters?.academic_year_id,
-    term_id: filters?.term_id,
+  const f: FinanceReportFilters = {
+    billing_period_key: filters?.billing_period_key,
     date_from: filters?.date_from,
     date_to: filters?.date_to,
   }
@@ -360,9 +391,8 @@ export function useBursarExpenseByStatus(filters?: FinanceSummaryFilters) {
 export function useBursarExpenseLineItems(filters?: FinanceSummaryFilters) {
   const { currentSchool } = useSchool()
   const schoolId = currentSchool?.id ?? ''
-  const f = {
-    academic_year_id: filters?.academic_year_id,
-    term_id: filters?.term_id,
+  const f: FinanceReportFilters = {
+    billing_period_key: filters?.billing_period_key,
     date_from: filters?.date_from,
     date_to: filters?.date_to,
   }
@@ -376,9 +406,8 @@ export function useBursarExpenseLineItems(filters?: FinanceSummaryFilters) {
 export function useBursarFeeCollectionLineItems(filters?: FinanceSummaryFilters) {
   const { currentSchool } = useSchool()
   const schoolId = currentSchool?.id ?? ''
-  const f = {
-    academic_year_id: filters?.academic_year_id,
-    term_id: filters?.term_id,
+  const f: FinanceReportFilters = {
+    billing_period_key: filters?.billing_period_key,
     date_from: filters?.date_from,
     date_to: filters?.date_to,
   }
@@ -392,9 +421,8 @@ export function useBursarFeeCollectionLineItems(filters?: FinanceSummaryFilters)
 export function useBursarExpensesByCategory(filters?: FinanceSummaryFilters) {
   const { currentSchool } = useSchool()
   const schoolId = currentSchool?.id ?? ''
-  const f = {
-    academic_year_id: filters?.academic_year_id,
-    term_id: filters?.term_id,
+  const f: FinanceReportFilters = {
+    billing_period_key: filters?.billing_period_key,
     date_from: filters?.date_from,
     date_to: filters?.date_to,
   }
@@ -408,9 +436,8 @@ export function useBursarExpensesByCategory(filters?: FinanceSummaryFilters) {
 export function useBursarMonthlyCollection(filters?: FinanceSummaryFilters) {
   const { currentSchool } = useSchool()
   const schoolId = currentSchool?.id ?? ''
-  const f = {
-    academic_year_id: filters?.academic_year_id,
-    term_id: filters?.term_id,
+  const f: FinanceReportFilters = {
+    billing_period_key: filters?.billing_period_key,
     date_from: filters?.date_from,
     date_to: filters?.date_to,
   }
@@ -424,9 +451,8 @@ export function useBursarMonthlyCollection(filters?: FinanceSummaryFilters) {
 export function useBursarBudgetVsActual(filters?: FinanceSummaryFilters) {
   const { currentSchool } = useSchool()
   const schoolId = currentSchool?.id ?? ''
-  const f = {
-    academic_year_id: filters?.academic_year_id,
-    term_id: filters?.term_id,
+  const f: FinanceReportFilters = {
+    billing_period_key: filters?.billing_period_key,
     date_from: filters?.date_from,
     date_to: filters?.date_to,
   }

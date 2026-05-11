@@ -31,8 +31,8 @@ import {
   getExpectedExpenses,
   getProjectedEndOfTermBalance,
 } from '@/features/finance/financeSelectors'
-import { useAcademicYears, useTerms } from '@/features/academics/hooks/useAcademics'
-import { FinanceTermSelector, type FinanceTermSelection } from '@/features/finance/components/FinanceTermSelector'
+import { FinanceInvoiceListToolbar, type FinanceInvoiceListSelection } from '@/features/finance/components/FinanceTermSelector'
+import { billingPeriodKeyFromYearTermStrings } from '@/features/finance/billingPeriod'
 import { cn } from '@/utils/cn'
 
 function ChartSkeleton({ height = 220 }: { height?: number }) {
@@ -72,33 +72,27 @@ const OUTSTANDING_COLS: Column<OutstandingByClass>[] = [
 export function BursarDashboard() {
   const { profile } = useAuth()
 
-  const { data: years } = useAcademicYears()
-  const currentYear = years?.find((y) => y.is_current) ?? years?.[0]
-  const [termSelection, setTermSelection] = useState<FinanceTermSelection>({
-    academic_year_id: undefined,
-    term_id: undefined,
+  const [listFilters, setListFilters] = useState<FinanceInvoiceListSelection>({
+    billing_year: '',
+    billing_term: '',
     date_from: undefined,
     date_to: undefined,
   })
-  const { data: terms } = useTerms(currentYear?.id)
-  const { data: termsForSelection } = useTerms(termSelection.academic_year_id ?? currentYear?.id)
-  const currentTerm = terms?.find((t) => t.is_current) ?? terms?.[terms.length - 1]
 
   const { data: stats,      isLoading: statsLoading   } = useBursarStats()
   const { data: monthlyResult, isLoading: monthlyLoading } = useMonthlyFinancials()
   const { data: outstanding, isLoading: outLoading    } = useOutstandingByClass()
   const { data: methods,    isLoading: methodsLoading } = usePaymentMethodBreakdown()
   const financeFilters = {
-    academic_year_id: termSelection.academic_year_id,
-    term_id: termSelection.term_id,
-    date_from: termSelection.date_from,
-    date_to: termSelection.date_to,
+    billing_period_key: billingPeriodKeyFromYearTermStrings(listFilters.billing_year, listFilters.billing_term),
+    date_from: listFilters.date_from,
+    date_to: listFilters.date_to,
   }
   const finance = useFinanceSummary(financeFilters)
   const { health } = useFinancialHealth(financeFilters)
   const { data: expenseByStatus } = useBursarExpenseByStatus(financeFilters)
   const budgetVs = useBursarBudgetVsActual(financeFilters)
-  const termEndForForecast = termSelection.date_to ?? currentTerm?.end_date
+  const termEndForForecast = listFilters.date_to ?? undefined
   const remainingMonths = getRemainingMonthsInTerm(termEndForForecast)
   const expectedExpenses = getExpectedExpenses(finance.expenses, remainingMonths, 3)
   const projectedBalance = getProjectedEndOfTermBalance({
@@ -121,14 +115,16 @@ export function BursarDashboard() {
     : null
   const monthCount = monthlyResult?.monthCount ?? 0
 
-  const yearName = years?.find((y) => y.id === termSelection.academic_year_id)?.name
-  const termName = termsForSelection?.find((t) => t.id === termSelection.term_id)?.name
-  const periodLabel =
-    termSelection.term_id && termName && yearName
-      ? `${termName} · ${yearName}`
-      : termSelection.academic_year_id && yearName
-        ? yearName
-        : 'Selected period'
+  const periodLabel = [
+    billingPeriodKeyFromYearTermStrings(listFilters.billing_year, listFilters.billing_term) ?? null,
+    listFilters.date_from && listFilters.date_to
+      ? `${listFilters.date_from} – ${listFilters.date_to}`
+      : listFilters.date_from
+        ? `From ${listFilters.date_from}`
+        : listFilters.date_to
+          ? `Until ${listFilters.date_to}`
+          : null,
+  ].filter(Boolean).join(' · ') || 'All invoices'
 
   const expenseInfoContent = (
     <div className="max-w-xs space-y-2 text-xs">
@@ -167,7 +163,7 @@ export function BursarDashboard() {
           title={`Finance Overview`}
           subtitle={`Welcome back, ${profile?.full_name?.split(' ')[0] ?? 'Bursar'}`}
         />
-        <FinanceTermSelector value={termSelection} onChange={setTermSelection} />
+        <FinanceInvoiceListToolbar value={listFilters} onChange={setListFilters} />
       </div>
 
       {/* ── Financial Health Indicator ── */}

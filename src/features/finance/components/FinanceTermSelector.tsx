@@ -1,3 +1,4 @@
+import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
@@ -5,101 +6,190 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { useAcademicYears, useTerms } from '@/features/academics/hooks/useAcademics'
+import { cn } from '@/utils/cn'
+import { getBillingYearOptions } from '@/features/finance/billingPeriod'
 
-export interface FinanceTermSelection {
-  academic_year_id: string | undefined
-  term_id: string | undefined
+/** Inputs/selects on Finance grey page — elevated surface so controls read as interactive vs page `--background`. */
+export const financeToolbarControlClassName =
+  'bg-card border-2 border-border shadow-md text-foreground placeholder:text-muted-foreground ring-1 ring-black/[0.04] dark:ring-white/[0.06]'
+
+const BP_ALL = '__bp_all__'
+
+/** Toolbar filters for invoice lists and bursar finance views — no Academics dependency. */
+export interface FinanceInvoiceListSelection {
+  billing_year: string
+  billing_term: string
   date_from: string | undefined
   date_to: string | undefined
 }
 
-interface FinanceTermSelectorProps {
-  value: FinanceTermSelection
-  onChange: (v: FinanceTermSelection) => void
+interface FinanceInvoiceListToolbarProps {
+  value: FinanceInvoiceListSelection
+  onChange: (v: FinanceInvoiceListSelection) => void
   className?: string
 }
 
-export function FinanceTermSelector({ value, onChange, className }: FinanceTermSelectorProps) {
-  const { data: years = [] } = useAcademicYears()
-  const { data: terms = [] } = useTerms(value.academic_year_id)
+export function BillingPeriodYearTermControls({
+  billing_year,
+  billing_term,
+  onBillingYearChange,
+  onBillingTermChange,
+  includeAllOption,
+  optionalClearPair,
+  className,
+}: {
+  billing_year: string
+  billing_term: string
+  onBillingYearChange: (y: string) => void
+  onBillingTermChange: (t: string) => void
+  includeAllOption: boolean
+  /** When true, choosing “All” on year or term clears both (optional billing period on a single invoice). */
+  optionalClearPair?: boolean
+  className?: string
+}) {
+  const years = getBillingYearOptions()
+  const yearValue = includeAllOption ? (billing_year || BP_ALL) : billing_year
+  const termValue = includeAllOption ? (billing_term || BP_ALL) : billing_term
 
-  const handleYearChange = (yearId: string) => {
-    if (yearId === '__all__') {
-      onChange({
-        academic_year_id: undefined,
-        term_id: undefined,
-        date_from: undefined,
-        date_to: undefined,
-      })
+  const handleYear = (v: string) => {
+    if (optionalClearPair && v === BP_ALL) {
+      onBillingYearChange('')
+      onBillingTermChange('')
       return
     }
-    const year = years.find((y) => y.id === yearId)
-    onChange({
-      academic_year_id: yearId,
-      term_id: undefined,
-      date_from: year?.start_date,
-      date_to: year?.end_date,
-    })
+    const next = v === BP_ALL ? '' : v
+    onBillingYearChange(next)
   }
-
-  const handleTermChange = (termId: string) => {
-    if (termId === '__all__') {
-      const year = years.find((y) => y.id === value.academic_year_id)
-      onChange({
-        academic_year_id: value.academic_year_id,
-        term_id: undefined,
-        date_from: year?.start_date,
-        date_to: year?.end_date,
-      })
+  const handleTerm = (v: string) => {
+    if (optionalClearPair && v === BP_ALL) {
+      onBillingYearChange('')
+      onBillingTermChange('')
       return
     }
-    const term = terms.find((t) => t.id === termId)
-    onChange({
-      academic_year_id: value.academic_year_id,
-      term_id: termId,
-      date_from: term?.start_date,
-      date_to: term?.end_date,
-    })
+    const next = v === BP_ALL ? '' : v
+    onBillingTermChange(next)
   }
-
-  const effectiveYearId = value.academic_year_id ?? '__all__'
-  const effectiveTermId = value.term_id ?? '__all__'
 
   return (
-    <div className={className}>
-      <Select
-        value={effectiveYearId}
-        onValueChange={handleYearChange}
-      >
-        <SelectTrigger className="w-[140px] sm:w-[160px] h-9 sm:h-10">
-          <SelectValue placeholder="Academic Year" />
+    <div className={cn('flex flex-wrap items-center gap-2', className)}>
+      <Select value={yearValue} onValueChange={handleYear}>
+        <SelectTrigger
+          className={cn('h-9 w-[112px] sm:h-10', financeToolbarControlClassName)}
+          aria-label="Billing calendar year"
+        >
+          <SelectValue placeholder="Year" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="__all__">All years</SelectItem>
+          {includeAllOption && <SelectItem value={BP_ALL}>All years</SelectItem>}
           {years.map((y) => (
-            <SelectItem key={y.id} value={y.id}>
-              {y.name || y.id}
+            <SelectItem key={y} value={String(y)}>
+              {y}
             </SelectItem>
           ))}
         </SelectContent>
       </Select>
-      <Select
-        value={effectiveTermId}
-        onValueChange={handleTermChange}
-      >
-        <SelectTrigger className="w-[120px] sm:w-[140px] h-9 sm:h-10 ml-2">
+      <Select value={termValue} onValueChange={handleTerm}>
+        <SelectTrigger
+          className={cn('h-9 w-[116px] sm:h-10', financeToolbarControlClassName)}
+          aria-label="Billing term"
+        >
           <SelectValue placeholder="Term" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="__all__">All terms</SelectItem>
-          {terms.map((t) => (
-            <SelectItem key={t.id} value={t.id}>
-              {t.name}
+          {includeAllOption && <SelectItem value={BP_ALL}>All terms</SelectItem>}
+          {[1, 2, 3].map((t) => (
+            <SelectItem key={t} value={String(t)}>
+              Term {t}
             </SelectItem>
           ))}
         </SelectContent>
       </Select>
+    </div>
+  )
+}
+
+/** Required year + term — use when empty strings should show placeholders (e.g. Issue class drafts). */
+export function BillingPeriodYearTermRequiredControls({
+  billing_year,
+  billing_term,
+  onBillingYearChange,
+  onBillingTermChange,
+  className,
+}: {
+  billing_year: string
+  billing_term: string
+  onBillingYearChange: (y: string) => void
+  onBillingTermChange: (t: string) => void
+  className?: string
+}) {
+  const years = getBillingYearOptions()
+  return (
+    <div className={cn('flex flex-wrap items-center gap-2', className)}>
+      <Select
+        value={billing_year === '' ? undefined : billing_year}
+        onValueChange={onBillingYearChange}
+      >
+        <SelectTrigger
+          className={cn('h-9 w-[112px] sm:h-10', financeToolbarControlClassName)}
+          aria-label="Billing calendar year"
+        >
+          <SelectValue placeholder="Year" />
+        </SelectTrigger>
+        <SelectContent>
+          {years.map((y) => (
+            <SelectItem key={y} value={String(y)}>
+              {y}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Select
+        value={billing_term === '' ? undefined : billing_term}
+        onValueChange={onBillingTermChange}
+      >
+        <SelectTrigger
+          className={cn('h-9 w-[116px] sm:h-10', financeToolbarControlClassName)}
+          aria-label="Billing term"
+        >
+          <SelectValue placeholder="Term" />
+        </SelectTrigger>
+        <SelectContent>
+          {[1, 2, 3].map((t) => (
+            <SelectItem key={t} value={String(t)}>
+              Term {t}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  )
+}
+
+export function FinanceInvoiceListToolbar({ value, onChange, className }: FinanceInvoiceListToolbarProps) {
+  return (
+    <div className={cn('flex flex-wrap items-center gap-2', className)}>
+      <BillingPeriodYearTermControls
+        billing_year={value.billing_year}
+        billing_term={value.billing_term}
+        onBillingYearChange={(billing_year) => onChange({ ...value, billing_year })}
+        onBillingTermChange={(billing_term) => onChange({ ...value, billing_term })}
+        includeAllOption
+      />
+      <Input
+        type="date"
+        className={cn('h-9 w-[140px] sm:h-10', financeToolbarControlClassName)}
+        value={value.date_from ?? ''}
+        onChange={(e) => onChange({ ...value, date_from: e.target.value || undefined })}
+        aria-label="Invoices from date"
+      />
+      <span className="text-muted-foreground text-sm">–</span>
+      <Input
+        type="date"
+        className={cn('h-9 w-[140px] sm:h-10', financeToolbarControlClassName)}
+        value={value.date_to ?? ''}
+        onChange={(e) => onChange({ ...value, date_to: e.target.value || undefined })}
+        aria-label="Invoices to date"
+      />
     </div>
   )
 }

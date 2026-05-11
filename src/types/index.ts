@@ -1,11 +1,14 @@
 export type { AppRole } from './database.types'
 import type { AppRole } from './database.types'
 
+export type ProcurementInitiatorSetting = 'bursar' | 'deputy_headmaster' | 'either'
+
 export interface School {
   id: string
   name: string
   slug: string | null
   logo_url: string | null
+  procurement_initiator?: ProcurementInitiatorSetting
 }
 
 export interface UserProfile {

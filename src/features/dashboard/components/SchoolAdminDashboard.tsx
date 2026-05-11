@@ -1,12 +1,24 @@
 import { useNavigate } from 'react-router-dom'
-import { CalendarDays, BookOpen, UserCog, GraduationCap, CheckCircle2, Clock, ArrowRight } from 'lucide-react'
+import { toast } from 'sonner'
+import {
+  CalendarDays,
+  BookOpen,
+  UserCog,
+  GraduationCap,
+  CheckCircle2,
+  Clock,
+  ArrowRight,
+} from 'lucide-react'
 import { PageHeader } from '@/components/common/PageHeader'
 import { StatCard } from '@/components/common/StatCard'
 import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn } from '@/utils/cn'
 import { useAuth } from '@/hooks/useAuth'
 import { useSchool } from '@/context/SchoolContext'
 import { useSchoolAdminSetupStats } from '@/features/dashboard/hooks/useSchoolAdminDashboard'
+import { useSchoolProcurementInitiator, useProcurementInitiatorMutation } from '@/features/procurement/hooks/useProcurement'
+import type { ProcurementInitiator } from '@/features/procurement/types'
 
 interface SetupStep {
   number: number
@@ -15,6 +27,42 @@ interface SetupStep {
   description: string
   done: boolean
   action: string
+}
+
+const INITIATOR_LABEL: Record<ProcurementInitiator, string> = {
+  bursar: 'Bursar only',
+  deputy_headmaster: 'Deputy Head only',
+  either: 'Bursar or Deputy Head',
+}
+
+function SchoolAdminProcurementRow() {
+  const { data: initiator } = useSchoolProcurementInitiator()
+  const mut = useProcurementInitiatorMutation()
+  const cur = initiator ?? 'bursar'
+  const onPick = async (v: ProcurementInitiator) => {
+    const ok = await mut.mutateAsync(v)
+    toast[ok ? 'success' : 'error'](ok ? 'Procurement initiator saved' : 'Could not save — try again or ask support.')
+  }
+  return (
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div className="min-w-0">
+        <p className="text-sm font-semibold">Procurement initiator</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Sets who may create supplier requisitions under Finance → Procurement. Headmasters always approve requisitions regardless of this setting.
+        </p>
+      </div>
+      <Select value={cur} onValueChange={(v) => void onPick(v as ProcurementInitiator)} disabled={mut.isPending}>
+        <SelectTrigger className="w-full sm:w-[220px]">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {(Object.entries(INITIATOR_LABEL) as [ProcurementInitiator, string][]).map(([k, label]) => (
+            <SelectItem key={k} value={k}>{label}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  )
 }
 
 export function SchoolAdminDashboard() {
@@ -129,6 +177,13 @@ export function SchoolAdminDashboard() {
             </div>
           </div>
         ))}
+      </div>
+
+      <div id="school-procurement-initiator" className="rounded-xl border border-border bg-card p-5 shadow-sm">
+        <h2 className="mb-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Finance · procurement policy
+        </h2>
+        <SchoolAdminProcurementRow />
       </div>
 
       {/* Stats strip */}

@@ -5,7 +5,7 @@ import { cn } from '@/utils/cn'
 interface StatCardProps {
   title: string
   value: string | number
-  subtitle?: string
+  subtitle?: ReactNode
   icon?: ElementType
   iconClassName?: string
   trend?: {
@@ -64,8 +64,8 @@ export function StatCard({
             </p>
           )}
 
-          {subtitle && !loading && (
-            <p className="text-xs text-muted-foreground">{subtitle}</p>
+          {subtitle != null && !loading && (
+            <div className="text-xs text-muted-foreground">{subtitle}</div>
           )}
 
           {trend && !loading && (

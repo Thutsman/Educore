@@ -338,6 +338,7 @@ export async function getStudentFeeSummary(studentId: string): Promise<StudentFe
     .select('amount, amount_paid, balance, status')
     .eq('student_id', studentId)
     .neq('status', 'void')
+    .neq('status', 'draft')
 
   if (error || !data) return { totalInvoiced: 0, totalPaid: 0, balance: 0, invoiceCount: 0 }
   type RawInvoice = { amount: unknown; amount_paid: unknown; balance: unknown }

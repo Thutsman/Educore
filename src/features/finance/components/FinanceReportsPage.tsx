@@ -2,7 +2,6 @@ import { Fragment, useMemo, useState } from 'react'
 import { PageHeader } from '@/components/common/PageHeader'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
-import { DateRangePicker } from '@/components/common/DateRangePicker'
 import { formatCurrency, formatPercent, formatDate } from '@/utils/format'
 import {
   useFinanceSummary,
@@ -15,14 +14,14 @@ import {
 import { groupExpensesByCategory } from '@/features/finance/financeSelectors'
 import { Button } from '@/components/ui/button'
 import { exportToCsv } from '@/utils/exportToCsv'
-import { FinanceTermSelector, type FinanceTermSelection } from './FinanceTermSelector'
+import { FinanceInvoiceListToolbar, financeToolbarControlClassName, type FinanceInvoiceListSelection } from './FinanceTermSelector'
+import { billingPeriodKeyFromYearTermStrings } from '@/features/finance/billingPeriod'
 import { useSchool } from '@/context/SchoolContext'
 import {
   getBursarExpenseLineItems,
   getBursarFeeCollectionLineItems,
   getBursarIncomeStatementLineItems,
 } from '@/features/finance/services/finance'
-import { useAcademicYears, useTerms } from '@/features/academics/hooks/useAcademics'
 import { toast } from 'sonner'
 import { DataTable, type Column } from '@/components/common/DataTable'
 import { Input } from '@/components/ui/input'
@@ -44,10 +43,11 @@ const CATEGORY_COLORS: Record<string, string> = {
   other: '#6b7280',
 }
 
-function reportSlug(selection: FinanceTermSelection, yearName?: string, termName?: string): string {
-  const y = selection.academic_year_id ? (yearName ?? 'year').replace(/\s+/g, '-') : 'all-years'
-  const t = selection.term_id ? (termName ?? 'term').replace(/\s+/g, '-') : 'all-terms'
-  return `${t}-${y}`
+function reportSlug(f: FinanceInvoiceListSelection): string {
+  const bp = billingPeriodKeyFromYearTermStrings(f.billing_year, f.billing_term)
+  const parts = [bp, f.date_from, f.date_to].filter(Boolean)
+    .map((s) => String(s).replace(/\s+/g, '-').replace(/[^a-zA-Z0-9_-]/g, ''))
+  return parts.length ? parts.join('_').slice(0, 80) : 'all'
 }
 
 function ddmmyyyy(iso: string | null | undefined): string {
@@ -58,25 +58,18 @@ function ddmmyyyy(iso: string | null | undefined): string {
 export function FinanceReportsPage() {
   const { currentSchool } = useSchool()
   const schoolId = currentSchool?.id ?? ''
-  const [dateFrom, setDateFrom] = useState<string | null>(null)
-  const [dateTo, setDateTo] = useState<string | null>(null)
-  const [termSelection, setTermSelection] = useState<FinanceTermSelection>({
-    academic_year_id: undefined,
-    term_id: undefined,
+  const [listFilters, setListFilters] = useState<FinanceInvoiceListSelection>({
+    billing_year: '',
+    billing_term: '',
     date_from: undefined,
     date_to: undefined,
   })
-  const { data: years = [] } = useAcademicYears()
-  const { data: terms = [] } = useTerms(termSelection.academic_year_id)
-  const yearLabel = years.find((y) => y.id === termSelection.academic_year_id)?.name
-  const termLabel = terms.find((t) => t.id === termSelection.term_id)?.name
-  const slug = reportSlug(termSelection, yearLabel, termLabel)
+  const slug = reportSlug(listFilters)
 
   const filterObj = {
-    academic_year_id: termSelection.academic_year_id,
-    term_id: termSelection.term_id,
-    date_from: termSelection.date_from ?? dateFrom ?? undefined,
-    date_to: termSelection.date_to ?? dateTo ?? undefined,
+    billing_period_key: billingPeriodKeyFromYearTermStrings(listFilters.billing_year, listFilters.billing_term),
+    date_from: listFilters.date_from,
+    date_to: listFilters.date_to,
   }
 
   const finance = useFinanceSummary(filterObj)
@@ -357,24 +350,16 @@ export function FinanceReportsPage() {
         subtitle="Income statement, fee collection, and expense breakdown from real finance data"
       />
 
-      <div className="flex flex-wrap items-center gap-4">
-        <FinanceTermSelector value={termSelection} onChange={setTermSelection} />
-        <DateRangePicker
-          from={dateFrom}
-          to={dateTo}
-          onChange={({ from, to }) => {
-            setDateFrom(from)
-            setDateTo(to)
-          }}
-        />
+      <div className="flex flex-wrap items-center gap-4 rounded-xl border border-border bg-muted/25 p-3 shadow-sm">
+        <FinanceInvoiceListToolbar value={listFilters} onChange={setListFilters} />
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" className="h-9 sm:h-10" onClick={handleExportIncomeStatement}>
+          <Button variant="emerald" size="sm" className="h-9 shadow-md sm:h-10" onClick={handleExportIncomeStatement}>
             Export Income Statement (CSV)
           </Button>
-          <Button variant="outline" size="sm" className="h-9 sm:h-10" onClick={handleExportFeeCollection}>
+          <Button variant="emerald" size="sm" className="h-9 shadow-md sm:h-10" onClick={handleExportFeeCollection}>
             Export Fee Collection (CSV)
           </Button>
-          <Button variant="outline" size="sm" className="h-9 sm:h-10" onClick={handleExportExpenses}>
+          <Button variant="emerald" size="sm" className="h-9 shadow-md sm:h-10" onClick={handleExportExpenses}>
             Export Expense Breakdown (CSV)
           </Button>
         </div>
@@ -469,7 +454,7 @@ export function FinanceReportsPage() {
             <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                className="pl-9"
+                className={cn('pl-9 h-9 sm:h-10', financeToolbarControlClassName)}
                 placeholder="Search description or vendor…"
                 value={expSearch}
                 onChange={(e) => {
@@ -479,7 +464,7 @@ export function FinanceReportsPage() {
               />
             </div>
             <Select value={expCat} onValueChange={(v) => { setExpCat(v); setExpPage(1) }}>
-              <SelectTrigger className="w-[160px]"><SelectValue placeholder="Category" /></SelectTrigger>
+              <SelectTrigger className={cn('w-[160px] h-9 sm:h-10', financeToolbarControlClassName)}><SelectValue placeholder="Category" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All categories</SelectItem>
                 {['salaries', 'utilities', 'maintenance', 'supplies', 'equipment', 'transport', 'events', 'other'].map((c) => (
@@ -488,7 +473,7 @@ export function FinanceReportsPage() {
               </SelectContent>
             </Select>
             <Select value={expStatus} onValueChange={(v) => { setExpStatus(v); setExpPage(1) }}>
-              <SelectTrigger className="w-[140px]"><SelectValue placeholder="Status" /></SelectTrigger>
+              <SelectTrigger className={cn('w-[140px] h-9 sm:h-10', financeToolbarControlClassName)}><SelectValue placeholder="Status" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All statuses</SelectItem>
                 <SelectItem value="paid">Paid</SelectItem>
@@ -588,7 +573,7 @@ export function FinanceReportsPage() {
             <p className="text-sm text-muted-foreground">All invoices for selected period</p>
           </div>
           <Select value={feeStatus} onValueChange={setFeeStatus}>
-            <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
+            <SelectTrigger className={cn('w-[160px] h-9 sm:h-10', financeToolbarControlClassName)}><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All</SelectItem>
               <SelectItem value="paid">Paid</SelectItem>

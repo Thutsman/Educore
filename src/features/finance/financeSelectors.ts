@@ -2,14 +2,16 @@ import type { Invoice, Expense, Budget, BudgetCategory } from './types'
 
 const sum = (values: number[]) => values.reduce((total, value) => total + (Number.isFinite(value) ? value : 0), 0)
 
+const countsTowardFinanceTotals = (invoice: Invoice) => invoice.status !== 'draft'
+
 export const getTotalInvoicedAmount = (invoices: Invoice[]): number =>
-  sum(invoices.map((invoice) => invoice.amount))
+  sum(invoices.filter(countsTowardFinanceTotals).map((invoice) => invoice.amount))
 
 export const getTotalPaymentsReceived = (invoices: Invoice[]): number =>
-  sum(invoices.map((invoice) => invoice.amount_paid))
+  sum(invoices.filter(countsTowardFinanceTotals).map((invoice) => invoice.amount_paid))
 
 export const getOutstandingBalance = (invoices: Invoice[]): number =>
-  sum(invoices.map((invoice) => invoice.balance))
+  sum(invoices.filter(countsTowardFinanceTotals).map((invoice) => invoice.balance))
 
 export const getTotalExpenses = (expenses: Expense[]): number =>
   sum(expenses.map((expense) => expense.amount))
@@ -42,7 +44,7 @@ export const getOverdueInvoicesCount = (invoices: Invoice[], today = new Date())
   const todayDateOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate())
   return invoices.filter((invoice) => {
     if (!invoice.due_date || invoice.balance <= 0) return false
-    if (invoice.status === 'void') return false
+    if (invoice.status === 'void' || invoice.status === 'draft') return false
     const due = new Date(invoice.due_date)
     const dueDateOnly = new Date(due.getFullYear(), due.getMonth(), due.getDate())
     return dueDateOnly < todayDateOnly
