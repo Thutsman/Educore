@@ -231,6 +231,12 @@ export default function App() {
                   element={<ProtectedRoute allowedRoles={['school_admin','headmaster','deputy_headmaster','hod','class_teacher','teacher']} />}
                 >
                   <Route path="/academics/*" element={<AcademicsPage />} />
+                </Route>
+
+                {/* ── Timetable (no headmaster access) ── */}
+                <Route
+                  element={<ProtectedRoute allowedRoles={['school_admin','deputy_headmaster','hod','class_teacher','teacher']} />}
+                >
                   <Route path="/timetable" element={<TimetablePage />} />
                 </Route>
 
@@ -252,7 +258,7 @@ export default function App() {
                 </Route>
 
                 <Route
-                  element={<ProtectedRoute allowedRoles={['headmaster','deputy_headmaster','hod','class_teacher','teacher']} />}
+                  element={<ProtectedRoute allowedRoles={['deputy_headmaster','hod','class_teacher','teacher']} />}
                 >
                   <Route path="/assignments" element={<AssignmentsPage />} />
                 </Route>

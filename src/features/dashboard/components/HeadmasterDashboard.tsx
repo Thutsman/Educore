@@ -8,6 +8,13 @@ import {
   HelpCircle,
   ArrowRight,
   ShoppingCart,
+  Activity,
+  TrendingDown,
+  TrendingUp,
+  Scale,
+  Percent,
+  AlertTriangle,
+  Banknote,
 } from 'lucide-react'
 import { PageHeader } from '@/components/common/PageHeader'
 import { StatCard } from '@/components/common/StatCard'
@@ -23,8 +30,9 @@ import {
   useSchemeBookApprovalStats,
 } from '@/features/dashboard/hooks/useHeadmasterDashboard'
 import { HeadmasterHelp } from '@/features/dashboard/components/help/HeadmasterHelp'
-import { formatPercent } from '@/utils/format'
+import { formatCurrency, formatPercent } from '@/utils/format'
 import { usePendingHmProcurementCount } from '@/features/procurement/hooks/useProcurement'
+import { useFinancialHealth } from '@/features/finance/hooks/useFinance'
 
 function CardSkeleton() {
   return (
@@ -53,6 +61,7 @@ export function HeadmasterDashboard() {
   const { data: attOverview, isLoading: attOverviewLoading } = useHeadmasterAttendanceOverview(30)
   const { data: attWeekly = [], isLoading: attWeeklyLoading } = useHeadmasterAttendanceWeekly(8)
   const { data: schemeStats, isLoading: schemeLoading } = useSchemeBookApprovalStats()
+  const finance = useFinancialHealth()
 
   const [activeTab, setActiveTab] = useState('overview')
   const [hasSeen, setHasSeen] = useState(true)
@@ -206,6 +215,124 @@ export function HeadmasterDashboard() {
               iconClassName="bg-orange-600/10 text-orange-700"
             />
           )}
+
+          {/* ── Finance snapshot (Headmaster needs finance visibility) ── */}
+          <div className="space-y-4">
+            <div
+              className={`flex items-center gap-3 rounded-xl border px-4 py-3 ${
+                finance.health === 'healthy'
+                  ? 'border-emerald-500/30 bg-emerald-500/10'
+                  : finance.health === 'warning'
+                    ? 'border-amber-500/30 bg-amber-500/10'
+                    : 'border-destructive/30 bg-destructive/10'
+              }`}
+            >
+              <Activity
+                className={`h-5 w-5 shrink-0 ${
+                  finance.health === 'healthy'
+                    ? 'text-emerald-600 dark:text-emerald-400'
+                    : finance.health === 'warning'
+                      ? 'text-amber-600 dark:text-amber-400'
+                      : 'text-destructive'
+                }`}
+              />
+              <div className="flex-1">
+                <span className="font-medium">
+                  Financial health:{' '}
+                  {finance.health === 'healthy' ? 'Healthy' : finance.health === 'warning' ? 'Warning' : 'Critical'}
+                </span>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {finance.health === 'healthy'
+                    ? 'Collection rate ≥85%, outstanding ≤15%, expenses under control'
+                    : finance.health === 'warning'
+                      ? 'Review collection, outstanding balances, or expense ratio'
+                      : 'Immediate action needed — low collection, high outstanding, or expenses exceed revenue'}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <StatCard
+                title="Revenue (YTD)"
+                value={formatCurrency(finance.totalPaid ?? 0)}
+                subtitle="Total payments received"
+                icon={TrendingUp}
+                iconClassName="bg-emerald-500/10 text-emerald-500"
+                loading={finance.isLoading}
+              />
+              <Link
+                to="/finance?tab=invoices&filter=outstanding"
+                className="block cursor-pointer rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <StatCard
+                  title="Outstanding Balance"
+                  value={formatCurrency(finance.outstanding ?? 0)}
+                  subtitle="Unpaid + partial + overdue (selected period)"
+                  icon={Banknote}
+                  iconClassName="bg-amber-500/10 text-amber-500"
+                  loading={finance.isLoading}
+                  className="h-full transition-opacity hover:opacity-95"
+                />
+              </Link>
+              <StatCard
+                title="Total Expenses (YTD)"
+                value={formatCurrency(finance.totalExpenses ?? 0)}
+                subtitle="Paid expenses only"
+                icon={TrendingDown}
+                iconClassName="bg-rose-500/10 text-rose-500"
+                loading={finance.isLoading}
+              />
+              <StatCard
+                title="Net Cash Position"
+                value={formatCurrency(finance.netCashPosition ?? 0)}
+                subtitle={(finance.netCashPosition ?? 0) >= 0 ? 'Surplus (payments - expenses)' : 'Deficit (payments - expenses)'}
+                icon={Scale}
+                iconClassName={(finance.netCashPosition ?? 0) >= 0 ? 'bg-blue-500/10 text-blue-500' : 'bg-destructive/10 text-destructive'}
+                loading={finance.isLoading}
+              />
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <StatCard
+                title="Expected Position"
+                value={formatCurrency(finance.expectedPosition ?? 0)}
+                subtitle="Invoiced fees - expenses"
+                icon={Scale}
+                iconClassName="bg-violet-500/10 text-violet-500"
+                loading={finance.isLoading}
+              />
+              <StatCard
+                title="Collection Rate"
+                value={formatPercent((finance.collectionRate ?? 0) * 100)}
+                subtitle="Total received / invoiced"
+                icon={Percent}
+                iconClassName="bg-emerald-500/10 text-emerald-500"
+                loading={finance.isLoading}
+              />
+              <StatCard
+                title="Outstanding %"
+                value={formatPercent((finance.outstandingPercentage ?? 0) * 100)}
+                subtitle="Outstanding / invoiced"
+                icon={AlertTriangle}
+                iconClassName="bg-amber-500/10 text-amber-500"
+                loading={finance.isLoading}
+              />
+              <Link
+                to="/finance?tab=invoices&filter=overdue"
+                className="block cursor-pointer rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <StatCard
+                  title="Overdue Invoices"
+                  value={(finance.overdueCount ?? 0).toLocaleString()}
+                  subtitle="Past due & unpaid"
+                  icon={Banknote}
+                  iconClassName="bg-destructive/10 text-destructive"
+                  loading={finance.isLoading}
+                  className="h-full transition-opacity hover:opacity-95"
+                />
+              </Link>
+            </div>
+          </div>
 
           <div className="grid gap-6 lg:grid-cols-3">
             <div className="lg:col-span-2 rounded-xl border border-border bg-card p-6 shadow-sm">

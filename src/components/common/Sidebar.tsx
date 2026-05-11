@@ -122,7 +122,7 @@ const NAV_GROUPS: NavGroup[] = [
         label: 'Assignments',
         icon: FileQuestion,
         href: '/assignments',
-        allowedRoles: ['headmaster','deputy_headmaster','hod','class_teacher','teacher'],
+        allowedRoles: ['deputy_headmaster','hod','class_teacher','teacher'],
       },
       {
         label: 'Resources',
@@ -140,7 +140,7 @@ const NAV_GROUPS: NavGroup[] = [
         label: 'Timetable',
         icon: Clock,
         href: '/timetable',
-        allowedRoles: ['school_admin','headmaster','deputy_headmaster','class_teacher','teacher'],
+        allowedRoles: ['school_admin','deputy_headmaster','class_teacher','teacher'],
       },
     ],
   },
