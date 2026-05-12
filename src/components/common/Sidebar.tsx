@@ -221,6 +221,19 @@ const NAV_GROUPS: NavGroup[] = [
   },
 ]
 
+/** Headmaster: show Dashboard (Overview) first, then Finance, then other modules. */
+function reorderNavGroupsForHeadmaster(groups: NavGroup[]): NavGroup[] {
+  const overviewIdx = groups.findIndex((g) => g.label === 'Overview')
+  const financeIdx = groups.findIndex((g) => g.label === 'Finance')
+  if (overviewIdx === -1 || financeIdx === -1) return groups
+  if (financeIdx === overviewIdx + 1) return groups
+  const next = [...groups]
+  const [financeGroup] = next.splice(financeIdx, 1)
+  const overviewAfter = next.findIndex((g) => g.label === 'Overview')
+  next.splice(overviewAfter + 1, 0, financeGroup)
+  return next
+}
+
 // ─── Single nav item ─────────────────────────────────────────────────────────
 
 function SidebarNavItem({
@@ -302,13 +315,17 @@ function SidebarContent({
       ? 'class_teacher'
       : null
 
-  const visibleGroups = NAV_GROUPS.map(group => ({
+  let visibleGroups = NAV_GROUPS.map(group => ({
     ...group,
     items: group.items.filter(item => {
       const sidebarRoles = activeRoleForSidebar ? [activeRoleForSidebar] : roles
       return sidebarRoles.length > 0 && item.allowedRoles.some(r => sidebarRoles.includes(r))
     }),
   })).filter(group => group.items.length > 0)
+
+  if (roles.includes('headmaster') && !activeRoleForSidebar) {
+    visibleGroups = reorderNavGroupsForHeadmaster(visibleGroups)
+  }
 
   const handleSignOut = async () => {
     await signOut()

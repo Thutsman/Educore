@@ -17,7 +17,7 @@ interface BarSeries {
   key: string
   label: string
   color?: string
-  radius?: number
+  radius?: number | [number, number, number, number]
 }
 
 interface AppBarChartProps {

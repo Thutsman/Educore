@@ -7,6 +7,15 @@ import {
   getHeadmasterAttendanceOverview,
   getHeadmasterAttendanceWeekly,
   getSchemeBookApprovalStats,
+  getHeadmasterAttendanceMonthly,
+  getInvoiceFeeBreakdown,
+  getCumulativeEnrollmentTrend,
+  getClassPassRatesForSchool,
+  getWorkforceStatusBreakdown,
+  getWorkforcePresenceSummary,
+  getHeadmasterKpiComparison,
+  getSubjectPerformance,
+  getHeadmasterAlerts,
 } from '@/services/dashboard'
 
 export const dashboardKeys = {
@@ -17,6 +26,23 @@ export const dashboardKeys = {
   headmasterAttendanceWeeks:(schoolId: string, weeks: number) =>
     ['dashboard', 'headmaster-attendance-weeks', schoolId, weeks] as const,
   schemeBookApprovals:       (schoolId: string) => ['dashboard', 'scheme-book-approvals', schoolId] as const,
+  headmasterAttendanceMonths: (schoolId: string, months: number) =>
+    ['dashboard', 'headmaster-attendance-months', schoolId, months] as const,
+  headmasterFeeBreakdown: (schoolId: string) =>
+    ['dashboard', 'headmaster-fee-breakdown', schoolId] as const,
+  headmasterEnrollmentCumulative: (schoolId: string, years: number) =>
+    ['dashboard', 'headmaster-enrollment-cumulative', schoolId, years] as const,
+  headmasterClassPassRates: (schoolId: string) =>
+    ['dashboard', 'headmaster-class-pass-rates', schoolId] as const,
+  headmasterWorkforceSlices: (schoolId: string) =>
+    ['dashboard', 'headmaster-workforce-slices', schoolId] as const,
+  headmasterWorkforcePresence: (schoolId: string) =>
+    ['dashboard', 'headmaster-workforce-presence', schoolId] as const,
+  headmasterKpis: (schoolId: string) => ['dashboard', 'headmaster-kpis', schoolId] as const,
+  headmasterSubjectPerf: (schoolId: string) =>
+    ['dashboard', 'headmaster-subject-perf', schoolId] as const,
+  headmasterAlerts: (schoolId: string, termStart?: string) =>
+    ['dashboard', 'headmaster-alerts', schoolId, termStart ?? ''] as const,
 }
 
 export function useSchoolStats() {
@@ -80,6 +106,106 @@ export function useSchemeBookApprovalStats() {
   return useQuery({
     queryKey: dashboardKeys.schemeBookApprovals(schoolId),
     queryFn: () => getSchemeBookApprovalStats(schoolId),
+    enabled: !!schoolId,
+    staleTime: 1000 * 60 * 5,
+  })
+}
+
+export function useHeadmasterAttendanceMonthly(months = 6) {
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
+  return useQuery({
+    queryKey: dashboardKeys.headmasterAttendanceMonths(schoolId, months),
+    queryFn: () => getHeadmasterAttendanceMonthly(schoolId, months),
+    enabled: !!schoolId,
+    staleTime: 1000 * 60 * 5,
+  })
+}
+
+export function useHeadmasterInvoiceFeeBreakdown() {
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
+  return useQuery({
+    queryKey: dashboardKeys.headmasterFeeBreakdown(schoolId),
+    queryFn: () => getInvoiceFeeBreakdown(schoolId),
+    enabled: !!schoolId,
+    staleTime: 1000 * 60 * 5,
+  })
+}
+
+export function useHeadmasterCumulativeEnrollment(years = 5) {
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
+  return useQuery({
+    queryKey: dashboardKeys.headmasterEnrollmentCumulative(schoolId, years),
+    queryFn: () => getCumulativeEnrollmentTrend(schoolId, years),
+    enabled: !!schoolId,
+    staleTime: 1000 * 60 * 10,
+  })
+}
+
+export function useHeadmasterClassPassRates() {
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
+  return useQuery({
+    queryKey: dashboardKeys.headmasterClassPassRates(schoolId),
+    queryFn: () => getClassPassRatesForSchool(schoolId),
+    enabled: !!schoolId,
+    staleTime: 1000 * 60 * 10,
+  })
+}
+
+export function useHeadmasterWorkforceSlices() {
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
+  return useQuery({
+    queryKey: dashboardKeys.headmasterWorkforceSlices(schoolId),
+    queryFn: () => getWorkforceStatusBreakdown(schoolId),
+    enabled: !!schoolId,
+    staleTime: 1000 * 60 * 10,
+  })
+}
+
+export function useHeadmasterWorkforcePresence() {
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
+  return useQuery({
+    queryKey: dashboardKeys.headmasterWorkforcePresence(schoolId),
+    queryFn: () => getWorkforcePresenceSummary(schoolId),
+    enabled: !!schoolId,
+    staleTime: 1000 * 60 * 10,
+  })
+}
+
+export function useHeadmasterKpiComparison() {
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
+  return useQuery({
+    queryKey: dashboardKeys.headmasterKpis(schoolId),
+    queryFn: () => getHeadmasterKpiComparison(schoolId),
+    enabled: !!schoolId,
+    staleTime: 1000 * 60 * 5,
+  })
+}
+
+export function useHeadmasterSubjectPerformance() {
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
+  return useQuery({
+    queryKey: dashboardKeys.headmasterSubjectPerf(schoolId),
+    queryFn: () => getSubjectPerformance(schoolId),
+    enabled: !!schoolId,
+    staleTime: 1000 * 60 * 10,
+  })
+}
+
+export function useHeadmasterDashboardAlerts(termStart?: string | null) {
+  const { currentSchool } = useSchool()
+  const schoolId = currentSchool?.id ?? ''
+  return useQuery({
+    queryKey: dashboardKeys.headmasterAlerts(schoolId, termStart ?? undefined),
+    queryFn: () =>
+      getHeadmasterAlerts(schoolId, termStart ?? undefined),
     enabled: !!schoolId,
     staleTime: 1000 * 60 * 5,
   })
