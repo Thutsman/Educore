@@ -207,7 +207,7 @@ export function SchoolAdminHelp() {
     <div className="space-y-6">
 
       {/* ── Header ── */}
-      <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+      <div className="card-interactive rounded-xl border border-border bg-card p-6 shadow-sm">
         <div className="flex items-start gap-4">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10">
             <Settings2 className="h-6 w-6 text-emerald-600" />
@@ -230,7 +230,7 @@ export function SchoolAdminHelp() {
       </div>
 
       {/* ── Quick links ── */}
-      <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+      <div className="card-interactive rounded-xl border border-border bg-card p-5 shadow-sm">
         <h3 className="mb-3 text-sm font-semibold">Quick Links</h3>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {[

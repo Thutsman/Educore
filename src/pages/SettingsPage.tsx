@@ -80,7 +80,7 @@ export function SettingsPage() {
       </div>
 
       {/* Change Password */}
-      <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+      <div className="card-interactive rounded-xl border border-border bg-card p-6 shadow-sm">
         <div className="mb-6">
           <h2 className="text-base font-semibold">Change password</h2>
           <p className="mt-0.5 text-sm text-muted-foreground">

@@ -208,7 +208,7 @@ export function ExecutiveAcademicsOverview() {
         subtitle="Read-only overview of class performance: attendance, exam results, allocations, scheme books, assignments, and assessments"
       />
 
-      <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 shadow-sm sm:flex-row sm:flex-wrap sm:items-end">
+      <div className="flex flex-col gap-4 card-interactive rounded-xl border border-border bg-card p-4 shadow-sm sm:flex-row sm:flex-wrap sm:items-end">
         <div className="space-y-2 sm:min-w-[200px]">
           <Label>Academic year</Label>
           <Select

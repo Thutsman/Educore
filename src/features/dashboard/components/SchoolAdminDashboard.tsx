@@ -115,7 +115,7 @@ export function SchoolAdminDashboard() {
         subtitle={currentSchool?.name ?? 'Configure your school'}
       />
 
-      <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
+      <div className="card-interactive rounded-xl border border-border bg-card p-5 shadow-sm">
         <p className="text-sm text-muted-foreground">
           Welcome, <span className="font-medium text-foreground">{profile?.full_name ?? 'School Admin'}</span>.
           Complete the setup steps below to get your school running.
@@ -127,7 +127,7 @@ export function SchoolAdminDashboard() {
         {steps.map(step => (
           <div
             key={step.number}
-            className="flex gap-4 rounded-xl border border-border bg-card p-5 shadow-sm"
+            className="flex gap-4 card-interactive rounded-xl border border-border bg-card p-5 shadow-sm"
           >
             <div className="shrink-0 w-10 flex flex-col items-center">
               <span className={cn('text-2xl font-extrabold tabular-nums', step.done ? 'text-emerald-500' : 'text-muted-foreground/40')}>
@@ -179,7 +179,7 @@ export function SchoolAdminDashboard() {
         ))}
       </div>
 
-      <div id="school-procurement-initiator" className="rounded-xl border border-border bg-card p-5 shadow-sm">
+      <div id="school-procurement-initiator" className="card-interactive rounded-xl border border-border bg-card p-5 shadow-sm">
         <h2 className="mb-4 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Finance · procurement policy
         </h2>

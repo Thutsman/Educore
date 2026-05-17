@@ -8,11 +8,8 @@ import {
   ShoppingCart,
   Users,
   GraduationCap,
-  UserCircle,
   Wallet,
-  BookOpen,
   AlertTriangle,
-  Anchor,
   Home,
   Percent,
   Activity,
@@ -36,7 +33,6 @@ import {
   useHeadmasterCumulativeEnrollment,
   useHeadmasterClassPassRates,
   useHeadmasterWorkforceSlices,
-  useHeadmasterWorkforcePresence,
   useHeadmasterKpiComparison,
   useHeadmasterSubjectPerformance,
   useHeadmasterDashboardAlerts,
@@ -115,8 +111,6 @@ export function HeadmasterDashboard() {
     useHeadmasterClassPassRates()
   const { data: workforceSlices = [], isLoading: workforceLoading } =
     useHeadmasterWorkforceSlices()
-  const { data: workforcePresence, isLoading: presenceLoading } =
-    useHeadmasterWorkforcePresence()
   const { data: subjectPerf = [], isLoading: subjLoading } =
     useHeadmasterSubjectPerformance()
   const {
@@ -139,7 +133,6 @@ export function HeadmasterDashboard() {
       const key = `educore_help_seen_${user.id}`
       const seen = !!localStorage.getItem(key)
       setHasSeen(seen)
-      setActiveTab(seen ? 'overview' : 'help')
       setTabInitialized(true)
     }
   }, [user?.id, tabInitialized])
@@ -278,10 +271,9 @@ export function HeadmasterDashboard() {
         </TabsList>
 
         <TabsContent value="overview" className="mt-6 space-y-8">
-          {/* KPI strip — Workforce % is staffing status mix, not lesson attendance */}
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {kpisLoading || !kpis ? (
-              Array.from({ length: 6 }).map((_, i) => <CardSkeleton key={i} height={120} />)
+              Array.from({ length: 3 }).map((_, i) => <CardSkeleton key={i} height={120} />)
             ) : (
               <>
                 <StatCard
@@ -309,14 +301,6 @@ export function HeadmasterDashboard() {
                   }
                 />
                 <StatCard
-                  title="Workforce availability"
-                  value={presenceLoading ? '—' : formatPercent(workforcePresence?.activePct ?? 0)}
-                  subtitle={`${workforcePresence?.active ?? '—'} active of ${workforcePresence?.total ?? '—'} (teachers + staff)`}
-                  icon={UserCircle}
-                  iconClassName="bg-cyan-500/10 text-cyan-600"
-                  loading={presenceLoading}
-                />
-                <StatCard
                   title="Fee collection rate"
                   value={formatPercent(kpis.current.collectionRate)}
                   subtitle="Collected ÷ invoiced (invoices dated in term)"
@@ -327,25 +311,6 @@ export function HeadmasterDashboard() {
                       ? { value: deltas.collectionPct, label: kpiTrendLabel }
                       : undefined
                   }
-                />
-                <StatCard
-                  title="Academic pass rate"
-                  value={formatPercent(kpis.current.passRate)}
-                  subtitle="Across classes · exams dated in term"
-                  icon={BookOpen}
-                  iconClassName="bg-orange-500/10 text-orange-600"
-                  trend={
-                    deltas?.passRatePct != null
-                      ? { value: deltas.passRatePct, label: kpiTrendLabel }
-                      : undefined
-                  }
-                />
-                <StatCard
-                  title="Discipline incidents"
-                  value="—"
-                  subtitle="No discipline log module yet · coming soon"
-                  icon={Anchor}
-                  iconClassName="bg-amber-500/10 text-amber-600"
                 />
               </>
             )}
@@ -429,7 +394,7 @@ export function HeadmasterDashboard() {
 
           {/* Trends row */}
           <div className="grid gap-6 lg:grid-cols-3">
-            <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+            <div className="card-interactive rounded-xl border border-border bg-card p-6 shadow-sm">
               <div className="mb-4">
                 <h3 className="text-sm font-semibold">Enrolment trend</h3>
                 <p className="text-xs text-muted-foreground">
@@ -460,7 +425,7 @@ export function HeadmasterDashboard() {
               )}
             </div>
 
-            <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+            <div className="card-interactive rounded-xl border border-border bg-card p-6 shadow-sm">
               <div className="mb-4">
                 <h3 className="text-sm font-semibold">Student attendance trend</h3>
                 <p className="text-xs text-muted-foreground">
@@ -492,7 +457,7 @@ export function HeadmasterDashboard() {
               )}
             </div>
 
-            <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+            <div className="card-interactive rounded-xl border border-border bg-card p-6 shadow-sm">
               <div className="mb-4">
                 <h3 className="text-sm font-semibold">Fee collection overview</h3>
                 <p className="text-xs text-muted-foreground">
@@ -529,7 +494,7 @@ export function HeadmasterDashboard() {
 
           {/* Academics + staffing */}
           <div className="grid gap-6 lg:grid-cols-3">
-            <div className="rounded-xl border border-border bg-card p-6 shadow-sm lg:col-span-1">
+            <div className="card-interactive rounded-xl border border-border bg-card p-6 shadow-sm lg:col-span-1">
               <div className="mb-4">
                 <h3 className="text-sm font-semibold">Academic pass rate by class</h3>
                 <p className="text-xs text-muted-foreground">
@@ -560,7 +525,7 @@ export function HeadmasterDashboard() {
               )}
             </div>
 
-            <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+            <div className="card-interactive rounded-xl border border-border bg-card p-6 shadow-sm">
               <div className="mb-4">
                 <h3 className="text-sm font-semibold">Top-performing subjects</h3>
                 <p className="text-xs text-muted-foreground">Average marks across graded entries</p>
@@ -581,7 +546,7 @@ export function HeadmasterDashboard() {
               )}
             </div>
 
-            <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+            <div className="card-interactive rounded-xl border border-border bg-card p-6 shadow-sm">
               <div className="mb-4">
                 <h3 className="text-sm font-semibold">Workforce status mix</h3>
                 <p className="text-xs text-muted-foreground">
@@ -625,7 +590,7 @@ export function HeadmasterDashboard() {
               </div>
             </div>
 
-            <div className="rounded-xl border border-border bg-card p-6 shadow-sm lg:col-span-3">
+            <div className="card-interactive rounded-xl border border-border bg-card p-6 shadow-sm lg:col-span-3">
               <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
                 <div>
                   <h3 className="text-sm font-semibold">Alerts & notices</h3>
@@ -681,7 +646,7 @@ export function HeadmasterDashboard() {
 
           {/* Ops: scheme books + procurement */}
           <div className="grid gap-4 lg:grid-cols-2">
-            <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+            <div className="card-interactive rounded-xl border border-border bg-card p-6 shadow-sm">
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <h3 className="text-sm font-semibold">Scheme book pipeline</h3>
@@ -726,7 +691,7 @@ export function HeadmasterDashboard() {
               )}
             </div>
 
-            <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+            <div className="card-interactive rounded-xl border border-border bg-card p-6 shadow-sm">
               <StatCard
                 title="Procurement approvals"
                 value={procPendingLoading ? '—' : pendingProcurement}

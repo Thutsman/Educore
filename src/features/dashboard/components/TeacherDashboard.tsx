@@ -33,7 +33,7 @@ import { cn } from '@/utils/cn'
 
 function CardSkeleton() {
   return (
-    <div className="rounded-xl border border-border bg-card p-6">
+    <div className="card-interactive rounded-xl border border-border bg-card p-6">
       <div className="space-y-3">
         <div className="h-3 w-24 animate-pulse rounded bg-muted" />
         <div className="h-8 w-20 animate-pulse rounded bg-muted" />
@@ -123,7 +123,6 @@ export function TeacherDashboard() {
       const key = `educore_help_seen_${user.id}`
       const seen = !!localStorage.getItem(key)
       setHasSeen(seen)
-      setActiveTab(seen ? 'overview' : 'help')
       setTabInitialized(true)
     }
   }, [user?.id, tabInitialized])
@@ -305,7 +304,7 @@ export function TeacherDashboard() {
           {/* Attendance charts (only if there's a homeroom class) */}
           {(homeroom || homeroomLoading) && (
             <div className="grid gap-6 lg:grid-cols-3">
-              <div className="lg:col-span-2 rounded-xl border border-border bg-card p-6 shadow-sm">
+              <div className="lg:col-span-2 card-interactive rounded-xl border border-border bg-card p-6 shadow-sm">
                 <div className="mb-4">
                   <h3 className="text-sm font-semibold">Class Attendance Trend</h3>
                   <p className="text-xs text-muted-foreground">
@@ -335,7 +334,7 @@ export function TeacherDashboard() {
                 )}
               </div>
 
-              <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+              <div className="card-interactive rounded-xl border border-border bg-card p-6 shadow-sm">
                 <h3 className="mb-1 text-sm font-semibold">Today's Breakdown</h3>
                 <p className="mb-3 text-xs text-muted-foreground">
                   {homeroom?.name ?? '—'} · {new Date().toLocaleDateString('en-GB', { dateStyle: 'medium' })}
@@ -386,7 +385,7 @@ export function TeacherDashboard() {
 
           {/* Subjects & Recent Exams */}
           <div className="grid gap-6 lg:grid-cols-2">
-            <div className="rounded-xl border border-border bg-card shadow-sm">
+            <div className="card-interactive rounded-xl border border-border bg-card shadow-sm">
               <div className="border-b border-border px-6 py-4">
                 <h3 className="text-sm font-semibold">My Subjects & Classes</h3>
                 <p className="text-xs text-muted-foreground">All assigned teaching allocations</p>
@@ -429,7 +428,7 @@ export function TeacherDashboard() {
               )}
             </div>
 
-            <div className="rounded-xl border border-border bg-card shadow-sm">
+            <div className="card-interactive rounded-xl border border-border bg-card shadow-sm">
               <div className="border-b border-border px-6 py-4">
                 <h3 className="text-sm font-semibold">Recent Exams</h3>
                 <p className="text-xs text-muted-foreground">
@@ -486,7 +485,7 @@ export function TeacherDashboard() {
 
           {/* Role-based quick links */}
           {(showClassTeacherLinks || showSubjectTeacherLinks) && (
-            <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+            <div className="card-interactive rounded-xl border border-border bg-card p-6 shadow-sm">
               <h3 className="mb-4 text-sm font-semibold">Quick links</h3>
               <div className="flex flex-wrap gap-3">
                 {showClassTeacherLinks && CLASS_TEACHER_LINKS.map(({ to, label, icon: Icon }) => (

@@ -20,7 +20,7 @@ export function TeacherTimetableCard() {
   const todayEntries = entries.filter((e) => e.day_of_week === schoolDayIndex).sort((a, b) => a.period_start.localeCompare(b.period_start))
 
   return (
-    <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+    <div className="card-interactive rounded-xl border border-border bg-card p-6 shadow-sm">
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-sm font-semibold">My Timetable</h3>
         <Link

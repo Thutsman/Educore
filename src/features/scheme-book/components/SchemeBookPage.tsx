@@ -468,7 +468,7 @@ export function SchemeBookPage() {
       />
 
       {filters.termId && progress && progress.total > 0 && (
-        <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+        <div className="card-interactive rounded-xl border border-border bg-card p-4 shadow-sm">
           <p className="text-sm font-medium text-muted-foreground">Progress this term</p>
           <div className="mt-2 flex items-center gap-3">
             <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">

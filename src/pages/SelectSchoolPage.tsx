@@ -68,7 +68,7 @@ export function SelectSchoolPage() {
             <button
               key={school.id}
               onClick={() => handleSelect(school)}
-              className="flex flex-col items-center gap-4 rounded-xl border border-border bg-card p-6 text-center shadow-sm transition-all hover:border-emerald-500 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+              className="card-interactive flex cursor-pointer flex-col items-center gap-4 rounded-xl border border-border bg-card p-6 text-center shadow-sm hover:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
             >
               <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-600/10 text-emerald-600">
                 {school.logo_url ? (

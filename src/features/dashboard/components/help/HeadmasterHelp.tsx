@@ -107,7 +107,7 @@ function ModuleCard({
   to: string
 }) {
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 shadow-sm">
+    <div className="flex flex-col gap-3 card-interactive rounded-xl border border-border bg-card p-4 shadow-sm">
       <div className={cn('flex h-9 w-9 items-center justify-center rounded-lg', color)}>
         <Icon className="h-5 w-5" />
       </div>
@@ -390,7 +390,7 @@ export function HeadmasterHelp() {
     <div className="space-y-6">
 
       {/* ── Header + progress ── */}
-      <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+      <div className="card-interactive rounded-xl border border-border bg-card p-6 shadow-sm">
         <div className="flex items-start gap-4">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-500/10">
             <School className="h-6 w-6 text-blue-600" />

@@ -105,7 +105,7 @@ export function ParentMessagesPage() {
             return (
               <div
                 key={pid}
-                className="rounded-xl border border-border bg-card p-4 shadow-sm"
+                className="card-interactive rounded-xl border border-border bg-card p-4 shadow-sm"
               >
                 <div className="flex items-center justify-between">
                   <div>

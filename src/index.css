@@ -123,8 +123,8 @@
   --popover: 222.2 84% 4.9%;
   --popover-foreground: 210 40% 98%;
 
-  --primary: 217.2 91.2% 59.8%;
-  --primary-foreground: 222.2 47.4% 11.2%;
+  --primary: 173 70% 38%;
+  --primary-foreground: 0 0% 100%;
 
   --secondary: 217.2 32.6% 17.5%;
   --secondary-foreground: 210 40% 98%;
@@ -140,24 +140,66 @@
 
   --border: 217.2 32.6% 17.5%;
   --input: 217.2 32.6% 17.5%;
-  --ring: 224.3 76.3% 48%;
+  --ring: 173 70% 38%;
 
   /* Sidebar */
   --sidebar-background: 222.2 84% 3.5%;
   --sidebar-foreground: 210 40% 98%;
-  --sidebar-primary: 217.2 91.2% 59.8%;
-  --sidebar-primary-foreground: 222.2 47.4% 11.2%;
+  --sidebar-primary: 173 70% 44%;
+  --sidebar-primary-foreground: 0 0% 100%;
   --sidebar-accent: 217.2 32.6% 15%;
   --sidebar-accent-foreground: 210 40% 98%;
   --sidebar-border: 217.2 32.6% 12%;
-  --sidebar-ring: 217.2 91.2% 59.8%;
+  --sidebar-ring: 173 70% 44%;
 
   /* Charts */
-  --chart-1: 217.2 91.2% 59.8%;
+  --chart-1: 173 70% 38%;
   --chart-2: 160 60% 45%;
   --chart-3: 30 80% 55%;
   --chart-4: 280 65% 60%;
   --chart-5: 340 75% 55%;
+}
+
+/* ──────────────────────────────────────────────────────
+   INTERACTIVE CARDS (hover lift + scale)
+   ────────────────────────────────────────────────────── */
+@layer components {
+  .card-interactive {
+    transition:
+      transform 200ms ease-out,
+      box-shadow 200ms ease-out;
+    transform-origin: center;
+  }
+
+  a.card-interactive,
+  button.card-interactive,
+  label.card-interactive,
+  .card-interactive[role="button"] {
+    cursor: pointer;
+  }
+
+  .card-interactive:hover {
+    transform: scale(1.02);
+    box-shadow:
+      0 4px 6px -1px rgb(0 0 0 / 0.1),
+      0 2px 4px -2px rgb(0 0 0 / 0.1);
+  }
+
+  .dark .card-interactive:hover {
+    box-shadow:
+      0 10px 15px -3px rgb(0 0 0 / 0.35),
+      0 4px 6px -4px rgb(0 0 0 / 0.25);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .card-interactive {
+      transition: box-shadow 200ms ease-out;
+    }
+
+    .card-interactive:hover {
+      transform: none;
+    }
+  }
 }
 
 /* ──────────────────────────────────────────────────────
@@ -174,6 +216,16 @@ body {
   font-feature-settings: "rlig" 1, "calt" 1;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Pointer cursor for clickable controls (native buttons, links used as buttons) */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+[role="tab"],
+[type="button"]:not(:disabled),
+[type="submit"]:not(:disabled),
+[type="reset"]:not(:disabled) {
+  cursor: pointer;
 }
 
 /* Smooth scrollbar */

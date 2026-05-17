@@ -50,7 +50,7 @@ import { formatPercent, formatRelativeTime } from '@/utils/format'
 
 function CardSkeleton() {
   return (
-    <div className="rounded-xl border border-border bg-card p-6">
+    <div className="card-interactive rounded-xl border border-border bg-card p-6">
       <div className="space-y-3">
         <div className="h-3 w-24 animate-pulse rounded bg-muted" />
         <div className="h-8 w-16 animate-pulse rounded bg-muted" />
@@ -223,7 +223,6 @@ export function HodDashboard() {
       const key = `educore_help_seen_${user.id}`
       const seen = !!localStorage.getItem(key)
       setHasSeen(seen)
-      setActiveTab(seen ? 'overview' : 'help')
       setTabInitialized(true)
     }
   }, [user?.id, tabInitialized])
@@ -320,7 +319,7 @@ export function HodDashboard() {
               Array.from({ length: 5 }).map((_, i) => <CardSkeleton key={i} />)
             ) : (
               <>
-                <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+                <div className="card-interactive rounded-xl border border-border bg-card p-6 shadow-sm">
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0 flex-1 space-y-1">
                       <p className="truncate text-sm font-medium text-muted-foreground">Dept Pass Rate</p>
@@ -350,7 +349,7 @@ export function HodDashboard() {
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+                <div className="card-interactive rounded-xl border border-border bg-card p-6 shadow-sm">
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0 flex-1 space-y-1">
                       <p className="truncate text-sm font-medium text-muted-foreground">Dept Attendance (This Week)</p>
@@ -381,7 +380,7 @@ export function HodDashboard() {
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+                <div className="card-interactive rounded-xl border border-border bg-card p-6 shadow-sm">
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0 flex-1 space-y-1">
                       <p className="truncate text-sm font-medium text-muted-foreground">At-risk Learners</p>
@@ -399,7 +398,7 @@ export function HodDashboard() {
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+                <div className="card-interactive rounded-xl border border-border bg-card p-6 shadow-sm">
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0 flex-1 space-y-1">
                       <p className="truncate text-xs font-medium leading-tight text-muted-foreground">
@@ -418,7 +417,7 @@ export function HodDashboard() {
 
                 <Link
                   to="/scheme-book"
-                  className="block rounded-xl border border-border bg-card p-6 shadow-sm transition-colors hover:bg-muted/30"
+                  className="block cursor-pointer card-interactive rounded-xl border border-border bg-card p-6 shadow-sm transition-colors hover:bg-muted/30"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0 flex-1 space-y-1">
@@ -440,7 +439,7 @@ export function HodDashboard() {
           </div>
 
           <div className="grid gap-6 lg:grid-cols-[60%_40%]">
-            <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+            <div className="card-interactive rounded-xl border border-border bg-card p-6 shadow-sm">
               <div className="mb-4">
                 <h3 className="text-sm font-semibold">Subject Performance</h3>
                 <p className="text-xs text-muted-foreground">
@@ -498,7 +497,7 @@ export function HodDashboard() {
               )}
             </div>
 
-            <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+            <div className="card-interactive rounded-xl border border-border bg-card p-6 shadow-sm">
               <div className="mb-4">
                 <h3 className="text-sm font-semibold">Upcoming Assessments</h3>
                 <p className="text-xs text-muted-foreground">Next 14 days across your department</p>
@@ -563,7 +562,7 @@ export function HodDashboard() {
               />
             </div>
 
-            <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+            <div className="card-interactive rounded-xl border border-border bg-card p-6 shadow-sm">
               <div className="mb-4">
                 <h3 className="text-sm font-semibold">Department Activity</h3>
                 <p className="text-xs text-muted-foreground">Last 7 days</p>
@@ -614,7 +613,7 @@ export function HodDashboard() {
             </div>
           </div>
 
-          <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+          <div className="card-interactive rounded-xl border border-border bg-card p-6 shadow-sm">
             <h3 className="mb-4 text-sm font-semibold">Quick actions</h3>
             <div className="flex flex-wrap gap-3">
               {HOD_QUICK_LINKS.map(({ to, label, icon: Icon }) => (
@@ -632,7 +631,7 @@ export function HodDashboard() {
         </TabsContent>
 
         <TabsContent value="help" className="mt-6">
-          <div className="space-y-4 rounded-xl border border-border bg-card p-6 text-sm">
+          <div className="card-interactive space-y-4 rounded-xl border border-border bg-card p-6 text-sm shadow-sm">
             <h2 className="text-base font-semibold">How to use the HOD Dashboard</h2>
             <ul className="list-disc space-y-2 pl-5 text-muted-foreground">
               <li>

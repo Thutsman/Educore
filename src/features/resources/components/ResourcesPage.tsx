@@ -275,7 +275,7 @@ export function ResourcesPage() {
           {resources.map((r) => (
             <div
               key={r.id}
-              className="rounded-xl border border-border bg-card p-4 shadow-sm transition-shadow hover:shadow-md"
+              className="card-interactive rounded-xl border border-border bg-card p-4 shadow-sm"
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">

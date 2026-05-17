@@ -60,7 +60,7 @@ export function ClassAnalyticsPage() {
       />
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+        <div className="card-interactive rounded-xl border border-border bg-card p-4 shadow-sm">
           <h3 className="mb-3 text-sm font-semibold">Attendance trend (last 30 days)</h3>
           {attendanceChartData.length > 0 ? (
             <AppAreaChart
@@ -76,7 +76,7 @@ export function ClassAnalyticsPage() {
           )}
         </div>
 
-        <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+        <div className="card-interactive rounded-xl border border-border bg-card p-4 shadow-sm">
           <h3 className="mb-3 text-sm font-semibold">Assessment averages (last 10)</h3>
           {assessmentChartData.length > 0 ? (
             <AppBarChart
@@ -92,7 +92,7 @@ export function ClassAnalyticsPage() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+      <div className="card-interactive rounded-xl border border-border bg-card p-4 shadow-sm">
         <h3 className="mb-3 text-sm font-semibold">Class summary</h3>
         <dl className="grid gap-2 sm:grid-cols-3">
           <div>

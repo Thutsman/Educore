@@ -38,7 +38,7 @@ export function AnalyticsPage() {
 
       {/* Charts row 1 */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+        <div className="card-interactive rounded-xl border border-border bg-card p-6 shadow-sm">
           <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold">
             <BarChart2 className="h-4 w-4 text-primary" />
             Student Enrollment (12 months)
@@ -51,7 +51,7 @@ export function AnalyticsPage() {
           />
         </div>
 
-        <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+        <div className="card-interactive rounded-xl border border-border bg-card p-6 shadow-sm">
           <h3 className="mb-4 text-sm font-semibold">Attendance Rate (60 days)</h3>
           <AppAreaChart
             data={attendance}
@@ -64,7 +64,7 @@ export function AnalyticsPage() {
 
       {/* Charts row 2 */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+        <div className="card-interactive rounded-xl border border-border bg-card p-6 shadow-sm">
           <h3 className="mb-4 text-sm font-semibold">Revenue vs Expenses</h3>
           <AppAreaChart
             data={financials?.points ?? []}
@@ -77,7 +77,7 @@ export function AnalyticsPage() {
           />
         </div>
 
-        <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+        <div className="card-interactive rounded-xl border border-border bg-card p-6 shadow-sm">
           <h3 className="mb-4 text-sm font-semibold">Payment Methods</h3>
           <AppPieChart
             data={paymentMethods.map(p => ({ name: p.method.replace('_', ' '), value: p.total }))}
@@ -88,7 +88,7 @@ export function AnalyticsPage() {
 
       {/* Charts row 3 */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+        <div className="card-interactive rounded-xl border border-border bg-card p-6 shadow-sm">
           <h3 className="mb-4 text-sm font-semibold">Average Grade by Subject</h3>
           <AppBarChart
             data={subjectPerf}
@@ -99,7 +99,7 @@ export function AnalyticsPage() {
           />
         </div>
 
-        <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+        <div className="card-interactive rounded-xl border border-border bg-card p-6 shadow-sm">
           <h3 className="mb-4 text-sm font-semibold">Class Performance</h3>
           <AppBarChart
             data={classPerf}

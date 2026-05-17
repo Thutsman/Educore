@@ -36,7 +36,7 @@ import {
 
 function CardSkeleton() {
   return (
-    <div className="rounded-xl border border-border bg-card p-6">
+    <div className="card-interactive rounded-xl border border-border bg-card p-6">
       <div className="space-y-3">
         <div className="h-3 w-24 animate-pulse rounded bg-muted" />
         <div className="h-8 w-20 animate-pulse rounded bg-muted" />
@@ -103,7 +103,7 @@ function KpiCard({ title, value, subtitle, icon: Icon, valueClassName, warning, 
     <Wrapper
       type={onClick ? 'button' : undefined}
       onClick={onClick}
-      className={`rounded-xl border border-border bg-card p-6 text-left transition-shadow hover:shadow-md ${onClick ? 'cursor-pointer' : ''}`}
+      className={`card-interactive rounded-xl border border-border bg-card p-6 text-left shadow-sm ${onClick ? 'cursor-pointer' : ''}`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 space-y-1">

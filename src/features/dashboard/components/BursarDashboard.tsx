@@ -301,7 +301,7 @@ export function BursarDashboard() {
       </div>
 
       {/* ── Forecasting Widget ── */}
-      <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+      <div className="card-interactive rounded-xl border border-border bg-card p-6 shadow-sm">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h3 className="text-sm font-semibold flex items-center gap-2">
@@ -345,7 +345,7 @@ export function BursarDashboard() {
       <div className="grid gap-6 lg:grid-cols-3">
 
         {/* Revenue vs Expenses area chart */}
-        <div className="lg:col-span-2 rounded-xl border border-border bg-card p-6 shadow-sm">
+        <div className="lg:col-span-2 card-interactive rounded-xl border border-border bg-card p-6 shadow-sm">
           <div className="mb-4">
             <h3 className="text-sm font-semibold">Revenue vs Expenses</h3>
             <p className="text-xs text-muted-foreground">Monthly comparison from first recorded transaction</p>
@@ -378,7 +378,7 @@ export function BursarDashboard() {
         </div>
 
         {/* Payment method donut */}
-        <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+        <div className="card-interactive rounded-xl border border-border bg-card p-6 shadow-sm">
           <h3 className="mb-1 text-sm font-semibold">Payment Methods</h3>
           <p className="mb-4 text-xs text-muted-foreground">Last 12 months by value</p>
 

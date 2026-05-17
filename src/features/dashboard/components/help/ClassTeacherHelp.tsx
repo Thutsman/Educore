@@ -99,7 +99,7 @@ function ToolCard({
   to: string
 }) {
   return (
-    <div className="flex gap-3 rounded-xl border border-border bg-card p-4 shadow-sm">
+    <div className="flex gap-3 card-interactive rounded-xl border border-border bg-card p-4 shadow-sm">
       <div className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-lg', color)}>
         <Icon className="h-5 w-5" />
       </div>
@@ -275,7 +275,7 @@ export function ClassTeacherHelp() {
     <div className="space-y-6">
 
       {/* ── Header ── */}
-      <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+      <div className="card-interactive rounded-xl border border-border bg-card p-6 shadow-sm">
         <div className="flex items-start gap-4">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10">
             <GraduationCap className="h-6 w-6 text-emerald-600" />

@@ -96,7 +96,7 @@ export function DeputyDashboard() {
       <div className="grid gap-6 lg:grid-cols-2">
 
         {/* Attendance trend */}
-        <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+        <div className="card-interactive rounded-xl border border-border bg-card p-6 shadow-sm">
           <div className="mb-4 flex items-center justify-between">
             <div>
               <h3 className="text-sm font-semibold">Attendance Trend</h3>
@@ -125,7 +125,7 @@ export function DeputyDashboard() {
         </div>
 
         {/* Subject performance */}
-        <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+        <div className="card-interactive rounded-xl border border-border bg-card p-6 shadow-sm">
           <div className="mb-4">
             <h3 className="text-sm font-semibold">Subject Performance</h3>
             <p className="text-xs text-muted-foreground">Average grade per subject</p>
@@ -151,7 +151,7 @@ export function DeputyDashboard() {
       </div>
 
       {/* ── Class performance bar ── */}
-      <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+      <div className="card-interactive rounded-xl border border-border bg-card p-6 shadow-sm">
         <div className="mb-4">
           <h3 className="text-sm font-semibold">Class Performance Comparison</h3>
           <p className="text-xs text-muted-foreground">Average grade per class — current term</p>

@@ -139,7 +139,7 @@ export function StudentDetail() {
         <div className="space-y-6 lg:col-span-2">
 
           {/* Identity card */}
-          <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+          <div className="card-interactive rounded-xl border border-border bg-card p-6 shadow-sm">
             <div className="mb-6 flex items-center gap-4">
               <Avatar className="h-16 w-16">
                 <AvatarFallback className="bg-primary/10 text-lg font-bold text-primary">
@@ -167,7 +167,7 @@ export function StudentDetail() {
           </div>
 
           {/* Academic info */}
-          <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+          <div className="card-interactive rounded-xl border border-border bg-card p-6 shadow-sm">
             <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold">
               <GraduationCap className="h-4 w-4 text-primary" />
               Academic Information
@@ -184,7 +184,7 @@ export function StudentDetail() {
         <div className="space-y-6">
 
           {/* Fee summary */}
-          <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+          <div className="card-interactive rounded-xl border border-border bg-card p-6 shadow-sm">
             <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold">
               <Wallet className="h-4 w-4 text-primary" />
               Fee Summary
@@ -214,7 +214,7 @@ export function StudentDetail() {
           </div>
 
           {/* Guardians */}
-          <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+          <div className="card-interactive rounded-xl border border-border bg-card p-6 shadow-sm">
             <h3 className="mb-4 flex items-center gap-2 text-sm font-semibold">
               <Users className="h-4 w-4 text-primary" />
               Guardians
